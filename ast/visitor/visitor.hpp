@@ -57,7 +57,7 @@ namespace ast::visit {
         virtual void visit(ast::utils::def::Param const&) = 0;
 
         // ast::utils::match
-        virtual void visit(ast::utils::match::Pattern const&) = 0;
+        // virtual void visit(ast::utils::match::Pattern const&) = 0;
         virtual void visit(ast::utils::match::PatLiteral const&) = 0;
         virtual void visit(ast::utils::match::PatId const&) = 0;
         virtual void visit(ast::utils::match::PatConstr const&) = 0;

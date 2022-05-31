@@ -17,5 +17,6 @@ examples
 tmp-*
 #----------------
 .vscode
+.DS_Store
 notes.md
 test*
