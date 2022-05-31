@@ -5,9 +5,10 @@
 #include <vector>
 #include <memory>
 
-#include "core.hpp"
-#include "expr.hpp"
-#include "stmt.hpp"
+#include "../visitor/visitor.hpp"
+#include "./core.hpp"
+#include "./expr.hpp"
+#include "./stmt.hpp"
 
 namespace ast::utils::match {
     class Clause;
@@ -24,6 +25,7 @@ namespace ast::expr {
         unique_ptr<LetStmt> def;
         unique_ptr<Expression> expr;
         LetIn(LetStmt *def, Expression *expr): def(def), expr(expr) {};
+        void accept(visit::Visitor &v) override { v.visit(*this); }
     };
     class Literal : public Expression {
     protected:
@@ -35,12 +37,14 @@ namespace ast::expr {
         class Unit : public Literal {
         public:
             Unit(): Literal("()") {};
+            void accept(visit::Visitor &v) override { v.visit(*this); }
         };
         class Int : public Literal {
         public:
             int val;
             Int(string original_val)
                 : Literal(original_val), val(std::stoi(original_val)) {};
+            void accept(visit::Visitor &v) override { v.visit(*this); }
         };
         class Char : public Literal {
         public:
@@ -49,17 +53,20 @@ namespace ast::expr {
                 : Literal(original_val), val(val) {
                     // TODO: Transfer logic
                 };
+            void accept(visit::Visitor &v) override { v.visit(*this); }
         };
         class Bool : public Literal {
         public:
             bool val;
             Bool(bool val): val(val) {};
+            void accept(visit::Visitor &v) override { v.visit(*this); }
         };
         class Float : public Literal {
         public:
             float val;
             Float(string original_val)
                 : Literal(original_val), val(std::stof(original_val)) {};
+            void accept(visit::Visitor &v) override { v.visit(*this); }
         };
         class String : public Literal {
         public:
@@ -68,6 +75,7 @@ namespace ast::expr {
                 : Literal(original_val), val(val) {
                     // TODO: Transfer logic
                 };
+            void accept(visit::Visitor &v) override { v.visit(*this); }
         };
     } // namespace literal
     namespace op {
@@ -77,6 +85,7 @@ namespace ast::expr {
             int op;
             Binary(Expression *lhs, int op, Expression *rhs)
                 : lhs(lhs), rhs(rhs), op(op) {};
+            void accept(visit::Visitor &v) override { v.visit(*this); }
         };
         class Unary : public Expression {
         public:
@@ -84,12 +93,14 @@ namespace ast::expr {
             int op;
             Unary(int op, Expression *expr)
                 : expr(expr), op(op) {};
+            void accept(visit::Visitor &v) override { v.visit(*this); }
         };
         using core::TypeAnnotation;
         class New : public Expression {
         public:
             unique_ptr<TypeAnnotation> t;
             New(TypeAnnotation *t): t(t) {};
+            void accept(visit::Visitor &v) override { v.visit(*this); }
         };
     } // namespace op
     class While : public Expression {
@@ -97,6 +108,7 @@ namespace ast::expr {
         unique_ptr<Expression> cond, body;
         While(Expression *cond, Expression *body)
             : cond(cond), body(body) {};
+        void accept(visit::Visitor &v) override { v.visit(*this); }
     };
     class For : public Expression {
     public:
@@ -110,35 +122,49 @@ namespace ast::expr {
             Expression *end,
             Expression *body
         ): id(id), init(init), end(end), body(body), ascending(ascending) {};
+        void accept(visit::Visitor &v) override { v.visit(*this); }
     };
     class If : public Expression {
     public:
         unique_ptr<Expression> cond, then_expr, else_expr;
         If(Expression *cond, Expression *then_expr, Expression *else_expr)
             : cond(cond), then_expr(then_expr), else_expr(else_expr) {};
+        void accept(visit::Visitor &v) override { v.visit(*this); }
     };
     class Dim : public Expression {
     public:
         unique_ptr<literal::Int> dim;
         string id;
         Dim(literal::Int *dim, string id): dim(dim), id(id) {};
+        void accept(visit::Visitor &v) override { v.visit(*this); }
     };
-    class IdentifierCall : public Expression {
+    class IdCall : public Expression {
     public:
         string id;
-        IdentifierCall(string id): id(id) {};
+        IdCall(string id): id(id) {};
+        void accept(visit::Visitor &v) override { v.visit(*this); }
     };
-    class FuncConstrCall : public IdentifierCall {
+    class FuncCall : public Expression  {
     public:
+        string id;
         unique_ptr<vector<unique_ptr<Expression>>> arg_list;
-        FuncConstrCall(string id, vector<unique_ptr<Expression>> *arg_list)
-            : IdentifierCall(id), arg_list(arg_list) {};
+        FuncCall(string id, vector<unique_ptr<Expression>> *arg_list)
+            : id(id), arg_list(arg_list) {};
+        void accept(visit::Visitor &v) override { v.visit(*this); }
     };
-    class ArrayAccess : public IdentifierCall {
+    class ConstrCall : public Expression {
+    public:
+        string id;
+        unique_ptr<vector<unique_ptr<Expression>>> arg_list;
+        ConstrCall(string id, vector<unique_ptr<Expression>> *arg_list = nullptr)
+            : id(id), arg_list(arg_list) {};
+    };
+    class ArrayAccess : public IdCall {
     public:
         unique_ptr<vector<unique_ptr<Expression>>> index_list;
         ArrayAccess(string id, vector<unique_ptr<Expression>> *index_list)
-            : IdentifierCall(id), index_list(index_list) {};
+            : IdCall(id), index_list(index_list) {};
+        void accept(visit::Visitor &v) override { v.visit(*this); }  
     };
     using namespace utils::match;
     class Match : public Expression {
@@ -147,6 +173,7 @@ namespace ast::expr {
         unique_ptr<vector<unique_ptr<Clause>>> clause_list;
         Match(Expression *to_match, vector<unique_ptr<Clause>> *clause_list)
             : to_match(to_match), clause_list(clause_list) {};
+        void accept(visit::Visitor &v) override { v.visit(*this); };
     };
 }
 

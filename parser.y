@@ -298,8 +298,8 @@ expr
     | "match" expr "with" clause bar_clause_opt_list "end"      { $5->insert($5->begin(), std::unique_ptr<ast::utils::match::Clause>($4)); $$ = new ast::expr::Match($2, $5); }
     | "dim" T_intconst T_idlower                                { $$ = new ast::expr::Dim(new ast::expr::literal::Int(*$2), *$3);  }
     | "dim" T_idlower                                           { $$ = new ast::expr::Dim(new ast::expr::literal::Int("1"), *$2); }
-    | T_idlower expr_2_list                                     { $$ = new ast::expr::FuncConstrCall(*$1, $2); }
-    | T_idupper expr_2_list                                     { $$ = new ast::expr::FuncConstrCall(*$1, $2); }
+    | T_idlower expr_2_list                                     { $$ = new ast::expr::FuncCall(*$1, $2); }
+    | T_idupper expr_2_list                                     { $$ = new ast::expr::ConstrCall(*$1, $2); }
     | expr_2                                                    { $$ = $1; }
 ;
 
@@ -308,8 +308,8 @@ expr_2
     | T_floatconst                          { $$ = new ast::expr::literal::Float(*$1);          }
     | T_charconst                           { $$ = new ast::expr::literal::Char(*$1);           }
     | T_stringliteral                       { $$ = new ast::expr::literal::String(*$1);         }
-    | T_idlower                             { $$ = new ast::expr::IdentifierCall(*$1);          }
-    | T_idupper                             { $$ = new ast::expr::FuncConstrCall(*$1, nullptr); }
+    | T_idlower                             { $$ = new ast::expr::IdCall(*$1);          }
+    | T_idupper                             { $$ = new ast::expr::ConstrCall(*$1, nullptr); }
     | "true"                                { $$ = new ast::expr::literal::Bool(true);         }
     | "false"                               { $$ = new ast::expr::literal::Bool(false);        }
     | '(' ')'                               { $$ = new ast::expr::literal::Unit();             }
@@ -379,10 +379,10 @@ pattern
     | T_charconst               { $$ = new ast::utils::match::PatLiteral(new ast::expr::literal::Char(*$1)); }
     | "true"                    { $$ = new ast::utils::match::PatLiteral(new ast::expr::literal::Bool(true)); }
     | "false"                   { $$ = new ast::utils::match::PatLiteral(new ast::expr::literal::Bool(false)); }
-    | T_idlower                 { $$ = new ast::utils::match::PatIdentifier(*$1); }
-    | T_idupper                 { $$ = new ast::utils::match::PatConstructor(*$1, nullptr); }
+    | T_idlower                 { $$ = new ast::utils::match::PatId(*$1); }
+    | T_idupper                 { $$ = new ast::utils::match::PatConstr(*$1, nullptr); }
     | '(' pattern ')'           { $$ = $2; }
-    |  T_idupper pattern_list   { $$ = new ast::utils::match::PatConstructor(*$1, $2); }
+    |  T_idupper pattern_list   { $$ = new ast::utils::match::PatConstr(*$1, $2); }
 ;
 
 pattern_list

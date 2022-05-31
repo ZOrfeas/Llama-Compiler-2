@@ -5,6 +5,7 @@
 #include <vector>
 #include <memory>
 
+#include "../visitor/visitor.hpp"
 #include "./core.hpp"
 #include "./utils_def.hpp"
 
@@ -21,6 +22,7 @@ namespace ast::def {
     public:
         string id;
         unique_ptr<TypeAnnotation> type_annotation;
+    protected:
         Def(string id, TypeAnnotation *type_annotation = nullptr)
             : id(id), type_annotation(type_annotation) {};
     };
@@ -30,12 +32,14 @@ namespace ast::def {
         unique_ptr<vector<unique_ptr<Constructor>>> constructor_list;
         TypeDef(string id, vector<unique_ptr<Constructor>> *constructor_list)
             : id(id), constructor_list(constructor_list) {};
+        void accept(visit::Visitor &v) override { v.visit(*this); }
     };
     class Constant : public Def {
     public:
         unique_ptr<Expression> expr;
         Constant(string id, Expression *expr, TypeAnnotation *type_annotation = nullptr)
             : Def(id, type_annotation), expr(unique_ptr<Expression>(expr)) {};
+        void accept(visit::Visitor &v) override { v.visit(*this); }
     };
     class Function : public Def {
     public:
@@ -47,6 +51,7 @@ namespace ast::def {
             Expression *expr,
             TypeAnnotation *type_annotation = nullptr
         ): Def(id, type_annotation), param_list(param_list), expr(expr) {};
+    void accept(visit::Visitor &v) override { v.visit(*this); }
     };
 
     class Mutable : public Def {
@@ -62,11 +67,13 @@ namespace ast::def {
             vector<unique_ptr<Expression>> *dim_expr_list,
             TypeAnnotation *type_annotation = nullptr
         ): Def(id, type_annotation), dim_expr_list(dim_expr_list) {};
+    void accept(visit::Visitor &v) override { v.visit(*this); }
     };
     class Variable : public Def {
     public:
         Variable(string id, TypeAnnotation *type_annotation = nullptr)
             : Def(id, type_annotation) {};
+        void accept(visit::Visitor &v) override { v.visit(*this); }
     };
 }
 
