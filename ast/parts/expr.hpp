@@ -158,6 +158,7 @@ namespace ast::expr {
         unique_ptr<vector<unique_ptr<Expression>>> arg_list;
         ConstrCall(string id, vector<unique_ptr<Expression>> *arg_list = nullptr)
             : id(id), arg_list(arg_list) {};
+        void accept(visit::Visitor &v) override { v.visit(*this); }
     };
     class ArrayAccess : public IdCall {
     public:

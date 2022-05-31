@@ -4,8 +4,7 @@
 #include <iostream>
 #include <string>
 
-#include "./ast/visitor/visitor.hpp"
-#include "./ast/ast.hpp"
+#include "ast/ast.hpp"
 
 class PrintVisitor : public ast::visit::Visitor {
 private:
