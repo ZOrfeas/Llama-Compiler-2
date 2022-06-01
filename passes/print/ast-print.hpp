@@ -3,6 +3,7 @@
 #define __PRINTVISITOR_HPP__
 #include <iostream>
 #include <string>
+#include <vector>
 #include <string_view>
 
 #include "../../ast/ast.hpp"
@@ -16,11 +17,13 @@ private:
     static const std::string half_vert;
     int depth = 0;
     bool is_last = false;
-    // static const std::string horizontal = "─";
+    std::vector<bool> stack;
     std::string gen_prefix();
+    void incr_depth();
+    void decr_depth();
     void println_with_prefix(std::string_view s);
 public:
-    PrintVisitor(std::ostream& out);
+    PrintVisitor(std::ostream& out = std::cout);
     void visit(ast::core::Program const&) override;
     void visit(ast::stmt::TypeStmt const&) override;
     void visit(ast::def::TypeDef const&) override;

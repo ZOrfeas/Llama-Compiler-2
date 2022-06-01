@@ -2,9 +2,9 @@
 #define __AST_AST_HPP__
 
 #include "./parts/core.hpp"
-#include "./parts/utils_def.hpp"
+#include "./parts/utils-def.hpp"
 #include "./parts/expr.hpp"
-#include "./parts/utils_match.hpp"
+#include "./parts/utils-match.hpp"
 #include "./parts/stmt.hpp"
 #include "./parts/annotation.hpp"
 

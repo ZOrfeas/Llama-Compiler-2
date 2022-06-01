@@ -4,13 +4,18 @@ CXXFLAGS=-Wall -std=c++20
 FLEX=flex
 BISON=/opt/homebrew/opt/bison/bin/bison
 
+BUILD=./build
+
 default: all
 
 all: llamac
 
 # Final linking
-llamac: lexer.o parser.o
-	$(CXX) $(CXXFlAGS) -o llamac lexer.o parser.o
+llamac: $(BUILD)/lexer.o $(BUILD)/parser.o $(BUILD)/ast-print.o
+	$(CXX) $(CXXFlAGS) -o llamac \
+	$(BUILD)/lexer.o \
+	$(BUILD)/parser.o \
+	$(BUILD)/ast-print.o
 
 # Auto-generated lexer and parser
 lexer.cpp: lexer.l
@@ -23,11 +28,15 @@ ast/ast.hpp: ast/parts/*.hpp
 	touch ast/ast.hpp
 
 # Object files
-lexer.o: lexer.cpp lexer.hpp parser.hpp ast/ast.hpp
-parser.o: parser.cpp lexer.hpp ast/ast.hpp
+$(BUILD)/lexer.o: lexer.cpp lexer.hpp parser.hpp ast/ast.hpp
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
+$(BUILD)/parser.o: parser.cpp lexer.hpp ast/ast.hpp
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
+$(BUILD)/ast-print.o: passes/print/ast-print.cpp passes/print/ast-print.hpp ast/ast.hpp
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 clean:
 	$(RM) llamac
 
 distclean: clean
-	$(RM) lexer.cpp parser.hhp parser.cpp
+	$(RM) lexer.cpp parser.hhp parser.cpp $(BUILD)/*.o

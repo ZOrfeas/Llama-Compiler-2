@@ -10,6 +10,8 @@
 #include "lexer.hpp"
 #include "ast/ast.hpp"
 
+#include "passes/print/ast-print.hpp"
+
 // using std::std::vector;
 // using std::std::unique_ptr;
 // #define YYDEBUG 1 // comment out to disable debug feature compilation
@@ -171,7 +173,7 @@
 %%
 
 program 
-    : program_list                          { $$ = new ast::core::Program($1); }
+    : program_list                          { $$ = new ast::core::Program($1); auto v = PrintVisitor(); $$->accept(v); }
 ;
 
 program_list

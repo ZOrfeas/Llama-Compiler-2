@@ -17,7 +17,7 @@ namespace ast::utils::def {
         string id;
         unique_ptr<vector<unique_ptr<TypeAnnotation>>> type_list;
         Constructor(string id, vector<unique_ptr<TypeAnnotation>> *type_list):
-            id(id), type_list(type_list) {};
+            id(id), type_list(type_list) {}
         void accept(visit::Visitor &v) override { v.visit(*this); }
     };
     class Param : public core::Node {
@@ -25,7 +25,7 @@ namespace ast::utils::def {
         string id;
         unique_ptr<TypeAnnotation> type;
         Param(string id, TypeAnnotation *type = nullptr):
-            id(id), type(type) {};
+            id(id), type(type) {}
         void accept(visit::Visitor &v) override { v.visit(*this); }
     };
 }

@@ -20,13 +20,13 @@ namespace ast::utils::match {
     class PatLiteral : public Pattern {
     public:
         unique_ptr<expr::Literal> literal;
-        PatLiteral(expr::Literal *literal): literal(literal) {};
+        PatLiteral(expr::Literal *literal): literal(literal) {}
         void accept(visit::Visitor &v) override { v.visit(*this); }
     };
     class PatId : public Pattern {
     public:
         string id;
-        PatId(string id): id(id) {};
+        PatId(string id): id(id) {}
         void accept(visit::Visitor &v) override { v.visit(*this); }
     };
     class PatConstr : public Pattern {
@@ -34,7 +34,7 @@ namespace ast::utils::match {
         string id;
         unique_ptr<vector<unique_ptr<Pattern>>> pattern_list;
         PatConstr(string id, vector<unique_ptr<Pattern>> *pattern_list)
-            : id(id), pattern_list(pattern_list) {};
+            : id(id), pattern_list(pattern_list) {}
         void accept(visit::Visitor &v) override { v.visit(*this); }
     };
     using core::Expression;
@@ -43,7 +43,7 @@ namespace ast::utils::match {
         unique_ptr<Pattern> pattern;
         unique_ptr<Expression> expr;
         Clause(Pattern *pattern, Expression *expr)
-            : pattern(pattern), expr(expr) {};
+            : pattern(pattern), expr(expr) {}
         void accept(visit::Visitor &v) override { v.visit(*this); }
     };
 }
