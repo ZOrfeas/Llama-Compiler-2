@@ -185,7 +185,7 @@ namespace ast::expr {
     public:
         string id;
         unique_ptr<vector<unique_ptr<Expression>>> arg_list;
-        ConstrCall(string id, vector<unique_ptr<Expression>> *arg_list = nullptr)
+        ConstrCall(string id, vector<unique_ptr<Expression>> *arg_list = new vector<unique_ptr<Expression>>())
             : id(id), arg_list(arg_list) {}
         void accept(visit::Visitor *v) override { v->visit(this); }
     };

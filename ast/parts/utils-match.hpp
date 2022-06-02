@@ -33,7 +33,7 @@ namespace ast::utils::match {
     public:
         string id;
         unique_ptr<vector<unique_ptr<Pattern>>> pattern_list;
-        PatConstr(string id, vector<unique_ptr<Pattern>> *pattern_list)
+        PatConstr(string id, vector<unique_ptr<Pattern>> *pattern_list = new vector<unique_ptr<Pattern>>())
             : id(id), pattern_list(pattern_list) {}
         void accept(visit::Visitor *v) override { v->visit(this); }
     };

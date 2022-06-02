@@ -313,7 +313,7 @@ expr_2
     | T_charconst                           { $$ = new ast::expr::literal::Char(*$1); delete $1;           }
     | T_stringliteral                       { $$ = new ast::expr::literal::String(*$1); delete $1;         }
     | T_idlower                             { $$ = new ast::expr::IdCall(*$1); delete $1;                  }
-    | T_idupper                             { $$ = new ast::expr::ConstrCall(*$1, nullptr); delete $1;     }
+    | T_idupper                             { $$ = new ast::expr::ConstrCall(*$1); delete $1;     }
     | "true"                                { $$ = new ast::expr::literal::Bool(true);                     }
     | "false"                               { $$ = new ast::expr::literal::Bool(false);                    }
     | '(' ')'                               { $$ = new ast::expr::literal::Unit();                         }
@@ -384,7 +384,7 @@ pattern
     | "true"                    { $$ = new ast::utils::match::PatLiteral(new ast::expr::literal::Bool(true)); }
     | "false"                   { $$ = new ast::utils::match::PatLiteral(new ast::expr::literal::Bool(false)); }
     | T_idlower                 { $$ = new ast::utils::match::PatId(*$1); delete $1; }
-    | T_idupper                 { $$ = new ast::utils::match::PatConstr(*$1, nullptr); delete $1; }
+    | T_idupper                 { $$ = new ast::utils::match::PatConstr(*$1); delete $1; }
     | '(' pattern ')'           { $$ = $2; }
     |  T_idupper pattern_list   { $$ = new ast::utils::match::PatConstr(*$1, $2); delete $1; }
 ;
