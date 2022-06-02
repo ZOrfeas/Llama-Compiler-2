@@ -115,10 +115,10 @@ void PrintVisitor::visit(ast::def::Function *fn) {
         fn->type_annotation->accept(this);
     }
     for (auto const& param : *fn->param_list) {
-        if (&param == &fn->param_list->back())
-            is_last = true;
         param->accept(this);
     }
+    is_last = true;
+    fn->expr->accept(this);
     is_last = false;
     decr_depth();
 }
@@ -348,7 +348,34 @@ void PrintVisitor::visit(ast::utils::def::Param *param) {
     }
 }
 
-void PrintVisitor::visit(ast::utils::match::PatLiteral *pat_literal) {}
-void PrintVisitor::visit(ast::utils::match::PatId *pat_id) {}
-void PrintVisitor::visit(ast::utils::match::PatConstr *pat_constr) {}
-void PrintVisitor::visit(ast::utils::match::Clause *clause) {}
+void PrintVisitor::visit(ast::utils::match::PatLiteral *pat_literal) {
+    println_with_prefix("PatLiteral");
+    incr_depth();
+    is_last = true;
+    pat_literal->literal->accept(this);
+    is_last = false;
+    decr_depth();
+}
+void PrintVisitor::visit(ast::utils::match::PatId *pat_id) {
+    println_with_prefix("PatId (" + pat_id->id + ")");
+}
+void PrintVisitor::visit(ast::utils::match::PatConstr *pat_constr) {
+    println_with_prefix("PatConstr (" + pat_constr->id + ")");
+    incr_depth();
+    for (auto const& arg : *pat_constr->pattern_list) {
+        if (&arg == &pat_constr->pattern_list->back())
+            is_last = true;
+        arg->accept(this);
+    }
+    is_last = false;
+    decr_depth();
+}
+void PrintVisitor::visit(ast::utils::match::Clause *clause) {
+    println_with_prefix("Clause");
+    incr_depth();
+    clause->pattern->accept(this);
+    is_last = true;
+    clause->expr->accept(this);
+    is_last = false;
+    decr_depth();
+}

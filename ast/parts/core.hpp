@@ -4,8 +4,9 @@
 #include <vector>
 #include <memory>
 
-#include "../../lexer.hpp"
 #include "../visitor/visitor.hpp"
+
+extern int yylineno;
 
 namespace ast::visit {
     class Visitor;
