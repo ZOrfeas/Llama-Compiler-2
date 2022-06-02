@@ -21,13 +21,12 @@ private:
     std::string gen_prefix();
     
     class depth_guard {
-    private:
+    private: // is automatically a friend of PrintVisitor
         PrintVisitor& v;
     public:
         depth_guard(PrintVisitor&);
         ~depth_guard();
     };
-    friend class depth_guard;
     void println_with_prefix(std::string_view s);
 protected:
     void incr_depth();
