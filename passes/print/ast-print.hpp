@@ -24,48 +24,48 @@ private:
     void println_with_prefix(std::string_view s);
 public:
     PrintVisitor(std::ostream& out = std::cout);
-    void visit(ast::core::Program const&) override;
-    void visit(ast::stmt::TypeStmt const&) override;
-    void visit(ast::def::TypeDef const&) override;
-    void visit(ast::stmt::LetStmt const&) override;
-    void visit(ast::def::Constant const&) override;
-    void visit(ast::def::Function const&) override;
-    void visit(ast::def::Array const&) override;
-    void visit(ast::def::Variable const&) override;
+    void visit(ast::core::Program*) override;
+    void visit(ast::stmt::TypeStmt*) override;
+    void visit(ast::def::TypeDef*) override;
+    void visit(ast::stmt::LetStmt*) override;
+    void visit(ast::def::Constant*) override;
+    void visit(ast::def::Function*) override;
+    void visit(ast::def::Array*) override;
+    void visit(ast::def::Variable*) override;
     
-    void visit(ast::expr::LetIn const&) override;
-    void visit(ast::expr::literal::Unit const&) override;
-    void visit(ast::expr::literal::Bool const&) override;
-    void visit(ast::expr::literal::Int const&) override;
-    void visit(ast::expr::literal::Char const&) override;
-    void visit(ast::expr::literal::Float const&) override;
-    void visit(ast::expr::literal::String const&) override;
-    void visit(ast::expr::op::Binary const&) override;
-    void visit(ast::expr::op::Unary const&) override;
-    void visit(ast::expr::op::New const&) override;
-    void visit(ast::expr::While const&) override;
-    void visit(ast::expr::For const&) override;
-    void visit(ast::expr::If const&) override;
-    void visit(ast::expr::Dim const&) override;
-    void visit(ast::expr::IdCall const&) override;
-    void visit(ast::expr::FuncCall const&) override;
-    void visit(ast::expr::ConstrCall const&) override;
-    void visit(ast::expr::ArrayAccess const&) override;
-    void visit(ast::expr::Match const&) override;
+    void visit(ast::expr::LetIn*) override;
+    void visit(ast::expr::literal::Unit*) override;
+    void visit(ast::expr::literal::Bool*) override;
+    void visit(ast::expr::literal::Int*) override;
+    void visit(ast::expr::literal::Char*) override;
+    void visit(ast::expr::literal::Float*) override;
+    void visit(ast::expr::literal::String*) override;
+    void visit(ast::expr::op::Binary*) override;
+    void visit(ast::expr::op::Unary*) override;
+    void visit(ast::expr::op::New*) override;
+    void visit(ast::expr::While*) override;
+    void visit(ast::expr::For*) override;
+    void visit(ast::expr::If*) override;
+    void visit(ast::expr::Dim*) override;
+    void visit(ast::expr::IdCall*) override;
+    void visit(ast::expr::FuncCall*) override;
+    void visit(ast::expr::ConstrCall*) override;
+    void visit(ast::expr::ArrayAccess*) override;
+    void visit(ast::expr::Match*) override;
 
-    void visit(ast::annotation::BasicType const&) override;
-    void visit(ast::annotation::FunctionType const&) override;
-    void visit(ast::annotation::ArrayType const&) override;
-    void visit(ast::annotation::RefType const&) override;
-    void visit(ast::annotation::CustomType const&) override;
+    void visit(ast::annotation::BasicType*) override;
+    void visit(ast::annotation::FunctionType*) override;
+    void visit(ast::annotation::ArrayType*) override;
+    void visit(ast::annotation::RefType*) override;
+    void visit(ast::annotation::CustomType*) override;
 
-    void visit(ast::utils::def::Constructor const& constructor) override;
-    void visit(ast::utils::def::Param const& param) override;
+    void visit(ast::utils::def::Constructor* constructor) override;
+    void visit(ast::utils::def::Param* param) override;
 
-    void visit(ast::utils::match::PatLiteral const& pat_literal) override;
-    void visit(ast::utils::match::PatId const& pat_id) override;
-    void visit(ast::utils::match::PatConstr const& pat_constr) override;
-    void visit(ast::utils::match::Clause const& clause) override;
+    void visit(ast::utils::match::PatLiteral* pat_literal) override;
+    void visit(ast::utils::match::PatId* pat_id) override;
+    void visit(ast::utils::match::PatConstr* pat_constr) override;
+    void visit(ast::utils::match::Clause* clause) override;
 };
 
 #endif // __PRINTVISITOR_HPP__

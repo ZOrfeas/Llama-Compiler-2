@@ -21,14 +21,14 @@ namespace ast::stmt {
         bool is_recursive;
         LetStmt(vector<unique_ptr<Def>> *def_list, bool is_recursive)
             : def_list(def_list), is_recursive(is_recursive) {}
-        void accept(visit::Visitor &v) override { v.visit(*this); }
+        void accept(visit::Visitor *v) override { v->visit(this); }
     };
     class TypeStmt : public core::DefStmt {
     public:
         unique_ptr<vector<unique_ptr<TypeDef>>> def_list;
         TypeStmt(vector<unique_ptr<TypeDef>> *def_list)
             : def_list(def_list) {}
-        void accept(visit::Visitor &v) override { v.visit(*this); }
+        void accept(visit::Visitor *v) override { v->visit(this); }
     };
 } // namespace stmt
 

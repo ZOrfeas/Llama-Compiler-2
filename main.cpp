@@ -8,7 +8,7 @@ int main() {
     int result = yyparse(program);
     /* if (program == nullptr) std::cout << "Test"; */
     auto v = PrintVisitor();
-    program->accept(v);
+    program->accept(&v);
     if (result == 0) std::cout << "Success\n";
     return result;
 }

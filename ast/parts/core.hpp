@@ -14,7 +14,7 @@ namespace ast::core {
     using std::unique_ptr;
     class Node {
     protected: virtual ~Node() = default;
-    public: virtual void accept(visit::Visitor &v) = 0;
+    public: virtual void accept(visit::Visitor *v) = 0;
     };
     class DefStmt : public Node {
     protected: DefStmt() = default;
@@ -24,7 +24,7 @@ namespace ast::core {
         unique_ptr<vector<unique_ptr<DefStmt>>> defstmt_list;
         Program(vector<unique_ptr<DefStmt>> *statements)
             : defstmt_list(statements) {}
-        void accept(visit::Visitor &v) override { v.visit(*this); }
+        void accept(visit::Visitor *v) override { v->visit(this); }
     };
 
     class TypeAnnotation : public Node {
