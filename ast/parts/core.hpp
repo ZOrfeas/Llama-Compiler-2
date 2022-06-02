@@ -4,6 +4,7 @@
 #include <vector>
 #include <memory>
 
+#include "../../lexer.hpp"
 #include "../visitor/visitor.hpp"
 
 namespace ast::visit {
@@ -13,8 +14,12 @@ namespace ast::core {
     using std::vector;
     using std::unique_ptr;
     class Node {
-    protected: virtual ~Node() = default;
-    public: virtual void accept(visit::Visitor *v) = 0;
+    protected: 
+        Node(): lineno(yylineno) {}
+        virtual ~Node() = default;
+    public: 
+        int lineno;
+        virtual void accept(visit::Visitor *v) = 0;
     };
     class DefStmt : public Node {
     protected: DefStmt() = default;

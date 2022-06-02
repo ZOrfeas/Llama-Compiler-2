@@ -5,7 +5,7 @@
 #include "./ast-print.hpp"
 #include "../../ast/ast.hpp"
 
-const std::string PrintVisitor::full_vert = "│ ";
+const std::string PrintVisitor::full_vert = "│";
 const std::string PrintVisitor::split_vert = "├─";
 const std::string PrintVisitor::half_vert =  "└─";
 
