@@ -19,9 +19,19 @@ private:
     bool is_last = false;
     std::vector<bool> stack;
     std::string gen_prefix();
+    
+    class depth_guard {
+    private:
+        PrintVisitor& v;
+    public:
+        depth_guard(PrintVisitor&);
+        ~depth_guard();
+    };
+    friend class depth_guard;
+    void println_with_prefix(std::string_view s);
+protected:
     void incr_depth();
     void decr_depth();
-    void println_with_prefix(std::string_view s);
 public:
     PrintVisitor(std::ostream& out = std::cout);
     void visit(ast::core::Program*) override;
