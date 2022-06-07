@@ -1,0 +1,25 @@
+{
+    "name": "llama-language-support",
+    "displayName": "Llama Language Support",
+    "description": "",
+    "version": "0.0.1",
+    "engines": {
+        "vscode": "^1.67.0"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+    "contributes": {
+        "languages": [{
+            "id": "llama",
+            "aliases": ["Llama", "llama"],
+            "extensions": [".lla"],
+            "configuration": "./language-configuration.json"
+        }],
+        "grammars": [{
+            "language": "llama",
+            "scopeName": "source.lla",
+            "path": "./syntaxes/llama.tmLanguage.json"
+        }]
+    }
+}

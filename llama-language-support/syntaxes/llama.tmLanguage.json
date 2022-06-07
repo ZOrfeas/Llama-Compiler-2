@@ -1,0 +1,232 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "Llama",
+	"patterns": 
+	[
+		{"include": "#program"},
+		{"include": "#testrule"},
+		{"include": "#strings"}
+	],
+	"repository": {
+		"testrule": 
+		{
+			"patterns": [
+				{
+					"begin": "start",
+					"end": "finish",
+					"patterns": [
+						{
+							"name": "variable.parameter.llama",
+							"match": "[a-z]"
+						}
+					]
+				}
+			]
+		},
+		"program": 
+		{
+			"patterns": 
+			[
+				{"include": "#letdef"},
+				{"include": "#typedef"}
+			]		
+		},
+		"letdef": 
+		{
+			"patterns": [
+				{
+					"comment": "Lookahead with ?= so that we hopefully stop at next definition",
+					"begin": "\\s*let\\s*(rec)?\\s*", 
+					"beginCaptures": { "0": { "name": "keyword.control.let.llama" } }, 
+					"end": "(?=\\s*let\\s*)|(?=\\s*type\\s*)",
+					"contentName": "letdef.llama",
+					"patterns": [
+						{"include": "#def"}, 
+						{"match": "and"}
+					]
+				}
+			]
+		},
+		"typedef": 
+		{
+			"patterns": [
+				{
+					"begin": "\\s*type\\s*",
+					"beginCaptures": { "0": { "name": "keyword.control.type.llama" } },
+					"end": "(?=\\s*let\\s*)|(?=\\s*type\\s*)",
+					"contentName": "typedef.llama",
+					"patterns": [
+						{
+							"include": "#tdef"
+						},
+						{
+							"match": "and"
+						}
+					]
+				}
+			]
+		},
+		"def": 
+		{
+			"patterns": [
+				{
+					"begin": "(?<=\\s*let\\s*(rec)?\\s*)|(?<=\\s*and\\s*)",
+					"end": "(?=\\s*let\\s*)|(?=\\s*type\\s*)|(?=\\s*and\\s*)",
+					"contentName": "def.llama",
+					"patterns": [
+						{"name": "keyword.control.llama", "match": "mutable"},
+						{"include": "#idlower"}, 
+						{"include": "#par"}, 
+						{"include": "#expr"},
+						{"include": "#type"}
+					]
+				}
+			]
+		},
+		"tdef":{
+			"patterns": [
+				{
+					"begin": "(?<=\\s*type\\s*)|(?<=\\s*and\\s*)",
+					"end": "(?=\\s*let\\s*)|(?=\\s*type\\s*)|(?=\\s*and\\s*)",
+					"contentName": "tdef.llama",
+					"patterns": [
+						{"include": "#idlower"}, 
+						{"include": "#constr"}
+					]
+				}
+			]
+		},
+		"constr":{
+			"comment": "Let's try this with chaining once",
+			"patterns": [
+				{
+					"comment": "begin->FIRST(constr), end->of | FOLLOW(constr)",
+					"begin": "(?=\\s*[A-Z])",
+					"end": "(?=\\s*(of|\\||and|let|type))",
+					"contentName": "constr.Id.llama",
+					"patterns": [
+						{
+							"include": "#idupper"
+						}
+					]
+				},
+				{
+					"comment": "begin->of, end->FOLLOW(constr)",
+					"begin": "\\s*of",
+					"beginCaptures": { "0": { "name": "keyword.control.constr.of.llama" } },
+					"end": "(?=\\s*(\\||and|let|type))",
+					"contentName": "constr.type.llama",
+					"patterns": [
+						{
+							"include": "#type"
+						}
+					]
+				}
+			]
+		},
+		"idlower": 
+		{
+			"patterns": [
+				{
+					"name": "variable.parameter.llama",
+					"match": "[a-z]([A-Za-z]|[0-9]|_)*"
+				}
+			]
+		},
+		"idupper":
+		{
+			"patterns": [
+				{"match": "[A-Z]([A-Za-z]|[0-9]|_)*"}
+			]
+		},
+		"type": 
+		{
+			"patterns": [
+				{
+					"name": "storage.type.llama",
+					"match": "unit|int|char|bool|float"
+				},
+				{
+					"name": "storage.type.llama",
+					"include": "#idlower"
+				},
+				{
+					"comment": "( type )",
+					"begin": "\\s*\\(\\s*",
+					"end": "\\s*\\)\\s*",
+					"patterns": [
+						{
+							"include": "#type"
+						}
+					]
+				},
+				{
+					"comment": "array [*,...*] of type",
+					"name": "storage.type.llama",
+					"begin": "\\s*array\\s*[\\s*\\*(\\s*,\\s*\\*)*\\s*]\\s*of\\s*",
+					"end": "",
+					"patterns": [
+						{
+							"include": "#type"
+						}
+					]
+				},
+				{
+					"comment": "type -> type"
+				},
+				{
+					"comment": "type ref"
+				}
+			]
+		},
+		"operators": 
+		{
+			"patterns": [
+				{"include": "#binops"},
+				{"include": "#unops"}
+			]
+		},
+		"binops": 
+		{
+			"patterns": [
+				{"match": "=\\|+\\-\\*/;<>"},
+				{"match": "->"},
+				{"match": "+."},
+				{"match": "-."},
+				{"match": "*."},
+				{"match": "/."},
+				{"match": "**"},
+				{"match": "&&"},
+				{"match": "||"},
+				{"match": "<>"},
+				{"match": "<="},
+				{"match": ">="},
+				{"match": "=="},
+				{"match": "!="},
+				{"match": ":="},
+				{"match": "mod"}
+			]
+		},
+		"unops": 
+		{
+			"patterns": [
+				{"match": "!"},
+				{"match": "new"}, 
+				{"match": "delete"}
+			]
+		},
+		"strings": 
+		{
+			"name": "string.quoted.double.llama",
+			"begin": "\"",
+			"end": "\"",
+			"patterns": [
+				{
+					"name": "constant.character.escape.llama",
+					"match": "\\."
+				}
+			]
+		}
+	},
+	"scopeName": "source.lla"
+}
