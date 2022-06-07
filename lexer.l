@@ -15,7 +15,7 @@
 // int yylineno = 1;
 int comment_cnt = 0;
 // void lex_error(const char *msg);
-
+ast::core::Program *dummy_program;
 %}
 
 W [ \t\n\r]  
@@ -106,11 +106,11 @@ Hex [0-9a-f]
 <IN_COMMENT>"*"             { /* nothing */ }
 <IN_COMMENT>[^(*]+          { /* nothing */ }
 <IN_COMMENT>"("             { /* nothing */ }
-<IN_COMMENT><<EOF>>         { yyerror("EOF file in comment"); }
+<IN_COMMENT><<EOF>>         { yyerror(dummy_program, "EOF file in comment"); }
 
 {W}+    { /* nothing */ } 
 
-. { yyerror("Illegal character"); }
+. { yyerror(dummy_program, "Illegal character"); }
 
 %%
 /* void lex_error(const char *msg) {

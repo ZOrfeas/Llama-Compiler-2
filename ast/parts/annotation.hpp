@@ -19,36 +19,36 @@ namespace ast::annotation {
     class BasicType : public TypeAnnotation {
     public:
         types::Builtin t;
-        BasicType(types::Builtin t): t(t) {};
-        void accept(visit::Visitor &v) override { v.visit(*this); }
+        BasicType(types::Builtin t): t(t) {}
+        void accept(visit::Visitor *v) override { v->visit(this); }
     };
     class FunctionType : public TypeAnnotation {
     public:
         unique_ptr<TypeAnnotation> lhs,rhs;
         FunctionType(TypeAnnotation *lhs, TypeAnnotation *rhs)
-            : lhs(lhs), rhs(rhs) {};
-            void accept(visit::Visitor &v) override { v.visit(*this); }
+            : lhs(lhs), rhs(rhs) {}
+            void accept(visit::Visitor *v) override { v->visit(this); }
     };
     class ArrayType : public TypeAnnotation {
     public:
-        ssize_t dims;
+        size_t dims;
         unique_ptr<TypeAnnotation> contained_type;
-        ArrayType(ssize_t dimensions, TypeAnnotation *contained_type)
-            : dims(dimensions), contained_type(contained_type) {};
-            void accept(visit::Visitor &v) override { v.visit(*this); }
+        ArrayType(size_t dimensions, TypeAnnotation *contained_type)
+            : dims(dimensions), contained_type(contained_type) {}
+            void accept(visit::Visitor *v) override { v->visit(this); }
     };
     class RefType : public TypeAnnotation {
     public:
         unique_ptr<TypeAnnotation> contained_type;
         RefType(TypeAnnotation *contained_type)
-            : contained_type(contained_type) {};
-            void accept(visit::Visitor &v) override { v.visit(*this); }
+            : contained_type(contained_type) {}
+            void accept(visit::Visitor *v) override { v->visit(this); }
     };
     class CustomType : public TypeAnnotation {
     public:
         string id;
-        CustomType(string id): id(id) {};
-        void accept(visit::Visitor &v) override { v.visit(*this); }
+        CustomType(string id): id(id) {}
+        void accept(visit::Visitor *v) override { v->visit(this); }
     };
 } // namespace annotation
 

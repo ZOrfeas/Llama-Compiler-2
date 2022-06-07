@@ -1,4 +1,4 @@
-%{
+%code requires {
 // #include <cstdio>
 // #include <cstdlib>
 #include <iostream>
@@ -10,13 +10,15 @@
 #include "lexer.hpp"
 #include "ast/ast.hpp"
 
+#include "passes/print/ast-print.hpp"
+
 // using std::std::vector;
 // using std::std::unique_ptr;
 // #define YYDEBUG 1 // comment out to disable debug feature compilation
-%}
-
+}
 %define parse.error verbose
 %expect 24
+%parse-param { ast::core::Program *&the_program }
 
 %union {
     ast::core::Program *program;
@@ -171,7 +173,7 @@
 %%
 
 program 
-    : program_list                          { $$ = new ast::core::Program($1); }
+    : program_list                          { the_program = new ast::core::Program($1); /* the_program = $$;*/ /* auto v = PrintVisitor(); $$->accept(v);*/ }
 ;
 
 program_list
@@ -194,14 +196,14 @@ typedef
 ;
 
 def
-    : T_idlower '=' expr                                    { $$ = new ast::def::Constant(*$1, $3);         }
-    | T_idlower ':' type '=' expr                           { $$ = new ast::def::Constant(*$1, $5, $3);     }
-    | T_idlower par_list '=' expr                           { $$ = new ast::def::Function(*$1, $2, $4);     }
-    | T_idlower par_list ':' type '=' expr                  { $$ = new ast::def::Function(*$1, $2, $6, $4); }
-    | "mutable" T_idlower bracket_comma_expr_list           { $$ = new ast::def::Array(*$2, $3);            }
-    | "mutable" T_idlower bracket_comma_expr_list ':' type  { $$ = new ast::def::Array(*$2, $3, $5);        }
-    | "mutable" T_idlower                                   { $$ = new ast::def::Variable(*$2);             }
-    | "mutable" T_idlower ':' type                          { $$ = new ast::def::Variable(*$2, $4);         }
+    : T_idlower '=' expr                                    { $$ = new ast::def::Constant(*$1, $3); delete $1;         }
+    | T_idlower ':' type '=' expr                           { $$ = new ast::def::Constant(*$1, $5, $3); delete $1;     }
+    | T_idlower par_list '=' expr                           { $$ = new ast::def::Function(*$1, $2, $4); delete $1;     }
+    | T_idlower par_list ':' type '=' expr                  { $$ = new ast::def::Function(*$1, $2, $6, $4); delete $1; }
+    | "mutable" T_idlower bracket_comma_expr_list           { $$ = new ast::def::Array(*$2, $3); delete $2;            }
+    | "mutable" T_idlower bracket_comma_expr_list ':' type  { $$ = new ast::def::Array(*$2, $3, $5); delete $2;        }
+    | "mutable" T_idlower                                   { $$ = new ast::def::Variable(*$2); delete $2;             }
+    | "mutable" T_idlower ':' type                          { $$ = new ast::def::Variable(*$2, $4); delete $2;         }
 ;
 
 par_list
@@ -219,7 +221,9 @@ comma_expr_opt_list
 ;
 
 tdef
-    : T_idlower '=' constr bar_constr_opt_list      { $4->insert($4->begin(), std::unique_ptr<ast::utils::def::Constructor>($3)); $$ = new ast::def::TypeDef(*$1, $4); }
+    : T_idlower '=' constr bar_constr_opt_list      { $4->insert($4->begin(), std::unique_ptr<ast::utils::def::Constructor>($3)); 
+                                                      $$ = new ast::def::TypeDef(*$1, $4);
+                                                      delete $1; }
 ;
 
 bar_constr_opt_list
@@ -238,7 +242,7 @@ and_tdef_opt_list
 ;
 
 constr
-    : T_idupper of_type_opt_list                { $$ = new ast::utils::def::Constructor(*$1, $2); }
+    : T_idupper of_type_opt_list                { $$ = new ast::utils::def::Constructor(*$1, $2); delete $1; }
 ;
 
 of_type_opt_list
@@ -252,8 +256,8 @@ at_least_one_type
 ;
 
 par
-    : T_idlower                     { $$ = new ast::utils::def::Param(*$1); }
-    | '(' T_idlower ':' type ')'    { $$ = new ast::utils::def::Param(*$2, $4); }
+    : T_idlower                     { $$ = new ast::utils::def::Param(*$1); delete $1; }
+    | '(' T_idlower ':' type ')'    { $$ = new ast::utils::def::Param(*$2, $4); delete $2; }
 ;
 
 type
@@ -266,7 +270,7 @@ type
     | type "->" type                                    { $$ = new ast::annotation::FunctionType($1, $3);    }
     | type "ref"                                        { $$ = new ast::annotation::RefType($1);             }
     | "array" bracket_star_opt "of" type %prec ARRAYOF  { $$ = new ast::annotation::ArrayType($2, $4);       }
-    | T_idlower                                         { $$ = new ast::annotation::CustomType(*$1);          }
+    | T_idlower                                         { $$ = new ast::annotation::CustomType(*$1);  delete $1;         }
 ;
 
 bracket_star_opt
@@ -293,31 +297,31 @@ expr
     | expr "**" expr                                            { $$ = new ast::expr::op::Binary($1, $2, $3); }
     | unop expr %prec UNOPS                                     { $$ = new ast::expr::op::Unary($1, $2); }
     | "while" expr "do" expr "done"                             { $$ = new ast::expr::While($2, $4); }
-    | "for" T_idlower '=' expr "to" expr "do" expr "done"       { $$ = new ast::expr::For(*$2, $4, true, $6, $8);  }
-    | "for" T_idlower '=' expr "downto" expr "do" expr "done"   { $$ = new ast::expr::For(*$2, $4, false, $6, $8); }
+    | "for" T_idlower '=' expr "to" expr "do" expr "done"       { $$ = new ast::expr::For(*$2, $4, true, $6, $8); delete $2;  }
+    | "for" T_idlower '=' expr "downto" expr "do" expr "done"   { $$ = new ast::expr::For(*$2, $4, false, $6, $8); delete $2; }
     | "match" expr "with" clause bar_clause_opt_list "end"      { $5->insert($5->begin(), std::unique_ptr<ast::utils::match::Clause>($4)); $$ = new ast::expr::Match($2, $5); }
     | "dim" T_intconst T_idlower                                { $$ = new ast::expr::Dim(new ast::expr::literal::Int(*$2), *$3);  }
     | "dim" T_idlower                                           { $$ = new ast::expr::Dim(new ast::expr::literal::Int("1"), *$2); }
-    | T_idlower expr_2_list                                     { $$ = new ast::expr::FuncCall(*$1, $2); }
-    | T_idupper expr_2_list                                     { $$ = new ast::expr::ConstrCall(*$1, $2); }
+    | T_idlower expr_2_list                                     { $$ = new ast::expr::FuncCall(*$1, $2); delete $1; }
+    | T_idupper expr_2_list                                     { $$ = new ast::expr::ConstrCall(*$1, $2); delete $1; }
     | expr_2                                                    { $$ = $1; }
 ;
 
 expr_2
-    : T_intconst                            { $$ = new ast::expr::literal::Int(*$1);            }
-    | T_floatconst                          { $$ = new ast::expr::literal::Float(*$1);          }
-    | T_charconst                           { $$ = new ast::expr::literal::Char(*$1);           }
-    | T_stringliteral                       { $$ = new ast::expr::literal::String(*$1);         }
-    | T_idlower                             { $$ = new ast::expr::IdCall(*$1);          }
-    | T_idupper                             { $$ = new ast::expr::ConstrCall(*$1, nullptr); }
-    | "true"                                { $$ = new ast::expr::literal::Bool(true);         }
-    | "false"                               { $$ = new ast::expr::literal::Bool(false);        }
-    | '(' ')'                               { $$ = new ast::expr::literal::Unit();             }
-    | '!' expr_2                            { $$ = new ast::expr::op::Unary('!', $2);          }
-    | T_idlower bracket_comma_expr_list     { $$ = new ast::expr::ArrayAccess(*$1, $2);         }
-    | "new" type                            { $$ = new ast::expr::op::New($2);                     }
-    | '(' expr ')'                          { $$ = $2;                                         }
-    | "begin" expr "end"                    { $$ = $2;                                         }
+    : T_intconst                            { $$ = new ast::expr::literal::Int(*$1); delete $1;            }
+    | T_floatconst                          { $$ = new ast::expr::literal::Float(*$1);                     }
+    | T_charconst                           { $$ = new ast::expr::literal::Char(*$1); delete $1;           }
+    | T_stringliteral                       { $$ = new ast::expr::literal::String(*$1); delete $1;         }
+    | T_idlower                             { $$ = new ast::expr::IdCall(*$1); delete $1;                  }
+    | T_idupper                             { $$ = new ast::expr::ConstrCall(*$1); delete $1;     }
+    | "true"                                { $$ = new ast::expr::literal::Bool(true);                     }
+    | "false"                               { $$ = new ast::expr::literal::Bool(false);                    }
+    | '(' ')'                               { $$ = new ast::expr::literal::Unit();                         }
+    | '!' expr_2                            { $$ = new ast::expr::op::Unary('!', $2);                      }
+    | T_idlower bracket_comma_expr_list     { $$ = new ast::expr::ArrayAccess(*$1, $2); delete $1;         }
+    | "new" type                            { $$ = new ast::expr::op::New($2);                             }
+    | '(' expr ')'                          { $$ = $2;                                                     }
+    | "begin" expr "end"                    { $$ = $2;                                                     }
 ;
 
 expr_2_list
@@ -370,19 +374,19 @@ clause
 ;
 
 pattern
-    : '+' T_intconst            { $$ = new ast::utils::match::PatLiteral(new ast::expr::literal::Int(*$2)); }
-    | '-' T_intconst            { $$ = new ast::utils::match::PatLiteral(new ast::expr::literal::Int("-" + *$2)); }
-    | T_intconst                { $$ = new ast::utils::match::PatLiteral(new ast::expr::literal::Int(*$1)); }
-    | "+." T_floatconst         { $$ = new ast::utils::match::PatLiteral(new ast::expr::literal::Float(*$2)); }
-    | "-." T_floatconst         { $$ = new ast::utils::match::PatLiteral(new ast::expr::literal::Float("-" + *$2)); }
-    | T_floatconst              { $$ = new ast::utils::match::PatLiteral(new ast::expr::literal::Float(*$1)); }
-    | T_charconst               { $$ = new ast::utils::match::PatLiteral(new ast::expr::literal::Char(*$1)); }
+    : '+' T_intconst            { $$ = new ast::utils::match::PatLiteral(new ast::expr::literal::Int(*$2)); delete $2; }
+    | '-' T_intconst            { $$ = new ast::utils::match::PatLiteral(new ast::expr::literal::Int("-" + *$2)); delete $2; }
+    | T_intconst                { $$ = new ast::utils::match::PatLiteral(new ast::expr::literal::Int(*$1)); delete $1; }
+    | "+." T_floatconst         { $$ = new ast::utils::match::PatLiteral(new ast::expr::literal::Float(*$2)); delete $2; }
+    | "-." T_floatconst         { $$ = new ast::utils::match::PatLiteral(new ast::expr::literal::Float("-" + *$2)); delete $2; }
+    | T_floatconst              { $$ = new ast::utils::match::PatLiteral(new ast::expr::literal::Float(*$1)); delete $1; }
+    | T_charconst               { $$ = new ast::utils::match::PatLiteral(new ast::expr::literal::Char(*$1)); delete $1; }
     | "true"                    { $$ = new ast::utils::match::PatLiteral(new ast::expr::literal::Bool(true)); }
     | "false"                   { $$ = new ast::utils::match::PatLiteral(new ast::expr::literal::Bool(false)); }
-    | T_idlower                 { $$ = new ast::utils::match::PatId(*$1); }
-    | T_idupper                 { $$ = new ast::utils::match::PatConstr(*$1, nullptr); }
+    | T_idlower                 { $$ = new ast::utils::match::PatId(*$1); delete $1; }
+    | T_idupper                 { $$ = new ast::utils::match::PatConstr(*$1); delete $1; }
     | '(' pattern ')'           { $$ = $2; }
-    |  T_idupper pattern_list   { $$ = new ast::utils::match::PatConstr(*$1, $2); }
+    |  T_idupper pattern_list   { $$ = new ast::utils::match::PatConstr(*$1, $2); delete $1; }
 ;
 
 pattern_list
@@ -393,15 +397,19 @@ pattern_list
 
 %%
 
-void yyerror(std::string_view msg) {
+void yyerror(ast::core::Program *&the_program, std::string_view msg) {
     std::cerr << "Error at line " << yylineno << ": " << msg << std::endl;
     /* fprintf(stderr, "Error at line %d: %s\n", yylineno, msg); */
     std::exit(1);
 }
 
-int main() {
-    /* yydebug = 1; // default val is zero so just comment this to disable */
-    int result = yyparse();
-    if (result == 0) std::cout << "Success\n";
-    return result;
-}
+// int main() {
+//     /* yydebug = 1; // default val is zero so just comment this to disable */
+//     ast::core::Program *program = nullptr;
+//     int result = yyparse(program);
+//     /* if (program == nullptr) std::cout << "Test"; */
+//     auto v = PrintVisitor();
+//     program->accept(v);
+//     if (result == 0) std::cout << "Success\n";
+//     return result;
+// }

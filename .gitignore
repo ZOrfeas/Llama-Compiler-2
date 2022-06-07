@@ -1,3 +1,6 @@
+bin
+build
+#----------------
 *.o
 tmp_*
 llexer*
@@ -17,5 +20,6 @@ examples
 tmp-*
 #----------------
 .vscode
+.DS_Store
 notes.md
 test*
