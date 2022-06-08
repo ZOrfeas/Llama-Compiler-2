@@ -16,8 +16,7 @@
 					"end": "finish",
 					"patterns": [
 						{
-							"name": "variable.parameter.llama",
-							"match": "[a-z]"
+							"include": "#idlowervar"
 						}
 					]
 				}
@@ -78,10 +77,10 @@
 					"patterns": [
 						{
 							"begin": "(?=\\s*[a-z]\\s*)",
-							"end": "(?=\\s*(\\:|and|let|type|in)\\s*)",
+							"end": "(?=\\s*(:|and|let|type|in)\\s*)",
 							"patterns": [
 								{
-									"include": "#idlower"
+									"include": "#idlowervar"
 								},
 								{
 									"include": "#expr"
@@ -89,7 +88,8 @@
 							]
 						},
 						{
-							"begin": "\\s*\\:\\s*",
+							"begin": "\\s*:\\s*",
+							"beginCaptures": {"0": {"name": "def.mutable.colon.llama"}},
 							"end": "(?=\\s*(and|let|type|in)\\s*)",
 							"patterns": [
 								{
@@ -101,28 +101,42 @@
 				},
 				{
 					"begin": "(?=\\s*[a-z]\\s*)",
-					"end": "(?=\\s*\\=\\s*)",
-					"contentName": "def.leftside.llama",
+					"end": "(?=\\s*(and|let|type|in)\\s*)",
 					"patterns": [
 						{
-							"include": "#idlower"
-						}, 
+							"begin": "(?=\\s*[a-z]\\s*)",
+							"end": "(?=\\s*(:|\\=)\\s*)",
+							"contentName": "def.leftside.definition.llama",
+							"patterns": [
+								{
+									"include": "#idlowervar"
+								},
+								{
+									"include": "#par"
+								}
+							]
+						},
 						{
-							"include": "#par"
-						}, 
+							"begin": "\\s*:\\s*",
+							"beginCaptures": {"0": {"name": "def.leftside.type.colon.llama"}},
+							"end": "(?=\\s*\\=\\s*)",
+							"contentName": "def.leftside.type.llama",
+							"patterns": [
+								{
+									"include": "#type"
+								}
+							]
+						},
 						{
-							"include": "#type"
-						}
-					]
-				},
-				{
-					"begin": "\\s*\\=\\s*",
-					"beginCaptures": {"0": {"name": "def.equal.llama"}},
-					"end": "(?=\\s*(and|let|type|in)\\s*)",
-					"contentName": "def.rightside.llama",
-					"pattern": [
-						{
-							"include": "#expr"
+							"begin": "\\s*=\\s*",
+							"beginCaptures": {"0": {"name": "def.equal.llama"}},
+							"end": "(?=\\s*(and|let|type|in)\\s*)",
+							"contentName": "def.rightside.llama",
+							"patterns": [
+								{
+									"include": "#expr"
+								}
+							]
 						}
 					]
 				}
@@ -135,7 +149,9 @@
 					"end": "(?=\\s*let\\s*)|(?=\\s*type\\s*)|(?=\\s*and\\s*)",
 					"contentName": "tdef.llama",
 					"patterns": [
-						{"include": "#idlower"}, 
+						{
+							"include": "#idlowertype"
+						}, 
 						{"include": "#constr"}
 					]
 				}
@@ -169,11 +185,20 @@
 				}
 			]
 		},
-		"idlower": 
+		"idlowervar": 
 		{
 			"patterns": [
 				{
-					"name": "variable.parameter.llama",
+					"name": "variable.other.llama",
+					"match": "[a-z]([A-Za-z]|[0-9]|_)*"
+				}
+			]
+		},
+		"idlowertype":
+		{
+			"patterns": [
+				{
+					"name": "entity.name.type.llama",
 					"match": "[a-z]([A-Za-z]|[0-9]|_)*"
 				}
 			]
@@ -189,11 +214,10 @@
 			"patterns": [
 				{
 					"name": "storage.type.llama",
-					"match": "unit|int|char|bool|float"
+					"match": "\\s*(unit|int|char|bool|float)\\s*"
 				},
 				{
-					"name": "storage.type.llama",
-					"include": "#idlower"
+					"include": "#idlowertype"
 				},
 				{
 					"comment": "( type )",
