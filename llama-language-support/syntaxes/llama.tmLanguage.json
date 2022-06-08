@@ -38,11 +38,16 @@
 					"comment": "Lookahead with ?= so that we hopefully stop at next definition",
 					"begin": "\\s*let\\s*(rec)?\\s*", 
 					"beginCaptures": { "0": { "name": "keyword.control.let.llama" } }, 
-					"end": "(?=\\s*let\\s*)|(?=\\s*type\\s*)",
+					"end": "(?=\\s*(let|type|in)\\s*)",
 					"contentName": "letdef.llama",
 					"patterns": [
-						{"include": "#def"}, 
-						{"match": "and"}
+						{
+							"name": "letdef.and.llama",
+							"match": "\\s*and\\s*"
+						},
+						{
+							"include": "#def" 
+						}
 					]
 				}
 			]
@@ -53,14 +58,11 @@
 				{
 					"begin": "\\s*type\\s*",
 					"beginCaptures": { "0": { "name": "keyword.control.type.llama" } },
-					"end": "(?=\\s*let\\s*)|(?=\\s*type\\s*)",
+					"end": "(?=\\s*(let|type)\\s*)",
 					"contentName": "typedef.llama",
 					"patterns": [
-						{
-							"include": "#tdef"
-						},
-						{
-							"match": "and"
+						{	
+							"include": "#tdef" 
 						}
 					]
 				}
@@ -70,15 +72,58 @@
 		{
 			"patterns": [
 				{
-					"begin": "(?<=\\s*let\\s*(rec)?\\s*)|(?<=\\s*and\\s*)",
-					"end": "(?=\\s*let\\s*)|(?=\\s*type\\s*)|(?=\\s*and\\s*)",
-					"contentName": "def.llama",
+					"begin": "(?=\\s*[a-z]\\s*)",
+					"end": "(?=\\s*\\=\\s*)",
+					"contentName": "def.leftside.llama",
 					"patterns": [
-						{"name": "keyword.control.llama", "match": "mutable"},
-						{"include": "#idlower"}, 
-						{"include": "#par"}, 
-						{"include": "#expr"},
-						{"include": "#type"}
+						{
+							"include": "#idlower"
+						}, 
+						{
+							"include": "#par"
+						}, 
+						{
+							"include": "#type"
+						}
+					]
+				},
+				{
+					"begin": "\\s*\\=\\s*",
+					"beginCaptures": {"0": {"name": "def.equal.llama"}},
+					"end": "(?=\\s*(and|let|type|in)\\s*)",
+					"contentName": "def.rightside.llama",
+					"pattern": [
+						{
+							"include": "#expr"
+						}
+					]
+				},
+				{
+					"begin": "\\s*mutable\\s*",
+					"beginCaptures": { "0": { "name": "keyword.control.mutable.llama" } },
+					"end": "(?=\\s*(and|let|type|in)\\s*)",
+					"patterns": [
+						{
+							"begin": "(?=\\s*[a-z]\\s*)",
+							"end": "(?=\\s*\\:\\s*)|()",
+							"patterns": [
+								{
+									"include": "#idlower"
+								},
+								{
+									"include": "#expr"
+								}
+							]
+						},
+						{
+							"begin": "\\s*\\:\\s*",
+							"end": "",
+							"patterns": [
+								{
+									"include": "#type"
+								}
+							]
+						}
 					]
 				}
 			]
