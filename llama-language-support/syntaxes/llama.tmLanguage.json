@@ -72,6 +72,34 @@
 		{
 			"patterns": [
 				{
+					"begin": "\\s*mutable\\s*",
+					"beginCaptures": { "0": { "name": "keyword.control.mutable.llama" } },
+					"end": "(?=\\s*(and|let|type|in)\\s*)",
+					"patterns": [
+						{
+							"begin": "(?=\\s*[a-z]\\s*)",
+							"end": "(?=\\s*(\\:|and|let|type|in)\\s*)",
+							"patterns": [
+								{
+									"include": "#idlower"
+								},
+								{
+									"include": "#expr"
+								}
+							]
+						},
+						{
+							"begin": "\\s*\\:\\s*",
+							"end": "(?=\\s*(and|let|type|in)\\s*)",
+							"patterns": [
+								{
+									"include": "#type"
+								}
+							]
+						}
+					]
+				},
+				{
 					"begin": "(?=\\s*[a-z]\\s*)",
 					"end": "(?=\\s*\\=\\s*)",
 					"contentName": "def.leftside.llama",
@@ -95,34 +123,6 @@
 					"pattern": [
 						{
 							"include": "#expr"
-						}
-					]
-				},
-				{
-					"begin": "\\s*mutable\\s*",
-					"beginCaptures": { "0": { "name": "keyword.control.mutable.llama" } },
-					"end": "(?=\\s*(and|let|type|in)\\s*)",
-					"patterns": [
-						{
-							"begin": "(?=\\s*[a-z]\\s*)",
-							"end": "(?=\\s*\\:\\s*)|()",
-							"patterns": [
-								{
-									"include": "#idlower"
-								},
-								{
-									"include": "#expr"
-								}
-							]
-						},
-						{
-							"begin": "\\s*\\:\\s*",
-							"end": "",
-							"patterns": [
-								{
-									"include": "#type"
-								}
-							]
 						}
 					]
 				}
