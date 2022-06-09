@@ -14,9 +14,22 @@
 				{
 					"begin": "start",
 					"end": "finish",
+					"contentName": "testrule.llama",
 					"patterns": [
 						{
-							"include": "#idlowervar"
+							"begin": "\\blet\\b",
+							"end": "(?=(=))",
+							"patterns": [
+								{
+									"include": "#idlowervar"
+								}
+							]
+						},
+						{
+							"begin": "(?<=\\B=\\B)",
+							"end": "(?=(let|finish))",
+							"contentName": "rightside.llama",
+							"patterns": []
 						}
 					]
 				}
@@ -35,14 +48,14 @@
 			"patterns": [
 				{
 					"comment": "Lookahead with ?= so that we hopefully stop at next definition",
-					"begin": "\\s*let\\s*(rec)?\\s*", 
+					"begin": "\\blet(\\s+rec)?\\b", 
 					"beginCaptures": { "0": { "name": "keyword.control.let.llama" } }, 
-					"end": "(?=\\s*(let|type|in)\\s*)",
+					"end": "(?=\\b(let|type|in)\\b)",
 					"contentName": "letdef.llama",
 					"patterns": [
 						{
 							"name": "letdef.and.llama",
-							"match": "\\s*and\\s*"
+							"match": "\\band\\b"
 						},
 						{
 							"include": "#def" 
@@ -71,13 +84,14 @@
 		{
 			"patterns": [
 				{
-					"begin": "\\s*mutable\\s*",
+					"begin": "mutable",
 					"beginCaptures": { "0": { "name": "keyword.control.mutable.llama" } },
 					"end": "(?=\\s*(and|let|type|in)\\s*)",
+					"contentName": "def.llama",
 					"patterns": [
 						{
-							"begin": "(?=\\s*[a-z]\\s*)",
-							"end": "(?=\\s*(:|and|let|type|in)\\s*)",
+							"begin": "(?=\\s*[a-z])",
+							"end": "(?=\\s*(:|and|let|type|in))",
 							"patterns": [
 								{
 									"include": "#idlowervar"
@@ -88,8 +102,8 @@
 							]
 						},
 						{
-							"begin": "\\s*:\\s*",
-							"beginCaptures": {"0": {"name": "def.mutable.colon.llama"}},
+							"begin": ":",
+							"beginCaptures": {"0": {"name": "colon.llama"}},
 							"end": "(?=\\s*(and|let|type|in)\\s*)",
 							"patterns": [
 								{
@@ -100,41 +114,82 @@
 					]
 				},
 				{
-					"begin": "(?=\\s*[a-z]\\s*)",
-					"end": "(?=\\s*(and|let|type|in)\\s*)",
+					"begin": "(?<=(let(\\s+rec)?|and)\\s+)",
+					"end": "(?=\\s*(and|let|type|in))",
+					"contentName": "def.llama",
 					"patterns": [
 						{
-							"begin": "(?=\\s*[a-z]\\s*)",
-							"end": "(?=\\s*(:|\\=)\\s*)",
-							"contentName": "def.leftside.definition.llama",
+							"begin": "(?<=(let(\\s+rec)?|and)\\s+)",
+							"end": "(?=\\s*\\=)",
+							"contentName": "leftside.llama",
 							"patterns": [
 								{
-									"include": "#idlowervar"
+									"comment": "Ensure that this captures only the first id of each def",
+									"match": "(?<=(and|rec|let)\\s+)[^\\s|:|=]*",
+									"captures": {"0": {"patterns": [{"include": "#idlowervar"}]}}
 								},
 								{
-									"include": "#par"
+									"begin": "(?<=([a-zA-Z0-9]|_)\\s+)",
+									"end": "(?=\\s*(:|\\=))",
+									"patterns": [
+										{
+											"include": "#par"
+										}
+									]
+								},
+								{
+									"begin": "(?=\\s*:)",
+									"end": "(?=\\s*=)",
+									"patterns": [
+										{
+											"name": "colon.llama",
+											"match": ":"
+										},
+										{
+											"include": "#type"
+										}
+									]
 								}
 							]
 						},
 						{
-							"begin": "\\s*:\\s*",
-							"beginCaptures": {"0": {"name": "def.leftside.type.colon.llama"}},
-							"end": "(?=\\s*\\=\\s*)",
-							"contentName": "def.leftside.type.llama",
+							"begin": "(?=\\s*)=",
+							"beginCaptures": {"0": {"name": "equal.llama"}},
+							"end": "(?=\\s*(and|let|type|in))",
+							"contentName": "rightside.llama",
+							"patterns": [
+								
+							]
+						}
+					]
+				}
+			]
+		},
+		"tdef":
+		{
+			"patterns": [
+				{
+					"begin": "(?<=\\s*(type|and)\\s*)",
+					"end": "(?=\\s*(let|type|and)\\s*)",
+					"contentName": "tdef.llama",
+					"patterns": [
+						{
+							"begin": "(?<=\\s*(type|and)\\s*)",
+							"end": "=",
+							"endCaptures": {"0": {"name": "tdef.equal.llama"}},
 							"patterns": [
 								{
-									"include": "#type"
+									"include": "#idlowertype"
 								}
 							]
 						},
 						{
-							"begin": "\\s*=\\s*",
-							"beginCaptures": {"0": {"name": "def.equal.llama"}},
-							"end": "(?=\\s*(and|let|type|in)\\s*)",
-							"contentName": "def.rightside.llama",
+							"begin": "(?<=\\s*=\\s*)",
+							"end": "(?=\\s*(let|type|and)\\s*)",
+							"contentName": "tdef.constrlist.llama",
 							"patterns": [
 								{
-									"include": "#expr"
+									"include": "#constr"
 								}
 							]
 						}
@@ -142,22 +197,8 @@
 				}
 			]
 		},
-		"tdef":{
-			"patterns": [
-				{
-					"begin": "(?<=\\s*type\\s*)|(?<=\\s*and\\s*)",
-					"end": "(?=\\s*let\\s*)|(?=\\s*type\\s*)|(?=\\s*and\\s*)",
-					"contentName": "tdef.llama",
-					"patterns": [
-						{
-							"include": "#idlowertype"
-						}, 
-						{"include": "#constr"}
-					]
-				}
-			]
-		},
-		"constr":{
+		"constr":
+		{
 			"comment": "Let's try this with chaining once",
 			"patterns": [
 				{
@@ -173,7 +214,7 @@
 				},
 				{
 					"comment": "begin->of, end->FOLLOW(constr)",
-					"begin": "\\s*of",
+					"begin": "of",
 					"beginCaptures": { "0": { "name": "keyword.control.constr.of.llama" } },
 					"end": "(?=\\s*(\\||and|let|type))",
 					"contentName": "constr.type.llama",
@@ -185,44 +226,58 @@
 				}
 			]
 		},
-		"idlowervar": 
-		{
+		"par":
+		{	
+			"begin": "(?=\\(|[a-z])",
+			"end": "(?=(\\s*(:|\\=))|(\\s+[a-z]))",
+			"contentName": "par.llama",
 			"patterns": [
 				{
-					"name": "variable.other.llama",
-					"match": "[a-z]([A-Za-z]|[0-9]|_)*"
-				}
-			]
-		},
-		"idlowertype":
-		{
-			"patterns": [
+					"match": "[a-z]([a-zA-Z0-9]|_)*",
+					"captures": {"0": {"name": "variable.parameter.llama"}}
+				},
 				{
-					"name": "entity.name.type.llama",
-					"match": "[a-z]([A-Za-z]|[0-9]|_)*"
+					"begin": "\\(",
+					"end": "\\)",
+					"contentName": "inside.parens",
+					"patterns": [
+						{
+							"begin": "(?<=\\(\\s*)",
+							"end": ":",
+							"endCaptures": {"0": {"name": "colon.llama"}},
+							"patterns": [
+								{
+									"include": "#idlowerpar"
+								}
+							]
+						},
+						{
+							"begin": "(?<=:)",
+							"end": "(?=\\))",
+							"patterns": [
+								{
+									"include": "#type"
+								}
+							]
+						}
+					]
 				}
 			]
-		},
-		"idupper":
-		{
-			"patterns": [
-				{"match": "[A-Z]([A-Za-z]|[0-9]|_)*"}
-			]
-		},
+		}, 
 		"type": 
 		{
 			"patterns": [
 				{
 					"name": "storage.type.llama",
-					"match": "\\s*(unit|int|char|bool|float)\\s*"
+					"match": "(unit|int|char|bool|float)"
 				},
 				{
 					"include": "#idlowertype"
 				},
 				{
 					"comment": "( type )",
-					"begin": "\\s*\\(\\s*",
-					"end": "\\s*\\)\\s*",
+					"begin": "\\(",
+					"end": "\\)",
 					"patterns": [
 						{
 							"include": "#type"
@@ -246,6 +301,39 @@
 				{
 					"comment": "type ref"
 				}
+			]
+		},
+		"idlowervar": 
+		{
+			"patterns": [
+				{
+					"name": "variable.other.llama",
+					"match": "[a-z]([A-Za-z]|[0-9]|_)*"
+				}
+			]
+		},
+		"idlowerpar": 
+		{
+			"patterns": [
+				{
+					"name": "variable.parameter.llama",
+					"match": "[a-z]([A-Za-z]|[0-9]|_)*"
+				}
+			]
+		},
+		"idlowertype":
+		{
+			"patterns": [
+				{
+					"name": "entity.name.type.llama",
+					"match": "[a-z]([A-Za-z]|[0-9]|_)*"
+				}
+			]
+		},
+		"idupper":
+		{
+			"patterns": [
+				{"match": "[A-Z]([A-Za-z]|[0-9]|_)*"}
 			]
 		},
 		"operators": 
