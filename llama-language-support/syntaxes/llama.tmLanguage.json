@@ -10,28 +10,18 @@
 	"repository": {
 		"testrule": 
 		{
+			"name": "testrule.llama",
+			"begin": "start",
+			"end": "(?<=rec([^a][^n][^d])*)",
 			"patterns": [
 				{
-					"begin": "start",
-					"end": "finish",
-					"contentName": "testrule.llama",
-					"patterns": [
-						{
-							"begin": "\\blet\\b",
-							"end": "(?=(=))",
-							"patterns": [
-								{
-									"include": "#idlowervar"
-								}
-							]
-						},
-						{
-							"begin": "(?<=\\B=\\B)",
-							"end": "(?=(let|finish))",
-							"contentName": "rightside.llama",
-							"patterns": []
-						}
-					]
+					"name": "keyword.control.rec.llama",
+					"match": "rec"
+				},
+				{
+					"begin": "(?<=rec\\s*)",
+					"end": "(?=\\s*and)",
+					"patterns": [{"include": "#idlowervar"}]
 				}
 			]
 		},
@@ -48,17 +38,54 @@
 			"patterns": [
 				{
 					"comment": "Lookahead with ?= so that we hopefully stop at next definition",
-					"begin": "\\blet(\\s+rec)?\\b", 
+					"begin": "let", 
 					"beginCaptures": { "0": { "name": "keyword.control.let.llama" } }, 
-					"end": "(?=\\b(let|type|in)\\b)",
+					"end": "(?=\\s*(let|type|in))",
 					"contentName": "letdef.llama",
 					"patterns": [
 						{
-							"name": "letdef.and.llama",
-							"match": "\\band\\b"
+							"comment": "First def, rec can only be here",
+							"begin": "(?<=let\\s+)",
+							"end": "(?=\\s*(let|type|in|and))",
+							"contentName": "first.def.llama",
+							"patterns": [
+								{
+									"comment": "If rec was found we are definitely here",
+									"begin": "(?=rec)",
+									"end": "(?=\\s*(let|type|in|and))",
+									"name": "rec.found.llama",
+									"patterns": [
+										{
+											"name": "keyword.control.rec.llama",
+											"match": "rec"
+										},
+										{
+											"include": "#defrec"
+										}
+									]
+								},
+								{
+									"comment": "if rec wasn't found we are definitely here",
+									"begin": "(?=[a-z])",
+									"end": "(?=\\s*(let|type|in|and))",
+									"patterns": [
+										{
+											"include": "#defnorec"
+										}
+									]
+								}
+							]
 						},
 						{
-							"include": "#def" 
+							"comment": "Continued letdef",
+							"begin": "and",
+							"beginCaptures": {"0": {"name": "letdef.and.llama"}},
+							"end": "(?=\\s*(let|type|in|and))",
+							"patterns": [
+								{
+									"include": "#defnorec" 
+								}
+							]
 						}
 					]
 				}
@@ -80,7 +107,7 @@
 				}
 			]
 		},
-		"def": 
+		"defrec": 
 		{
 			"patterns": [
 				{
@@ -114,19 +141,105 @@
 					]
 				},
 				{
-					"begin": "(?<=(let(\\s+rec)?|and)\\s+)",
+					"begin": "(?<=rec\\s+)",
 					"end": "(?=\\s*(and|let|type|in))",
-					"contentName": "def.llama",
+					"contentName": "defrec.llama",
 					"patterns": [
 						{
-							"begin": "(?<=(let(\\s+rec)?|and)\\s+)",
+							"begin": "(?<=rec\\s+)",
 							"end": "(?=\\s*\\=)",
 							"contentName": "leftside.llama",
 							"patterns": [
 								{
 									"comment": "Ensure that this captures only the first id of each def",
-									"begin": "(?<=(and|rec|let)\\s+)",
-									"end": "[^\\s|:|=]*",
+									"begin": "(?<=rec\\s+)",
+									"end": "[a-z][^\\s|:|=]*",
+									"endCaptures": {"0": {"patterns": [{"include": "#idlowervar"}]}}
+								},
+								{
+									"begin": "(?<=([a-zA-Z0-9]|_)\\s+)",
+									"end": "(?=\\s*(:|\\=))",
+									"patterns": [
+										{
+											"include": "#par"
+										}
+									]
+								},
+								{
+									"begin": "(?=\\s*:)",
+									"end": "(?=\\s*=)",
+									"patterns": [
+										{
+											"name": "colon.llama",
+											"match": ":"
+										},
+										{
+											"include": "#type"
+										}
+									]
+								}
+							]
+						},
+						{
+							"begin": "(?=\\s*)=",
+							"beginCaptures": {"0": {"name": "equal.llama"}},
+							"end": "(?=\\s*(and|let|type|in))",
+							"contentName": "rightside.llama",
+							"patterns": [
+								
+							]
+						}
+					]
+				}
+			]
+		},
+		"defnorec": 
+		{
+			"patterns": [
+				{
+					"begin": "mutable",
+					"beginCaptures": { "0": { "name": "keyword.control.mutable.llama" } },
+					"end": "(?=\\s*(and|let|type|in)\\s*)",
+					"contentName": "def.llama",
+					"patterns": [
+						{
+							"begin": "(?=\\s*[a-z])",
+							"end": "(?=\\s*(:|and|let|type|in))",
+							"patterns": [
+								{
+									"include": "#idlowervar"
+								},
+								{
+									"include": "#expr"
+								}
+							]
+						},
+						{
+							"begin": ":",
+							"beginCaptures": {"0": {"name": "colon.llama"}},
+							"end": "(?=\\s*(and|let|type|in)\\s*)",
+							"patterns": [
+								{
+									"include": "#type"
+								}
+							]
+						}
+					]
+				},
+				{
+					"begin": "(?<=(and|let)\\s+)",
+					"end": "(?=\\s*(and|let|type|in))",
+					"contentName": "defnorec.llama",
+					"patterns": [
+						{
+							"begin": "(?<=(and|let)\\s+)",
+							"end": "(?=\\s*\\=)",
+							"contentName": "leftside.llama",
+							"patterns": [
+								{
+									"comment": "Ensure that this captures only the first id of each def",
+									"begin": "(?<=(and|let)\\s+)",
+									"end": "[a-z][^\\s|:|=]*",
 									"endCaptures": {"0": {"patterns": [{"include": "#idlowervar"}]}}
 								},
 								{
