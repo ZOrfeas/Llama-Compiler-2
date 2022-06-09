@@ -125,8 +125,9 @@
 							"patterns": [
 								{
 									"comment": "Ensure that this captures only the first id of each def",
-									"match": "(?<=(and|rec|let)\\s+)[^\\s|:|=]*",
-									"captures": {"0": {"patterns": [{"include": "#idlowervar"}]}}
+									"begin": "(?<=(and|rec|let)\\s+)",
+									"end": "[^\\s|:|=]*",
+									"endCaptures": {"0": {"patterns": [{"include": "#idlowervar"}]}}
 								},
 								{
 									"begin": "(?<=([a-zA-Z0-9]|_)\\s+)",
@@ -299,7 +300,8 @@
 					"comment": "type -> type"
 				},
 				{
-					"comment": "type ref"
+					"comment": "type ref",
+					"match": "[^.]"
 				}
 			]
 		},
