@@ -3,9 +3,8 @@
 	"name": "Llama",
 	"patterns": 
 	[
-		{"include": "#program"},
-		{"include": "#testrule"},
-		{"include": "#strings"}
+		{"include": "#comments"},
+		{"include": "#program"}
 	],
 	"repository": {
 		"testrule": 
@@ -24,6 +23,31 @@
 					"patterns": [{"include": "#idlowervar"}]
 				}
 			]
+		},
+		"comments": 
+		{
+			"patterns": [
+				{
+					"include": "#commentLine"
+				},
+				{
+					"include": "#commentBlock"
+				}
+			]
+		},
+		"commentLine": 
+		{
+			"name": "comment.llama",
+			"begin": "--",
+			"end": "(?<=(--.*))$"
+		},
+		"commentBlock": 
+		{
+			"begin": "\\(\\*(?!\\*[^\\)])",
+			"end": "\\*\\)",
+			"name": "comment.llama",
+			"contentName": "emphasis",
+			"patterns": [{ "include": "#commentBlock" }]
 		},
 		"program": 
 		{
@@ -95,9 +119,9 @@
 		{
 			"patterns": [
 				{
-					"begin": "\\s*type\\s*",
+					"begin": "type",
 					"beginCaptures": { "0": { "name": "keyword.control.type.llama" } },
-					"end": "(?=\\s*(let|type)\\s*)",
+					"end": "(?=\\s*(let|type))",
 					"contentName": "typedef.llama",
 					"patterns": [
 						{	
@@ -382,8 +406,14 @@
 		{
 			"patterns": [
 				{
-					"name": "storage.type.llama",
-					"match": "(unit|int|char|bool|float)"
+					"begin": "(?=\\s*(unit|int|char|bool|float))",
+					"end": "(?<=(unit|int|char|bool|float)\\s*)",
+					"patterns": [
+						{
+							"name": "storage.type.llama",
+							"match": "unit|int|char|bool|float"
+						}
+					]
 				},
 				{
 					"include": "#idlowertype"
@@ -401,7 +431,7 @@
 				{
 					"comment": "array [*,...*] of type",
 					"name": "storage.type.llama",
-					"begin": "\\s*array\\s*[\\s*\\*(\\s*,\\s*\\*)*\\s*]\\s*of\\s*",
+					"begin": "(?=\\s*array\\s*[\\s*\\*(\\s*,\\s*\\*)*\\s*]\\s*of)",
 					"end": "",
 					"patterns": [
 						{
@@ -413,9 +443,14 @@
 					"comment": "type -> type"
 				},
 				{
-					"comment": "type ref",
-					"match": "[^.]"
+					"comment": "type ref (can be done properly with first follow, end cannot be just ref"
 				}
+			]
+		},
+		"expr": 
+		{
+			"patterns": [
+				
 			]
 		},
 		"idlowervar": 
