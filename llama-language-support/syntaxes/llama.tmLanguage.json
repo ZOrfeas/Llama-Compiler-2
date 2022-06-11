@@ -3,7 +3,6 @@
 	"name": "Llama",
 	"patterns": 
 	[
-		{"include": "#comments"},
 		{"include": "#program"}
 	],
 	"repository": {
@@ -53,63 +52,75 @@
 		{
 			"patterns": 
 			[
+				{"include": "#comments"},
 				{"include": "#letdef"},
 				{"include": "#typedef"}
 			]		
 		},
 		"letdef": 
 		{
+			"comment": "Lookahead with ?= so that we hopefully stop at next definition",
+			"begin": "let", 
+			"beginCaptures": { "0": { "name": "keyword.control.let.llama" } }, 
+			"end": "(?=\\s*(let|type|in))",
+			"contentName": "letdef.llama",
 			"patterns": [
 				{
-					"comment": "Lookahead with ?= so that we hopefully stop at next definition",
-					"begin": "let", 
-					"beginCaptures": { "0": { "name": "keyword.control.let.llama" } }, 
-					"end": "(?=\\s*(let|type|in))",
-					"contentName": "letdef.llama",
+					"include": "#comments"
+				},
+				{
+					"comment": "First def, rec can only be here",
+					"begin": "(?<=let\\s+)",
+					"end": "(?=\\s*(let|type|in|and))",
+					"contentName": "first.def.llama",
 					"patterns": [
 						{
-							"comment": "First def, rec can only be here",
-							"begin": "(?<=let\\s+)",
+							"include": "#comments"
+						},
+						{
+							"comment": "If rec was found we are definitely here",
+							"begin": "(?=rec)",
 							"end": "(?=\\s*(let|type|in|and))",
-							"contentName": "first.def.llama",
+							"name": "rec.found.llama",
 							"patterns": [
 								{
-									"comment": "If rec was found we are definitely here",
-									"begin": "(?=rec)",
-									"end": "(?=\\s*(let|type|in|and))",
-									"name": "rec.found.llama",
-									"patterns": [
-										{
-											"name": "keyword.control.rec.llama",
-											"match": "rec"
-										},
-										{
-											"include": "#defrec"
-										}
-									]
+									"include": "#comments"
 								},
 								{
-									"comment": "if rec wasn't found we are definitely here",
-									"begin": "(?=[a-z])",
-									"end": "(?=\\s*(let|type|in|and))",
-									"patterns": [
-										{
-											"include": "#defnorec"
-										}
-									]
+									"name": "keyword.control.rec.llama",
+									"match": "rec"
+								},
+								{
+									"include": "#defrec"
 								}
 							]
 						},
 						{
-							"comment": "Continued letdef",
-							"begin": "and",
-							"beginCaptures": {"0": {"name": "letdef.and.llama"}},
+							"comment": "if rec wasn't found we are definitely here",
+							"begin": "(?=[a-z])",
 							"end": "(?=\\s*(let|type|in|and))",
 							"patterns": [
 								{
-									"include": "#defnorec" 
+									"include": "#comments"
+								},
+								{
+									"include": "#defnorec"
 								}
 							]
+						}
+					]
+				},
+				{
+					"comment": "Continued letdef",
+					"begin": "and",
+					"beginCaptures": {"0": {"name": "letdef.and.llama"}},
+					"end": "(?=\\s*(let|type|in|and))",
+					"patterns": [
+						{
+							"include": "#comments"
+						},
+						{
+							"include": "#defnorec" 
 						}
 					]
 				}
@@ -117,17 +128,16 @@
 		},
 		"typedef": 
 		{
+			"begin": "type",
+			"beginCaptures": { "0": { "name": "keyword.control.type.llama" } },
+			"end": "(?=\\s*(let|type))",
+			"contentName": "typedef.llama",
 			"patterns": [
 				{
-					"begin": "type",
-					"beginCaptures": { "0": { "name": "keyword.control.type.llama" } },
-					"end": "(?=\\s*(let|type))",
-					"contentName": "typedef.llama",
-					"patterns": [
-						{	
-							"include": "#tdef" 
-						}
-					]
+					"include": "#comments"
+				},
+				{	
+					"include": "#tdef" 
 				}
 			]
 		},
@@ -135,15 +145,24 @@
 		{
 			"patterns": [
 				{
+					"include": "#comments"
+				},
+				{
 					"begin": "mutable",
 					"beginCaptures": { "0": { "name": "keyword.control.mutable.llama" } },
 					"end": "(?=\\s*(and|let|type|in)\\s*)",
 					"contentName": "def.llama",
 					"patterns": [
 						{
+							"include": "#comments"
+						},
+						{
 							"begin": "(?=\\s*[a-z])",
 							"end": "(?=\\s*(:|and|let|type|in))",
 							"patterns": [
+								{
+									"include": "#comments"
+								},
 								{
 									"include": "#idlowervar"
 								},
@@ -157,6 +176,9 @@
 							"beginCaptures": {"0": {"name": "colon.llama"}},
 							"end": "(?=\\s*(and|let|type|in)\\s*)",
 							"patterns": [
+								{
+									"include": "#comments"
+								},
 								{
 									"include": "#type"
 								}
@@ -170,10 +192,16 @@
 					"contentName": "defrec.llama",
 					"patterns": [
 						{
+							"include": "#comments"
+						},
+						{
 							"begin": "(?<=rec\\s+)",
 							"end": "(?=\\s*\\=)",
 							"contentName": "leftside.llama",
 							"patterns": [
+								{
+									"include": "#comments"
+								},
 								{
 									"comment": "Ensure that this captures only the first id of each def",
 									"begin": "(?<=rec\\s+)",
@@ -185,6 +213,9 @@
 									"end": "(?=\\s*(:|\\=))",
 									"patterns": [
 										{
+											"include": "#comments"
+										},
+										{
 											"include": "#par"
 										}
 									]
@@ -193,6 +224,9 @@
 									"begin": "(?=\\s*:)",
 									"end": "(?=\\s*=)",
 									"patterns": [
+										{
+											"include": "#comments"
+										},
 										{
 											"name": "colon.llama",
 											"match": ":"
@@ -210,7 +244,9 @@
 							"end": "(?=\\s*(and|let|type|in))",
 							"contentName": "rightside.llama",
 							"patterns": [
-								
+								{
+									"include": "#comments"
+								}
 							]
 						}
 					]
@@ -221,15 +257,24 @@
 		{
 			"patterns": [
 				{
+					"include": "#comments"
+				},
+				{
 					"begin": "mutable",
 					"beginCaptures": { "0": { "name": "keyword.control.mutable.llama" } },
 					"end": "(?=\\s*(and|let|type|in)\\s*)",
 					"contentName": "def.llama",
 					"patterns": [
 						{
+							"include": "#comments"
+						},
+						{
 							"begin": "(?=\\s*[a-z])",
 							"end": "(?=\\s*(:|and|let|type|in))",
 							"patterns": [
+								{
+									"include": "#comments"
+								},
 								{
 									"include": "#idlowervar"
 								},
@@ -244,6 +289,9 @@
 							"end": "(?=\\s*(and|let|type|in)\\s*)",
 							"patterns": [
 								{
+									"include": "#comments"
+								},
+								{
 									"include": "#type"
 								}
 							]
@@ -256,10 +304,16 @@
 					"contentName": "defnorec.llama",
 					"patterns": [
 						{
+							"include": "#comments"
+						},
+						{
 							"begin": "(?<=(and|let)\\s+)",
 							"end": "(?=\\s*\\=)",
 							"contentName": "leftside.llama",
 							"patterns": [
+								{
+									"include": "#comments"
+								},
 								{
 									"comment": "Ensure that this captures only the first id of each def",
 									"begin": "(?<=(and|let)\\s+)",
@@ -271,6 +325,9 @@
 									"end": "(?=\\s*(:|\\=))",
 									"patterns": [
 										{
+											"include": "#comments"
+										},
+										{
 											"include": "#par"
 										}
 									]
@@ -279,6 +336,9 @@
 									"begin": "(?=\\s*:)",
 									"end": "(?=\\s*=)",
 									"patterns": [
+										{
+											"include": "#comments"
+										},
 										{
 											"name": "colon.llama",
 											"match": ":"
@@ -296,7 +356,9 @@
 							"end": "(?=\\s*(and|let|type|in))",
 							"contentName": "rightside.llama",
 							"patterns": [
-								
+								{
+									"include": "#comments"
+								}
 							]
 						}
 					]
@@ -305,31 +367,36 @@
 		},
 		"tdef":
 		{
+			"begin": "(?<=\\s*(type|and)\\s*)",
+			"end": "(?=\\s*(let|type|and)\\s*)",
+			"contentName": "tdef.llama",
 			"patterns": [
 				{
+					"include": "#comments"
+				},
+				{
 					"begin": "(?<=\\s*(type|and)\\s*)",
-					"end": "(?=\\s*(let|type|and)\\s*)",
-					"contentName": "tdef.llama",
+					"end": "=",
+					"endCaptures": {"0": {"name": "tdef.equal.llama"}},
 					"patterns": [
 						{
-							"begin": "(?<=\\s*(type|and)\\s*)",
-							"end": "=",
-							"endCaptures": {"0": {"name": "tdef.equal.llama"}},
-							"patterns": [
-								{
-									"include": "#idlowertype"
-								}
-							]
+							"include": "#comments"
 						},
 						{
-							"begin": "(?<=\\s*=\\s*)",
-							"end": "(?=\\s*(let|type|and)\\s*)",
-							"contentName": "tdef.constrlist.llama",
-							"patterns": [
-								{
-									"include": "#constr"
-								}
-							]
+							"include": "#idlowertype"
+						}
+					]
+				},
+				{
+					"begin": "(?<=\\s*=\\s*)",
+					"end": "(?=\\s*(let|type|and)\\s*)",
+					"contentName": "tdef.constrlist.llama",
+					"patterns": [
+						{
+							"include": "#comments"
+						},
+						{
+							"include": "#constr"
 						}
 					]
 				}
@@ -340,11 +407,17 @@
 			"comment": "Let's try this with chaining once",
 			"patterns": [
 				{
+					"include": "#comments"
+				},
+				{
 					"comment": "begin->FIRST(constr), end->of | FOLLOW(constr)",
 					"begin": "(?=\\s*[A-Z])",
 					"end": "(?=\\s*(of|\\||and|let|type))",
 					"contentName": "constr.Id.llama",
 					"patterns": [
+						{
+							"include": "#comments"
+						},
 						{
 							"include": "#idupper"
 						}
@@ -357,6 +430,9 @@
 					"end": "(?=\\s*(\\||and|let|type))",
 					"contentName": "constr.type.llama",
 					"patterns": [
+						{
+							"include": "#comments"
+						},
 						{
 							"include": "#type"
 						}
@@ -371,6 +447,9 @@
 			"contentName": "par.llama",
 			"patterns": [
 				{
+					"include": "#comments"
+				},
+				{
 					"match": "[a-z]([a-zA-Z0-9]|_)*",
 					"captures": {"0": {"name": "variable.parameter.llama"}}
 				},
@@ -379,6 +458,9 @@
 					"end": "\\)",
 					"contentName": "inside.parens",
 					"patterns": [
+						{
+							"include": "#comments"
+						},
 						{
 							"begin": "(?<=\\(\\s*)",
 							"end": ":",
@@ -394,6 +476,9 @@
 							"end": "(?=\\))",
 							"patterns": [
 								{
+									"include": "#comments"
+								},
+								{
 									"include": "#type"
 								}
 							]
@@ -406,8 +491,11 @@
 		{
 			"patterns": [
 				{
-					"begin": "(?=\\s*(unit|int|char|bool|float))",
-					"end": "(?<=(unit|int|char|bool|float)\\s*)",
+					"include": "#comments"
+				},
+				{
+					"begin": "(?=(unit|int|char|bool|float))",
+					"end": "(?<=(unit|int|char|bool|float))",
 					"patterns": [
 						{
 							"name": "storage.type.llama",
@@ -450,7 +538,9 @@
 		"expr": 
 		{
 			"patterns": [
-				
+				{
+					"include": "#comments"
+				}
 			]
 		},
 		"idlowervar": 
