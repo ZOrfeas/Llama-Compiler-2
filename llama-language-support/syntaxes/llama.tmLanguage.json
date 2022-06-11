@@ -3,7 +3,8 @@
 	"name": "Llama",
 	"patterns": 
 	[
-		{"include": "#program"}
+		{"include": "#program"},
+		{"include": "#literal"}
 	],
 	"repository": {
 		"testrule": 
@@ -612,15 +613,48 @@
 				{"match": "delete"}
 			]
 		},
-		"strings": 
+		"literal": 
 		{
-			"name": "string.quoted.double.llama",
-			"begin": "\"",
-			"end": "\"",
+			"patterns": [
+				{"include": "#intLiteral"},
+				{"include": "#floatLiteral"},
+				{"include": "#charLiteral"},
+				{"include": "#stringLiteral"}
+			]
+		},
+		"intLiteral":
+		{
 			"patterns": [
 				{
-					"name": "constant.character.escape.llama",
-					"match": "\\."
+					"name": "constant.numeric.int.llama",
+					"match": "(?<!\\.)[0-9]+(?=\\s+)"
+				}
+			]
+		},
+		"floatLiteral": 
+		{
+			"patterns": [
+				{
+					"name": "constant.numeric.float.llama",
+					"match": "[0-9]+\\.[0-9]+(e[\\+\\-]?[0-9]+)?"
+				}
+			]
+		}, 
+		"charLiteral": 
+		{
+			"patterns": [
+				{
+					"name": "string.quoted.single.llama",
+					"match": "\\'([^'\"\\\\\\n\\r\\0]|(\\\\([ntr0\\'\"]|(x{[0-9a-f]}{[0-9a-f]}))))\\'"
+				}
+			]
+		},
+		"stringLiteral": 
+		{
+			"patterns": [
+				{
+					"name": "string.quoted.double.llama",
+					"match": "\"((.|[^\"\\n])?)*\""
 				}
 			]
 		}
