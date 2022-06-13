@@ -15,22 +15,7 @@ private:
     static const std::string full_vert;
     static const std::string split_vert;
     static const std::string half_vert;
-    int depth = 0;
-    bool is_last = false;
-    std::vector<bool> stack;
-    std::string gen_prefix();
     
-    class depth_guard {
-    private: // is automatically a friend of PrintVisitor
-        PrintVisitor& v;
-    public:
-        depth_guard(PrintVisitor&);
-        ~depth_guard();
-    };
-    void println_with_prefix(std::string_view s);
-protected:
-    void incr_depth();
-    void decr_depth();
 public:
     PrintVisitor(std::ostream& out = std::cout);
     void visit(ast::core::Program*) override;
