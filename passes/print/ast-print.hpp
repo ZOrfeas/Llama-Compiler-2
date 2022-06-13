@@ -15,7 +15,10 @@ private:
     static const std::string full_vert;
     static const std::string split_vert;
     static const std::string half_vert;
+    std::vector<std::string> result;
     
+    std::vector<std::string>& stringify(ast::core::Node *node);
+    std::vector<std::string>& indent(std::vector<std::string>& child);
 public:
     PrintVisitor(std::ostream& out = std::cout);
     void visit(ast::core::Program*) override;

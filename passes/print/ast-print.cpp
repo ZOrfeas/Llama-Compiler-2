@@ -15,7 +15,15 @@ PrintVisitor::PrintVisitor(std::ostream& out): out(out) {}
 
 // Utilities
 
-void PrintVisitor::visit(ast::core::Program *program) {}
+std::vector<std::string>& PrintVisitor::stringify(ast::core::Node *node) {
+    node->accept(this);
+    return result;
+}
+
+// Visit overloads
+
+void PrintVisitor::visit(ast::core::Program *program) {
+}
 void PrintVisitor::visit(ast::stmt::TypeStmt *type_stmt) {}
 void PrintVisitor::visit(ast::def::TypeDef *type_def) {
 }
