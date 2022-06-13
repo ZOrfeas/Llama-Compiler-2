@@ -11,8 +11,9 @@ default: all
 all: llamac
 
 # Final linking
-llamac: $(BUILD)/lexer.o $(BUILD)/parser.o $(BUILD)/ast-print.o $(BUILD)/main.o
+llamac: $(BUILD)/lexer.o $(BUILD)/parser.o $(BUILD)/ast-print.o $(BUILD)/main.o $(BUILD)/typesystem.o
 	$(CXX) $(CXXFlAGS) -o llamac \
+	$(BUILD)/typesystem.o \
 	$(BUILD)/lexer.o \
 	$(BUILD)/parser.o \
 	$(BUILD)/ast-print.o \
@@ -37,6 +38,8 @@ $(BUILD)/parser.o: parser.cpp lexer.hpp ast/ast.hpp
 $(BUILD)/ast-print.o: passes/print/ast-print.cpp passes/print/ast-print.hpp ast/ast.hpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 $(BUILD)/main.o: main.cpp parser.hpp ast/forward.hpp passes/print/ast-print.hpp
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
+$(BUILD)/typesystem.o: typesystem/typesystem.cpp typesystem/typesystem.hpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 clean:
