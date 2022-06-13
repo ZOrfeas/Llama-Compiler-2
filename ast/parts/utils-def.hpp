@@ -23,9 +23,9 @@ namespace ast::utils::def {
     class Param : public core::Node {
     public:
         string id;
-        unique_ptr<TypeAnnotation> type;
-        Param(string id, TypeAnnotation *type = nullptr):
-            id(id), type(type) {}
+        unique_ptr<TypeAnnotation> type_annotation;
+        Param(string id, TypeAnnotation *type_annotation = nullptr):
+            id(id), type_annotation(type_annotation) {}
         void accept(visit::Visitor *v) override { v->visit(this); }
     };
 }
