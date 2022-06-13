@@ -15,7 +15,7 @@ namespace ast::utils::def {
     class Constructor : public core::Node {
     public:
         string id;
-        unique_ptr<vector<unique_ptr<TypeAnnotation>>> type_list;
+        std::unique_ptr<vector<unique_ptr<TypeAnnotation>>> type_list;
         Constructor(string id, vector<unique_ptr<TypeAnnotation>> *type_list):
             id(id), type_list(type_list) {}
         void accept(visit::Visitor *v) override { v->visit(this); }

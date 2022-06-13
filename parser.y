@@ -173,7 +173,7 @@
 %%
 
 program 
-    : program_list                          { the_program = new ast::core::Program($1); /* the_program = $$;*/ /* auto v = PrintVisitor(); $$->accept(v);*/ }
+    : program_list                          { the_program = new ast::core::Program($1); }
 ;
 
 program_list
@@ -261,11 +261,11 @@ par
 ;
 
 type
-    : "unit"                                            { $$ = new ast::annotation::BasicType(types::Builtin::UNIT);  }
-    | "int"                                             { $$ = new ast::annotation::BasicType(types::Builtin::INT);   }
-    | "char"                                            { $$ = new ast::annotation::BasicType(types::Builtin::CHAR);  }
-    | "bool"                                            { $$ = new ast::annotation::BasicType(types::Builtin::BOOL);  }
-    | "float"                                           { $$ = new ast::annotation::BasicType(types::Builtin::FLOAT); }
+    : "unit"                                            { $$ = new ast::annotation::BasicType(typesys::TypeEnum::UNIT);  }
+    | "int"                                             { $$ = new ast::annotation::BasicType(typesys::TypeEnum::INT);   }
+    | "char"                                            { $$ = new ast::annotation::BasicType(typesys::TypeEnum::CHAR);  }
+    | "bool"                                            { $$ = new ast::annotation::BasicType(typesys::TypeEnum::BOOL);  }
+    | "float"                                           { $$ = new ast::annotation::BasicType(typesys::TypeEnum::FLOAT); }
     | '(' type ')'                                      { $$ = $2;                                           }
     | type "->" type                                    { $$ = new ast::annotation::FunctionType($1, $3);    }
     | type "ref"                                        { $$ = new ast::annotation::RefType($1);             }
