@@ -7,10 +7,6 @@
 #include "../visitor/visitor.hpp"
 
 extern int yylineno;
-
-namespace ast::visit {
-    class Visitor;
-}
 namespace ast::core {
     using std::vector;
     using std::unique_ptr;
