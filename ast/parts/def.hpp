@@ -55,7 +55,7 @@ namespace ast::def {
     };
 
     class Mutable : public Def {
-    protected: 
+    protected:
         Mutable(string id, TypeAnnotation *type_annotation = nullptr)
             : Def(id, type_annotation) {}
     };

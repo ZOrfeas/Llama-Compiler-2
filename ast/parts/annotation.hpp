@@ -5,7 +5,7 @@
 #include <vector>
 #include <memory>
 
-#include "../../types.hpp"
+#include "../../typesystem/typesystem.hpp"
 #include "../visitor/visitor.hpp"
 #include "./core.hpp"
 
@@ -18,8 +18,8 @@ namespace ast::annotation {
 
     class BasicType : public TypeAnnotation {
     public:
-        types::Builtin t;
-        BasicType(types::Builtin t): t(t) {}
+        typesys::TypeEnum t;
+        BasicType(typesys::TypeEnum t): t(t) {}
         void accept(visit::Visitor *v) override { v->visit(this); }
     };
     class FunctionType : public TypeAnnotation {

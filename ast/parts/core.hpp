@@ -8,22 +8,20 @@
 
 extern int yylineno;
 
-namespace ast::visit {
-    class Visitor;
-}
 namespace ast::core {
     using std::vector;
     using std::unique_ptr;
     class Node {
-    protected: 
+    protected:
         Node(): lineno(yylineno) {}
         virtual ~Node() = default;
-    public: 
+    public:
         int lineno;
         virtual void accept(visit::Visitor *v) = 0;
     };
     class DefStmt : public Node {
-    protected: DefStmt() = default;
+    protected:
+        DefStmt() = default;
     };
     class Program : public Node {
     public:
@@ -34,10 +32,12 @@ namespace ast::core {
     };
 
     class TypeAnnotation : public Node {
-    protected: TypeAnnotation() = default;
+    protected:
+        TypeAnnotation() = default;
     };
     class Expression : public Node {
-    protected: Expression() = default;
+    protected:
+        Expression() = default;
     };
 }
 

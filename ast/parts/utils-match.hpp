@@ -15,7 +15,8 @@ namespace ast::utils::match {
     using std::vector;
     using std::unique_ptr;
     class Pattern : public core::Node {
-    protected: Pattern() = default;
+    protected:
+        Pattern() = default;
     };
     class PatLiteral : public Pattern {
     public:

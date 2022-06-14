@@ -1,7 +1,7 @@
 
 #include <string>
 
-#include "../../types.hpp"
+#include "../../typesystem/typesystem.hpp"
 #include "./ast-print.hpp"
 #include "../../ast/ast.hpp"
 
@@ -280,7 +280,7 @@ void PrintVisitor::visit(ast::expr::Match *match_expr) {
 }
 
 void PrintVisitor::visit(ast::annotation::BasicType *basic_type) {
-    println_with_prefix(std::string("BasicType (") + types::type_name(basic_type->t) + ")");
+    println_with_prefix(std::string("BasicType (") + typesys::type_name(basic_type->t) + ")");
 }
 void PrintVisitor::visit(ast::annotation::FunctionType *fn_type) {
     println_with_prefix("FunctionType");
@@ -320,10 +320,10 @@ void PrintVisitor::visit(ast::utils::def::Constructor *constructor) {
 }
 void PrintVisitor::visit(ast::utils::def::Param *param) {
     println_with_prefix("Param (" + param->id + ")");
-    if (param->type != nullptr) {
+    if (param->type_annotation != nullptr) {
         auto guard = depth_guard(*this);
         is_last = true;
-        param->type->accept(this);
+        param->type_annotation->accept(this);
         is_last = false;
     }
 }
