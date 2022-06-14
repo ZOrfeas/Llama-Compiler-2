@@ -1,38 +1,12 @@
-#ifndef __AST_PRINT_HPP__
-
-#define __AST_PRINT_HPP__
-#include <iostream>
-#include <string>
-#include <vector>
-#include <string_view>
+#ifndef __SEM_HPP__
+#define __SEM_HPP__
 
 #include "../../ast/visitor/visitor.hpp"
 
-
-class PrintVisitor : public ast::visit::Visitor {
+class SemVisitor : public ast::visit::Visitor {
 private:
-    std::ostream& out;
-    static const std::string full_vert;
-    static const std::string split_vert;
-    static const std::string half_vert;
-    int depth = 0;
-    bool is_last = false;
-    std::vector<bool> stack;
-    std::string gen_prefix();
-    
-    class depth_guard {
-    private: // is automatically a friend of PrintVisitor
-        PrintVisitor& v;
-    public:
-        depth_guard(PrintVisitor&);
-        ~depth_guard();
-    };
-    void println_with_prefix(std::string_view s);
-protected:
-    void incr_depth();
-    void decr_depth();
 public:
-    PrintVisitor(std::ostream& out = std::cout);
+    SemVisitor();
     void visit(ast::core::Program*) override;
     void visit(ast::stmt::TypeStmt*) override;
     void visit(ast::def::TypeDef*) override;
@@ -77,9 +51,4 @@ public:
     void visit(ast::utils::match::Clause*) override;
 };
 
-#endif // __AST_PRINT_HPP__
-
-// Program
-// │
-// ├─ Stmt    
-// │   └─ DefStmt
+#endif // __SEM_HPP__

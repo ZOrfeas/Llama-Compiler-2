@@ -89,6 +89,29 @@ namespace typesys {
         unsigned long id;
         Unknown();
     };
+    namespace utils {
+        template<typename T>
+        concept HasTEnum = requires(T t) {
+            { T::tEnum } -> std::convertible_to<TypeEnum>;
+        };
+
+        template<HasTEnum T>
+        inline T* as(Type* t) {
+            if (t->type == T::tEnum) {
+                return static_cast<T*>(t);
+            }
+            return nullptr;
+        }
+        template<HasTEnum T>
+        inline T* safe_as(Type* t) {
+            if (T* p = as<T>(t)) { return p; }
+            std::string msg = 
+                "Tried to downcast " +
+                std::string(type_name(t->type)) +
+                " to " + std::string(type_name(T::tEnum));
+            throw std::runtime_error("type mismatch");
+        }
+    }
 }
 
 

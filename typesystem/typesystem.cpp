@@ -11,37 +11,14 @@ namespace typesys {
         return builtin_name[static_cast<int>(b)];
     }
 
-    template<typename T>
-    concept HasTEnum = requires(T t) {
-        { T::tEnum } -> std::convertible_to<TypeEnum>;
-    };
-
-    template<HasTEnum T>
-    T* as(Type* t) {
-        if (t->type == T::tEnum) {
-            return static_cast<T*>(t);
-        }
-        return nullptr;
-    }
-    template<HasTEnum T>
-    T* safe_as(Type* t) {
-        if (auto p = as<T>(t)) { return p; }
-        std::string msg = 
-            "Tried to downcast " +
-            std::string(type_name(t->type)) +
-            " to " + std::string(type_name(T::tEnum));
-        throw std::runtime_error("type mismatch");
-    }
-
-
-    Type::Type(TypeEnum t) : type(t) {}
-    Builtin::Builtin(TypeEnum b) : Type(b) {}
+    Type::Type(TypeEnum t): type(t) {}
+    Builtin::Builtin(TypeEnum b): Type(b) {}
     
-    Unit::Unit() : Builtin(TypeEnum::UNIT) {}
-    Int::Int() : Builtin(TypeEnum::INT) {}
-    Char::Char() : Builtin(TypeEnum::CHAR) {}
-    Bool::Bool() : Builtin(TypeEnum::BOOL) {}
-    Float::Float() : Builtin(TypeEnum::FLOAT) {}
+    Unit::Unit(): Builtin(TypeEnum::UNIT) {}
+    Int::Int(): Builtin(TypeEnum::INT) {}
+    Char::Char(): Builtin(TypeEnum::CHAR) {}
+    Bool::Bool(): Builtin(TypeEnum::BOOL) {}
+    Float::Float(): Builtin(TypeEnum::FLOAT) {}
 
     Array::Array(int dimensions, Type* element_type):
         Type(TypeEnum::ARRAY),
