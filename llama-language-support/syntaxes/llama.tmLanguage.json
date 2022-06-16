@@ -247,6 +247,9 @@
 							"patterns": [
 								{
 									"include": "#comments"
+								},
+								{
+									"include": "#expr"
 								}
 							]
 						}
@@ -359,6 +362,9 @@
 							"patterns": [
 								{
 									"include": "#comments"
+								},
+								{
+									"include": "#expr"
 								}
 							]
 						}
@@ -539,8 +545,18 @@
 		"expr": 
 		{
 			"patterns": [
+				{"include": "#comments"},
+				{"include": "#literal"},
 				{
-					"include": "#comments"
+					"comment": "( expr )",
+					"begin": "\\(",
+					"end": "\\)", 
+					"patterns": [{"include": "#expr"}]
+				},
+				{
+					"comment": "unop expr",
+					"begin": "\\+|\\-|\\+\\.|\\-\\.|\\!|not",
+					"end": "Follow(expr)"
 				}
 			]
 		},
@@ -577,41 +593,13 @@
 				{"match": "[A-Z]([A-Za-z]|[0-9]|_)*"}
 			]
 		},
-		"operators": 
+		"binop": 
 		{
-			"patterns": [
-				{"include": "#binops"},
-				{"include": "#unops"}
-			]
+			"patterns": [{"match": "((\\+|\\-|\\*|\\/)(\\.)?)|mod|\\*\\*|\\=|\\<\\>|\\<|\\>|\\<\\=|\\>\\=|\\=\\=|\\!\\=|\\&\\&|\\|\\||\\;|\\:\\="}]
 		},
-		"binops": 
+		"unop": 
 		{
-			"patterns": [
-				{"match": "=\\|+\\-\\*/;<>"},
-				{"match": "->"},
-				{"match": "+."},
-				{"match": "-."},
-				{"match": "*."},
-				{"match": "/."},
-				{"match": "**"},
-				{"match": "&&"},
-				{"match": "||"},
-				{"match": "<>"},
-				{"match": "<="},
-				{"match": ">="},
-				{"match": "=="},
-				{"match": "!="},
-				{"match": ":="},
-				{"match": "mod"}
-			]
-		},
-		"unops": 
-		{
-			"patterns": [
-				{"match": "!"},
-				{"match": "new"}, 
-				{"match": "delete"}
-			]
+			"patterns": [{"match": "\\+|\\-|\\+\\.|\\-\\.|\\!|not"}]
 		},
 		"literal": 
 		{
@@ -619,7 +607,9 @@
 				{"include": "#intLiteral"},
 				{"include": "#floatLiteral"},
 				{"include": "#charLiteral"},
-				{"include": "#stringLiteral"}
+				{"include": "#stringLiteral"},
+				{"include": "#boolLiteral"},
+				{"include": "#unitLiteral"}
 			]
 		},
 		"intLiteral":
@@ -655,6 +645,24 @@
 				{
 					"name": "string.quoted.double.llama",
 					"match": "\"((.|[^\"\\n])?)*\""
+				}
+			]
+		},
+		"boolLiteral": 
+		{
+			"patterns": [
+				{
+					"name": "constant.language.bool.llama", 
+					"match": "true|false"
+				}
+			]
+		}, 
+		"unitLiteral": 
+		{
+			"patterns": [
+				{
+					"name": "constant.language.unit.llama", 
+					"match": "\\(\\)"
 				}
 			]
 		}
