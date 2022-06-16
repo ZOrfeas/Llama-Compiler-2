@@ -61,10 +61,44 @@ namespace typesys {
         bool equals(std::shared_ptr<Type> o) const;
         virtual std::string to_string() const = 0;
 
-        // Utility functions for subclasses without virtual
-        // TODO: implement them for Type, no need to dispatch
-        // TODO:    to each subclass after static casting
+        // Utility functions for subclasses (manual downcasting check)       
+        // Array //
 
+        int get_dimensions() const;
+        void set_dimensions(int);
+        int get_low_bound() const;
+        void set_low_bound(int);
+        void copy_low_bound_ptr_from(std::shared_ptr<Type>);
+        void set_element_type(std::shared_ptr<Type>);
+        std::shared_ptr<Type> get_element_type() const;
+
+        // Ref //
+
+        void set_ref_type(std::shared_ptr<Type>);
+        std::shared_ptr<Type> get_ref_type() const;
+
+        // Function //
+
+        void add_param(std::shared_ptr<Type>);
+        void set_param_type(int, std::shared_ptr<Type>);
+        std::vector<std::shared_ptr<Type>> const& get_param_types() const;
+        void set_return_type(std::shared_ptr<Type>);
+        std::shared_ptr<Type> get_return_type() const;
+
+        // Constructor //
+
+        void set_custom_type(std::shared_ptr<Custom>);
+        void add_field(std::shared_ptr<Type>);
+        std::vector<std::shared_ptr<Type>> const& get_field_types() const;
+
+        // Custom //
+
+        void add_constructor(std::shared_ptr<Constructor>);
+        std::vector<std::shared_ptr<Constructor>> const& get_constructor_types() const;
+
+        // Unknown //
+
+        std::string get_unknown_id() const;
     };
 
 }

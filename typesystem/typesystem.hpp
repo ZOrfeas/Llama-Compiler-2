@@ -63,8 +63,8 @@ namespace typesys {
         bool equals(Type const* o) const override;
     public:
         static constexpr TypeEnum tEnum = TypeEnum::REF;
-        std::shared_ptr<Type> element_type;
-        Ref(std::shared_ptr<Type> element_type);
+        std::shared_ptr<Type> ref_type;
+        Ref(std::shared_ptr<Type> ref_type);
         std::string to_string() const override;
     };
     class Function : public Type {
@@ -75,10 +75,8 @@ namespace typesys {
         std::vector<std::shared_ptr<Type>> param_types;
         std::shared_ptr<Type> return_type;
         Function(std::shared_ptr<Type> return_type);
-        void add_param(std::shared_ptr<Type> param_type);
         std::string to_string() const override;
     };
-    class Custom;
     class Constructor : public Type {
     protected: 
         bool equals(Type const* o) const override;
@@ -88,8 +86,6 @@ namespace typesys {
         std::shared_ptr<Custom> custom_type;
         std::vector<std::shared_ptr<Type>> field_types;
         Constructor(std::string_view name);
-        void set_custom_type(std::shared_ptr<Custom> owner);
-        void add_field(std::shared_ptr<Type> field);
         std::string to_string() const override;
     };
     class Custom : public Type {
@@ -100,7 +96,6 @@ namespace typesys {
         std::string name;
         std::vector<std::shared_ptr<Constructor>> constructor_types;
         Custom(std::string_view name);
-        void add_constructor(std::shared_ptr<Constructor> constructor);
         std::string to_string() const override;
     };
 

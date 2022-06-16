@@ -2,16 +2,7 @@
 
 #include "./typesystem.hpp"
 
-namespace typesys {
-    Type::Type(TypeEnum t): type(t) {}
-    bool Type::is_same(Type const* o) const {
-        return this == o;
-    }
-    bool Type::equals(std::shared_ptr<Type> o) const {
-        if (this->is_same(o.get())) return true;
-        return this->equals(o.get());
-    }
-    
+namespace typesys {    
     // Builtins //
 
     Builtin::Builtin(TypeEnum b): Type(b) {}
@@ -64,25 +55,22 @@ namespace typesys {
 
     // Ref //
 
-    Ref::Ref(std::shared_ptr<Type> element_type):
+    Ref::Ref(std::shared_ptr<Type> ref_type):
         Type(TypeEnum::REF),
-        element_type(std::move(element_type)) {}
+        ref_type(std::move(ref_type)) {}
     bool Ref::equals(Type const* o) const {
         if (Ref* o = o->as<Ref>())
-            return this->element_type->equals(o->element_type);
+            return this->ref_type->equals(o->ref_type);
         return false;
     }
     std::string Ref::to_string() const {
-        return this->element_type->to_string() + " ref";
+        return this->ref_type->to_string() + " ref";
     }
     // Function //
     
     Function::Function(std::shared_ptr<Type> return_type):
         Type(TypeEnum::FUNCTION),
         return_type(std::move(return_type)) {}
-    void Function::add_param(std::shared_ptr<Type> param_type) {
-        param_types.push_back(std::move(param_type));
-    }
     bool Function::equals(Type const* o) const {
         if (Function* o = o->as<Function>()) {
             if (this->param_types.size() != o->param_types.size())
@@ -120,12 +108,6 @@ namespace typesys {
     }
     std::string Constructor::to_string() const {
         return this->name;
-    }
-    void Constructor::set_custom_type(std::shared_ptr<Custom> owner) {
-        custom_type = std::move(owner);
-    }
-    void Constructor::add_field(std::shared_ptr<Type> field) {
-        field_types.push_back(std::move(field));
     }
 
     // Custom //
