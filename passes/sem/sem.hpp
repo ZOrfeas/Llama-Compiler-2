@@ -5,6 +5,7 @@
 
 class SemVisitor : public ast::visit::Visitor {
 private:
+    
 public:
     SemVisitor();
     void visit(ast::core::Program*) override;
