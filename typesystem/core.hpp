@@ -5,6 +5,7 @@
 #include <concepts>
 
 #include "../../error/error.hpp"
+#include "./forward.hpp"
 
 //!Note: I do not like to have to implement templates in headers ... :(
 
