@@ -30,19 +30,36 @@ namespace typesys {
 
     // Array //
 
-    Array::Array(int dimensions, std::shared_ptr<Type> element_type):
+    Array::Array(std::shared_ptr<Type> element_type, int dimensions):
         Type(TypeEnum::ARRAY),
-        dimensions(dimensions),
-        element_type(std::move(element_type)) {}
+        element_type(std::move(element_type)),
+        dimensions(dimensions) {}
     bool Array::equals(Type const* o) const {
         if (Array* o = o->as<Array>()) {
-            return this->dimensions == o->dimensions &&
+            return *this->dim_low_bound_ptr == 0 &&
+                   *o->dim_low_bound_ptr == 0 &&
+                   this->dimensions == o->dimensions &&
                    this->element_type->equals(o->element_type);
         }
         return false;
     }
     std::string Array::to_string() const {
-        // TODO: implement
+        const auto dim_low_bound = *this->dim_low_bound_ptr;
+        const auto dim_string = [&](){
+            if (dim_low_bound != 0) {
+                return "array of (at least" + 
+                        std::to_string(dim_low_bound) + 
+                        ") of";
+            } else {
+                std::string dim_string = "";
+                if (this->dimensions > 1) {
+
+                }
+                return "array " + dim_string + " of";
+            }
+        }();
+        return "(" + dim_string + " " +
+                this->element_type->to_string() + ")";        
     }
 
     // Ref //
@@ -51,13 +68,12 @@ namespace typesys {
         Type(TypeEnum::REF),
         element_type(std::move(element_type)) {}
     bool Ref::equals(Type const* o) const {
-        if (Ref* o = o->as<Ref>()) {
+        if (Ref* o = o->as<Ref>())
             return this->element_type->equals(o->element_type);
-        }
         return false;
     }
     std::string Ref::to_string() const {
-        // TODO: implement
+        return this->element_type->to_string() + " ref";
     }
     // Function //
     
@@ -69,20 +85,26 @@ namespace typesys {
     }
     bool Function::equals(Type const* o) const {
         if (Function* o = o->as<Function>()) {
-            if (this->param_types.size() != o->param_types.size()) {
+            if (this->param_types.size() != o->param_types.size())
                 return false;
-            }
-            for (size_t i = 0; i < this->param_types.size(); i++) {
-                if (!(this->param_types[i]->equals(o->param_types[i]))) {
+            for (size_t i = 0; i < this->param_types.size(); i++)
+                if (!(this->param_types[i]->equals(o->param_types[i])))
                     return false;
-                }
-            }
             return this->return_type->equals(o->return_type);
         }
         return false;
     }
     std::string Function::to_string() const {
-        // TODO: implement
+        auto param_string = [&]() -> std::string {
+            if (this->param_types.size() == 0)
+                return "unknown";
+            std::string tmp_string = this->param_types[0]->to_string();
+            for (size_t i = 1; i < this->param_types.size(); i++)
+                tmp_string += " -> " + this->param_types[i]->to_string();
+            return tmp_string;
+        }();
+        return "(" + param_string + " -> " +
+                this->return_type->to_string() + ")";
     }
     
     // Constructor //
@@ -91,14 +113,13 @@ namespace typesys {
         Type(TypeEnum::RECORD),
         name(name) {}
     bool Constructor::equals(Type const* o) const {
-        if (Constructor* o = o->as<Constructor>()) {
+        if (Constructor* o = o->as<Constructor>())
             return this->custom_type->Type::equals(o->custom_type) &&
                    this->name == o->name;
-        }
         return false;
     }
     std::string Constructor::to_string() const {
-        // TODO: implement
+        return this->name;
     }
     void Constructor::set_custom_type(std::shared_ptr<Custom> owner) {
         custom_type = std::move(owner);
@@ -113,14 +134,13 @@ namespace typesys {
         Type(TypeEnum::CUSTOM),
         name(name) {}
     bool Custom::equals(Type const* o) const {
-        if (Custom* o = o->as<Custom>()) {
+        if (Custom* o = o->as<Custom>())
             //!Note(orf): make sure no shadowing is allowed
             return this->name == o->name;
-        }
         return false;
     }
     std::string Custom::to_string() const {
-        // TODO: implement
+        return this->name;
     }
 
     // Unknown //
@@ -128,11 +148,10 @@ namespace typesys {
     unsigned long Unknown::next_id = 0;
     Unknown::Unknown(): Type(TypeEnum::UNKNOWN), id(next_id++) {}
     bool Unknown::equals(Type const* o) const {
-        if (Unknown* o = o->as<Unknown>()) {
+        if (Unknown* o = o->as<Unknown>())
             return this->id == o->id;
-        }
     }
     std::string Unknown::to_string() const {
-        // TODO: implement
+        return "@" + std::to_string(this->id);
     }
 }

@@ -44,16 +44,18 @@ namespace typesys {
         static constexpr TypeEnum tEnum = TypeEnum::FLOAT;
         Float();
     };
-    
+    // class invariant:
+    // dim_low_bound_ptr contains 0 if dimensions is exact. (i.e. dim_low_bound_ptr is disabled)
+    // otherwise dimensions is to be ignored
     class Array : public Type {
     protected:
         bool equals(Type const* o) const override;
     public:
         static constexpr TypeEnum tEnum = TypeEnum::ARRAY;
-        int dimensions;
         std::shared_ptr<int> dim_low_bound_ptr = std::make_shared<int>(0);
         std::shared_ptr<Type> element_type;
-        Array(int dimensions, std::shared_ptr<Type> element_type);
+        int dimensions;
+        Array(std::shared_ptr<Type> element_type, int dimensions = 0);
         std::string to_string() const override;
     };
     class Ref : public Type {
