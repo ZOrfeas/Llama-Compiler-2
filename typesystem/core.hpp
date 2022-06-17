@@ -40,6 +40,11 @@ namespace typesys {
             }
             return nullptr;
         }
+        bool is_same(Type const* o) const;
+        virtual bool equals(Type const* o) const = 0;
+    public:
+        TypeEnum const type;
+        virtual ~Type() = default;
         template<IsInstantiableType T>
         T* safe_as(std::string_view caller = "") const {
             if (T* t = this->as<T>()) {
@@ -52,12 +57,6 @@ namespace typesys {
                 caller != "" ? " in " + caller : "";
             );
         }
-        bool is_same(Type const* o) const;
-        virtual bool equals(Type const* o) const = 0;
-    public:
-        TypeEnum const type;
-        virtual ~Type() = default;
-        
         bool equals(std::shared_ptr<Type> o) const;
         virtual std::string to_string() const = 0;
 
