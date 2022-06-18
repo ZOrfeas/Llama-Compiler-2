@@ -13,18 +13,28 @@
 namespace typesys {
     struct Unit {
         static constexpr TypeEnum type_enum = TypeEnum::UNIT;
+        bool operator==(Unit const&) const { return true; }
+        bool operator!=(Unit const&) const { return false; }
     };
     struct Int {
         static constexpr TypeEnum type_enum = TypeEnum::INT;
+        bool operator==(Int const&) const { return true; }
+        bool operator!=(Int const&) const { return false; }
     };
     struct Char {
         static constexpr TypeEnum type_enum = TypeEnum::CHAR;
+        bool operator==(Char const&) const { return true; }
+        bool operator!=(Char const&) const { return false; }
     };
     struct Bool {
         static constexpr TypeEnum type_enum = TypeEnum::BOOL;
+        bool operator==(Bool const&) const { return true; }
+        bool operator!=(Bool const&) const { return false; }
     };
     struct Float {
         static constexpr TypeEnum type_enum = TypeEnum::FLOAT;
+        bool operator==(Float const&) const { return true; }
+        bool operator!=(Float const&) const { return false; }
     };
     class Array {
     // class invariant:
@@ -37,6 +47,8 @@ namespace typesys {
         int dimensions;
         Array(Type element_type, int dimensions = 0);
         std::string to_string() const;
+        bool operator==(Array const&) const;
+        bool operator!=(Array const&) const;
     };
     class Ref {
     public:
@@ -44,6 +56,8 @@ namespace typesys {
         Type ref_type;
         Ref(Type ref_type);
         std::string to_string() const;
+        bool operator==(Ref const&) const;
+        bool operator!=(Ref const&) const;
     };
     class Function {
     public:
@@ -52,6 +66,8 @@ namespace typesys {
         Type return_type;
         Function(Type return_type);
         std::string to_string() const;
+        bool operator==(Function const&) const;
+        bool operator!=(Function const&) const;
     };
     class Custom {
     public:
@@ -68,6 +84,8 @@ namespace typesys {
         std::vector<Constructor> constructor_types;
         Custom(std::string_view name);
         std::string to_string() const;
+        bool operator==(Custom const&) const;
+        bool operator!=(Custom const&) const;
     };
 
     class Unknown {
@@ -78,6 +96,8 @@ namespace typesys {
         unsigned long id;
         Unknown();
         std::string to_string() const;
+        bool operator==(Unknown const&) const;
+        bool operator!=(Unknown const&) const;
     };
 }
 

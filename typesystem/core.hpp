@@ -93,7 +93,7 @@ namespace typesys {
         bool operator==(Type const& other) const;
         bool operator!=(Type const& other) const;
 
-        std::string type_enum_str() const;
+        std::string get_type_enum_str() const;
         std::string to_string() const;
     };
 }
