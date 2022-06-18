@@ -81,8 +81,15 @@ namespace typesys {
         }
         template<AnyType T>
         std::shared_ptr<T> as(std::string_view caller = "") const {
-            if (auto inner = std::get_if<std::shared_ptr<T>>(type_variant)) {
-                return *inner;
+            if (auto ptr_to_inner = std::get_if<std::shared_ptr<T>>(type_variant)) {
+                return *ptr_to_inner;
+            }
+            return std::shared_ptr<T>();            
+        }
+        template<AnyType T>
+        std::shared_ptr<T> safe_as(std::string_view caller = "") const {
+            if (auto inner = as<T>(); inner) {
+                return inner;
             }
             error::internal(
                 "Tried to downcast " +
