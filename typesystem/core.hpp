@@ -93,7 +93,7 @@ namespace typesys {
             }
             error::internal(
                 "Tried to downcast " +
-                std::string(type_enum_str()) +
+                std::string(get_type_enum_str()) +
                 " to " + std::string(type_enum_to_str(T::tEnum)) +
                 caller != "" ? " in " + caller : "";
             );

@@ -3,6 +3,8 @@
 
 namespace typesys {
     Type::Type() {}
+    // possibly nice syntax for matching variants:
+    // https://github.com/AVasK/vx/blob/main/vx.hpp
 
     std::string Type::to_string() const {
         return std::visit(overloaded{
@@ -24,8 +26,10 @@ namespace typesys {
     bool Type::operator==(Type const& other) const {
         return std::visit(overloaded{
             []<AnyTypePtr T>(T const& t1, T const& t2) {
-                return t1.get() == t2.get() || *t1 == *t2;
-            }
+                // They are the safe || their contents are equal
+                return t1 == t2 || *t1 == *t2;
+            },
+            [](auto&& t1, auto&& t2) { return false; }
         }, type_variant, other.type_variant);
     }
     bool Type::operator!=(Type const& other) const {
