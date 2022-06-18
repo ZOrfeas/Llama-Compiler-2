@@ -74,6 +74,7 @@ namespace typesys {
         template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
     protected:
     public:
+        // TODO(orf): Handle construction assignment and moving
         template<AnyType T>
         bool is() const {
             return std::holds_alternative<std::shared_ptr<T>>(type_variant);

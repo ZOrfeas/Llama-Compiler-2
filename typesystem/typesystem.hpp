@@ -73,7 +73,8 @@ namespace typesys {
     public:
         static constexpr TypeEnum type_enum = TypeEnum::CUSTOM;
         class Constructor {
-        protected: 
+        protected:
+            friend class Custom;
             Constructor(std::string_view name, Custom const& custom_type);
         public:
             std::string name;
