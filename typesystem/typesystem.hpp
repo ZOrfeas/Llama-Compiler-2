@@ -11,104 +11,73 @@
 //!NOTE: consider singleton pattern for Builtins
 
 namespace typesys {
-    class Builtin : public Type {
-    protected:
-        Builtin(TypeEnum b);
-        bool equals(Type const* o) const override;
-    public:
-        std::string to_string() const override;
+    struct Unit {
+        static constexpr TypeEnum type_enum = TypeEnum::UNIT;
     };
-
-    class Unit : public Builtin {
-    public:
-        static constexpr TypeEnum tEnum = TypeEnum::UNIT;
-        Unit();
+    struct Int {
+        static constexpr TypeEnum type_enum = TypeEnum::INT;
     };
-    class Int : public Builtin {
-    public:
-        static constexpr TypeEnum tEnum = TypeEnum::INT;
-        Int();
+    struct Char {
+        static constexpr TypeEnum type_enum = TypeEnum::CHAR;
     };
-    class Char : public Builtin {
-    public:
-        static constexpr TypeEnum tEnum = TypeEnum::CHAR;
-        Char();
+    struct Bool {
+        static constexpr TypeEnum type_enum = TypeEnum::BOOL;
     };
-    class Bool : public Builtin {
-    public:
-        static constexpr TypeEnum tEnum = TypeEnum::BOOL;
-        Bool();
+    struct Float {
+        static constexpr TypeEnum type_enum = TypeEnum::FLOAT;
     };
-    class Float : public Builtin {
-    public:
-        static constexpr TypeEnum tEnum = TypeEnum::FLOAT;
-        Float();
-    };
+    class Array {
     // class invariant:
     // dim_low_bound_ptr contains 0 if dimensions is exact. (i.e. dim_low_bound_ptr is disabled)
     // otherwise dimensions is to be ignored
-    class Array : public Type {
-    protected:
-        bool equals(Type const* o) const override;
     public:
-        static constexpr TypeEnum tEnum = TypeEnum::ARRAY;
+        static constexpr TypeEnum type_enum = TypeEnum::ARRAY;
         std::shared_ptr<int> dim_low_bound_ptr = std::make_shared<int>(0);
-        std::shared_ptr<Type> element_type;
+        Type element_type;
         int dimensions;
-        Array(std::shared_ptr<Type> element_type, int dimensions = 0);
-        std::string to_string() const override;
+        Array(Type element_type, int dimensions = 0);
+        std::string to_string() const;
     };
-    class Ref : public Type {
-    protected:
-        bool equals(Type const* o) const override;
+    class Ref {
     public:
-        static constexpr TypeEnum tEnum = TypeEnum::REF;
-        std::shared_ptr<Type> ref_type;
-        Ref(std::shared_ptr<Type> ref_type);
-        std::string to_string() const override;
+        static constexpr TypeEnum type_enum = TypeEnum::REF;
+        Type ref_type;
+        Ref(Type ref_type);
+        std::string to_string() const;
     };
-    class Function : public Type {
-    protected:
-        bool equals(Type const* o) const override;
+    class Function {
     public:
-        static constexpr TypeEnum tEnum = TypeEnum::FUNCTION;
-        std::vector<std::shared_ptr<Type>> param_types;
-        std::shared_ptr<Type> return_type;
-        Function(std::shared_ptr<Type> return_type);
-        std::string to_string() const override;
+        static constexpr TypeEnum type_enum = TypeEnum::FUNCTION;
+        std::vector<Type> param_types;
+        Type return_type;
+        Function(Type return_type);
+        std::string to_string() const;
     };
-    class Constructor : public Type {
-    protected: 
-        bool equals(Type const* o) const override;
+    class Custom {
     public:
-        static constexpr TypeEnum tEnum = TypeEnum::RECORD;
+        static constexpr TypeEnum type_enum = TypeEnum::CUSTOM;
+        class Constructor {
+        protected: 
+            Constructor(std::string_view name, Custom const& custom_type);
+        public:
+            std::string name;
+            Custom const& custom_type;
+            std::vector<Type> field_types;
+        };
         std::string name;
-        std::shared_ptr<Custom> custom_type;
-        std::vector<std::shared_ptr<Type>> field_types;
-        Constructor(std::string_view name);
-        std::string to_string() const override;
-    };
-    class Custom : public Type {
-    protected:
-        bool equals(Type const* o) const override;
-    public:
-        static constexpr TypeEnum tEnum = TypeEnum::CUSTOM;
-        std::string name;
-        std::vector<std::shared_ptr<Constructor>> constructor_types;
+        std::vector<Constructor> constructor_types;
         Custom(std::string_view name);
-        std::string to_string() const override;
+        std::string to_string() const;
     };
 
-    class Unknown : public Type {
+    class Unknown {
     private:
         static unsigned long next_id;
-    protected:
-        bool equals(Type const* o) const override;
     public:
-        static constexpr TypeEnum tEnum = TypeEnum::UNKNOWN;
+        static constexpr TypeEnum type_enum = TypeEnum::UNKNOWN;
         unsigned long id;
         Unknown();
-        std::string to_string() const override;
+        std::string to_string() const;
     };
 }
 

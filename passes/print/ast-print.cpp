@@ -280,7 +280,7 @@ void PrintVisitor::visit(ast::expr::Match *match_expr) {
 }
 
 void PrintVisitor::visit(ast::annotation::BasicType *basic_type) {
-    println_with_prefix(std::string("BasicType (") + typesys::type_name(basic_type->t) + ")");
+    println_with_prefix(std::string("BasicType (") + typesys::type_enum_to_str(basic_type->t) + ")");
 }
 void PrintVisitor::visit(ast::annotation::FunctionType *fn_type) {
     println_with_prefix("FunctionType");

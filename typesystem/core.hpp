@@ -2,6 +2,7 @@
 #define __TYPESYSTEM_CORE_HPP__
 
 #include <string_view>
+#include <variant>
 #include <concepts>
 
 #include "../../error/error.hpp"
@@ -12,94 +13,89 @@
 namespace typesys {
     enum class TypeEnum {
         UNIT, INT, CHAR, BOOL, FLOAT,
-        ARRAY, REF, FUNCTION, RECORD, CUSTOM, UNKNOWN
+        ARRAY, REF, FUNCTION, CUSTOM, UNKNOWN
     };
-    inline const char* type_name(TypeEnum b) {
+    inline const char* type_enum_to_str(TypeEnum b) {
         static const char* builtin_name[] = {
             "unit", "int", "char", "bool", "float",
-            "array", "ref", "function", "record", "custom", "unknown"
+            "array", "ref", "function", "custom", "unknown"
         };
         return builtin_name[static_cast<int>(b)];
     }
-    
+
+    // TODO(orf): Move this ↓↓
+        template <typename T, template <typename...> class Z>
+        struct is_specialization_of : std::false_type {};
+        template <typename... Args, template <typename...> class Z>
+        struct is_specialization_of<Z<Args...>, Z> : std::true_type {};
+        template <typename T, template <typename...> class Z>
+        inline constexpr bool is_specialization_of_v = is_specialization_of<T,Z>::value;
+        template <typename T>
+        concept IsSharedPtr = is_specialization_of_v<T, std::shared_ptr>;
+    // TODO(orf): Move this ↑↑
+
     template<typename T>
-    concept IsInstantiableType = requires(T t) {
-        { T::tEnum } -> std::convertible_to<TypeEnum>;
-    };
+    concept BuiltinType = std::is_same_v<T, Unit> ||
+                          std::is_same_v<T, Int> ||
+                          std::is_same_v<T, Char> ||
+                          std::is_same_v<T, Bool> ||
+                          std::is_same_v<T, Float>;
+    template<typename T>
+    concept BuiltinTypePtr = IsSharedPtr<T> &&
+                             BuiltinType<typename T::element_type>;
+    template<typename T>
+    concept ComplexType = std::is_same_v<T, Array> ||
+                          std::is_same_v<T, Ref> ||
+                          std::is_same_v<T, Function> ||
+                          std::is_same_v<T, Custom> ||
+                          std::is_same_v<T, Unknown>;
+    template<typename T>
+    concept ComplexTypePtr = IsSharedPtr<T> &&
+                             ComplexType<typename T::element_type>;
+    template<typename T>
+    concept AnyType = BuiltinType<T> || ComplexType<T>;
+    template<typename T>
+    concept AnyTypePtr = BuiltinTypePtr<T> || ComplexTypePtr<T>;
+
     class Type {
+    private:
+        std::variant<
+            std::shared_ptr<Unit>,
+            std::shared_ptr<Int>,
+            std::shared_ptr<Char>,
+            std::shared_ptr<Bool>,
+            std::shared_ptr<Float>,
+            std::shared_ptr<Array>,
+            std::shared_ptr<Ref>,
+            std::shared_ptr<Function>,
+            std::shared_ptr<Custom>,
+            std::shared_ptr<Unknown>
+        > type_variant;
+        template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
     protected:
-        Type(TypeEnum t);
-        template<IsInstantiableType T>
-        bool is() const {
-            return this->type == T::tEnum;
-        }
-        template<IsInstantiableType T>
-        T* as() const {
-            if (this->is<T>()) {
-                return static_cast<T*>(t);
-            }
-            return nullptr;
-        }
-        bool is_same(Type const* o) const;
-        virtual bool equals(Type const* o) const = 0;
     public:
-        TypeEnum const type;
-        virtual ~Type() = default;
-        template<IsInstantiableType T>
-        T* safe_as(std::string_view caller = "") const {
-            if (T* t = this->as<T>()) {
-                return t;
+        template<AnyType T>
+        bool is() const {
+            return std::holds_alternative<std::shared_ptr<T>>(type_variant);
+        }
+        template<AnyType T>
+        std::shared_ptr<T> as(std::string_view caller = "") const {
+            if (auto inner = std::get_if<std::shared_ptr<T>>(type_variant)) {
+                return *inner;
             }
             error::internal(
                 "Tried to downcast " +
-                std::string(type_name(t->type)) +
-                " to " + std::string(type_name(T::tEnum)) +
+                std::string(type_enum_str()) +
+                " to " + std::string(type_enum_to_str(T::tEnum)) +
                 caller != "" ? " in " + caller : "";
             );
         }
-        bool equals(std::shared_ptr<Type> o) const;
-        virtual std::string to_string() const = 0;
+        bool operator==(Type const& other) const;
+        bool operator!=(Type const& other) const;
 
-        // Utility functions for subclasses (manual downcasting check)       
-        // Array //
-
-        int get_dimensions() const;
-        void set_dimensions(int);
-        int get_low_bound() const;
-        void set_low_bound(int);
-        void copy_low_bound_ptr_from(std::shared_ptr<Type>);
-        void set_element_type(std::shared_ptr<Type>);
-        std::shared_ptr<Type> get_element_type() const;
-
-        // Ref //
-
-        void set_ref_type(std::shared_ptr<Type>);
-        std::shared_ptr<Type> get_ref_type() const;
-
-        // Function //
-
-        void add_param(std::shared_ptr<Type>);
-        void set_param_type(int, std::shared_ptr<Type>);
-        std::vector<std::shared_ptr<Type>> const& get_param_types() const;
-        void set_return_type(std::shared_ptr<Type>);
-        std::shared_ptr<Type> get_return_type() const;
-
-        // Constructor //
-
-        void set_custom_type(std::shared_ptr<Custom>);
-        void add_field(std::shared_ptr<Type>);
-        std::vector<std::shared_ptr<Type>> const& get_field_types() const;
-
-        // Custom //
-
-        void add_constructor(std::shared_ptr<Constructor>);
-        std::vector<std::shared_ptr<Constructor>> const& get_constructor_types() const;
-
-        // Unknown //
-
-        std::string get_unknown_id() const;
+        std::string type_enum_str() const;
+        std::string to_string() const;
     };
-
 }
 
 #endif // __TYPESYSTEM_CORE_HPP__
