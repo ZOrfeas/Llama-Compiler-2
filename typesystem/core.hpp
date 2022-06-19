@@ -1,6 +1,7 @@
 #ifndef __TYPESYSTEM_CORE_HPP__
 #define __TYPESYSTEM_CORE_HPP__
 
+#include <string>
 #include <string_view>
 #include <variant>
 #include <concepts>
@@ -46,7 +47,8 @@ namespace typesys {
     concept AnyType = BuiltinType<T> || ComplexType<T>;
     template<typename T>
     concept AnyTypePtr = BuiltinTypePtr<T> || ComplexTypePtr<T>;
-
+    
+    using namespace std::string_literals;
     class Type {
     private:
         std::variant<
@@ -63,7 +65,6 @@ namespace typesys {
         > type_variant;
         template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
         template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
-
     protected:
     public:
         Type();
@@ -85,20 +86,17 @@ namespace typesys {
                 return inner;
             }
             error::internal(
-                std::string("Tried to downcast ") +
+                "Tried to downcast "s +
                 get_type_enum_str() +
-                std::string(" to ") + 
-                std::string(type_enum_to_str(T::tEnum)) +
-                std::string(caller) != std::string("") ? 
-                    std::string(" in ") +
-                    std::string(caller) 
-                :   std::string("")
+                " to " + 
+                type_enum_to_str(T::tEnum) +
+                caller != "" ? " in " + std::string(caller) :   ""
             );
         }
         bool operator==(Type const& other) const;
         bool operator!=(Type const& other) const;
 
-        std::string get_type_enum_str() const;
+        const char* get_type_enum_str() const;
         std::string to_string() const;
     };
 }

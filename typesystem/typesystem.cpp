@@ -17,7 +17,7 @@ namespace typesys {
             },
         }, type_variant);
     }
-    std::string Type::get_type_enum_str() const {
+    const char* Type::get_type_enum_str() const {
         return std::visit(overloaded{
             []<AnyTypePtr T>(T const& t) {
                 return type_enum_to_str(T::element_type::type_enum);
