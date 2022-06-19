@@ -123,7 +123,7 @@ struct match : Fs... {
 
     // constexpr match(Fs &&... fs) : Fs{fs}... {}
 };
-template<class... Ts> match(Ts...) -> match<Ts...>;
+template<class... Ts> match(Ts...) -> match<Ts...>; // needed even though c++20... bad clang
 
 template <typename... Ts, typename... Fs>
 constexpr decltype(auto) operator| (std::variant<Ts...> const& v, match<Fs...> const& match) {
