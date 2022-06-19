@@ -16,6 +16,9 @@ namespace typesys {
             },
         }, type_variant);
     }
+    std::ostream& operator<<(std::ostream& os, Type const& t) {
+        return os << t.to_string();
+    }
     const char* Type::get_type_enum_str() const {
         return std::visit(overloaded{
             []<AnyTypePtr T>(T const& t) {
@@ -25,7 +28,7 @@ namespace typesys {
     }
     bool Type::operator==(Type const& other) const {
         return std::visit(overloaded{
-            []<AnyTypePtr T>(T const& t1, T const& t2) {
+            [&]<AnyTypePtr T>(T const& t1, T const& t2) {
                 // They are the same || their contents are equal
                 return t1 == t2 || *t1 == *t2;
             },
@@ -49,11 +52,15 @@ namespace typesys {
                         std::to_string(dim_low_bound) + 
                         ") of";
             } else {
-                std::string dim_string = "";
+                std::string dim_string = " ";
                 if (this->dimensions > 1) {
-
+                    dim_string += "[";
+                    for (int i = 0; i < this->dimensions-1; ++i) {
+                        dim_string += "*,";
+                    }
+                    dim_string += "*]";
                 }
-                return "array " + dim_string + " of";
+                return "array" + dim_string + " of";
             }
         }();
         return "(" + dim_string + " " +

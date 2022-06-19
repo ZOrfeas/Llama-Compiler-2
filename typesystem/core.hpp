@@ -1,6 +1,7 @@
 #ifndef __TYPESYSTEM_CORE_HPP__
 #define __TYPESYSTEM_CORE_HPP__
 
+#include <ostream>
 #include <string>
 #include <string_view>
 #include <variant>
@@ -52,22 +53,17 @@ namespace typesys {
     class Type {
     private:
         std::variant<
-            std::shared_ptr<Unit>,
-            std::shared_ptr<Int>,
-            std::shared_ptr<Char>,
-            std::shared_ptr<Bool>,
-            std::shared_ptr<Float>,
-            std::shared_ptr<Array>,
-            std::shared_ptr<Ref>,
-            std::shared_ptr<Function>,
-            std::shared_ptr<Custom>,
-            std::shared_ptr<Unknown>
+            std::shared_ptr<Unit>, std::shared_ptr<Int>,
+            std::shared_ptr<Char>, std::shared_ptr<Bool>,
+            std::shared_ptr<Float>, std::shared_ptr<Array>,
+            std::shared_ptr<Ref>, std::shared_ptr<Function>,
+            std::shared_ptr<Custom>, std::shared_ptr<Unknown>
         > type_variant;
         template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
         template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
     protected:
         template<AnyTypePtr T>
-        Type(T t) : type_variant(t) {}
+        Type(T t) : type_variant(std::move(t)) {}
     public:
         Type() = delete;
         template<BuiltinType T>
@@ -110,9 +106,8 @@ namespace typesys {
         bool operator!=(Type const& other) const;
 
         const char* get_type_enum_str() const;
+        friend std::ostream& operator<<(std::ostream&, Type const&);
         std::string to_string() const;
-
-
     };
 }
 
