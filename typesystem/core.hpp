@@ -59,8 +59,6 @@ namespace typesys {
             std::shared_ptr<Ref>, std::shared_ptr<Function>,
             std::shared_ptr<Custom>, std::shared_ptr<Unknown>
         > type_variant;
-        template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
-        template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
     protected:
         template<AnyTypePtr T>
         Type(T t) : type_variant(std::move(t)) {}

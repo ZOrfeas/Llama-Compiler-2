@@ -1,14 +1,15 @@
 #include <type_traits>
 
 #include "./types.hpp"
-#include "../utils/match-as-is.hpp"
+#include "../utils/utils.hpp"
 
 namespace typesys {
     // possibly nice syntax for matching variants:
     // https://github.com/AVasK/vx/blob/main/vx.hpp
 
     std::string Type::to_string() const {
-        return type_variant | vx::match {
+        using utils::match;
+        return type_variant | match {
             []<BuiltinTypePtr T>(T const& t) -> std::string {
                 return type_enum_to_str(T::element_type::type_enum);
             },
@@ -21,7 +22,8 @@ namespace typesys {
         return os << t.to_string();
     }
     const char* Type::get_type_enum_str() const {
-        return type_variant | vx::match {
+        using utils::match;
+        return type_variant | match {
             []<AnyTypePtr T>(T const& t) {
                 return type_enum_to_str(T::element_type::type_enum);
             }
@@ -29,7 +31,8 @@ namespace typesys {
     }
     bool Type::operator==(Type const& other) const {
         using std::make_tuple;
-        return make_tuple(type_variant, other.type_variant) | vx::match {
+        using utils::match;
+        return make_tuple(type_variant, other.type_variant) | match {
             [&]<AnyTypePtr T>(T const& t1, T const& t2) {
                 // They are the same || their contents are equal
                 return t1 == t2 || *t1 == *t2;
