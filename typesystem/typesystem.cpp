@@ -3,7 +3,6 @@
 #include "./types.hpp"
 
 namespace typesys {
-    Type::Type() {}
     // possibly nice syntax for matching variants:
     // https://github.com/AVasK/vx/blob/main/vx.hpp
 

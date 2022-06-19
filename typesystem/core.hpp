@@ -66,9 +66,22 @@ namespace typesys {
         template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
         template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
     protected:
+        template<AnyTypePtr T>
+        Type(T t) : type_variant(t) {}
     public:
-        Type();
-        // TODO(orf): Handle construction assignment and moving
+        Type() = delete;
+        template<BuiltinType T>
+        static Type get() {
+            static auto singleton = std::make_shared<T>();
+            return Type(singleton);
+        }
+        //!Note: Make sure the errors when giving wrong args are not too bad
+        template<ComplexType T, typename... Args>
+        static Type get(Args&&... args) {
+            return Type(std::make_shared<T>(
+                std::forward<Args>(args)...
+            ));
+        }
         template<AnyType T>
         bool is() const {
             return std::holds_alternative<std::shared_ptr<T>>(type_variant);
@@ -98,6 +111,8 @@ namespace typesys {
 
         const char* get_type_enum_str() const;
         std::string to_string() const;
+
+
     };
 }
 
