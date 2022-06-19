@@ -3,16 +3,15 @@
 
 namespace typesys {
     class Type;
-    class Builtin;
-    class Unit;
-    class Int;
-    class Char;
-    class Bool;
-    class Float;
+    struct Unit;
+    struct Int;
+    struct Char;
+    struct Bool;
+    struct Float;
     class Array;
     class Ref;
     class Function;
-    class Constructor;
+    // class Constructor;
     class Custom;
     class Unknown;
 }

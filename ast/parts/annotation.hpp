@@ -5,7 +5,7 @@
 #include <vector>
 #include <memory>
 
-#include "../../typesystem/typesystem.hpp"
+#include "../../typesystem/types.hpp"
 #include "../visitor/visitor.hpp"
 #include "./core.hpp"
 

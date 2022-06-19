@@ -1,39 +1,51 @@
 #include <type_traits>
 
-#include "./typesystem.hpp"
+#include "./types.hpp"
+#include "../utils/match-as-is.hpp"
 
-namespace typesys {    
-    // Builtins //
+namespace typesys {
+    // possibly nice syntax for matching variants:
+    // https://github.com/AVasK/vx/blob/main/vx.hpp
 
-    Builtin::Builtin(TypeEnum b): Type(b) {}
-    bool Builtin::equals(Type const* o) const {
-        return this->type == o->type;
+    std::string Type::to_string() const {
+        return type_variant | vx::match {
+            []<BuiltinTypePtr T>(T const& t) -> std::string {
+                return type_enum_to_str(T::element_type::type_enum);
+            },
+            []<ComplexTypePtr T>(T const& t) {
+                return t->to_string();
+            }
+        };
     }
-    std::string Builtin::to_string() const {
-        return type_name(this->type);
+    std::ostream& operator<<(std::ostream& os, Type const& t) {
+        return os << t.to_string();
     }
-    
-    Unit::Unit(): Builtin(TypeEnum::UNIT) {}
-    Int::Int(): Builtin(TypeEnum::INT) {}
-    Char::Char(): Builtin(TypeEnum::CHAR) {}
-    Bool::Bool(): Builtin(TypeEnum::BOOL) {}
-    Float::Float(): Builtin(TypeEnum::FLOAT) {}
+    const char* Type::get_type_enum_str() const {
+        return type_variant | vx::match {
+            []<AnyTypePtr T>(T const& t) {
+                return type_enum_to_str(T::element_type::type_enum);
+            }
+        };
+    }
+    bool Type::operator==(Type const& other) const {
+        using std::make_tuple;
+        return make_tuple(type_variant, other.type_variant) | vx::match {
+            [&]<AnyTypePtr T>(T const& t1, T const& t2) {
+                // They are the same || their contents are equal
+                return t1 == t2 || *t1 == *t2;
+            },
+            [](auto&& t1, auto&& t2) { return false; }
+        };
+    }
+    bool Type::operator!=(Type const& other) const {
+        return !(*this == other);
+    }
 
     // Array //
 
-    Array::Array(std::shared_ptr<Type> element_type, int dimensions):
-        Type(TypeEnum::ARRAY),
+    Array::Array(Type element_type, int dimensions):
         element_type(std::move(element_type)),
         dimensions(dimensions) {}
-    bool Array::equals(Type const* o) const {
-        if (Array* o = o->as<Array>()) {
-            return *this->dim_low_bound_ptr == 0 &&
-                   *o->dim_low_bound_ptr == 0 &&
-                   this->dimensions == o->dimensions &&
-                   this->element_type->equals(o->element_type);
-        }
-        return false;
-    }
     std::string Array::to_string() const {
         const auto dim_low_bound = *this->dim_low_bound_ptr;
         const auto dim_string = [&](){
@@ -42,98 +54,103 @@ namespace typesys {
                         std::to_string(dim_low_bound) + 
                         ") of";
             } else {
-                std::string dim_string = "";
+                std::string dim_string = " ";
                 if (this->dimensions > 1) {
-
+                    dim_string += "[";
+                    for (int i = 0; i < this->dimensions-1; ++i) {
+                        dim_string += "*,";
+                    }
+                    dim_string += "*]";
                 }
-                return "array " + dim_string + " of";
+                return "array" + dim_string + " of";
             }
         }();
         return "(" + dim_string + " " +
-                this->element_type->to_string() + ")";        
+                this->element_type.to_string() + ")";        
+    }
+    bool Array::operator==(Array const& other) const {
+        return *this->dim_low_bound_ptr == 0 &&
+               *other.dim_low_bound_ptr == 0 &&
+               this->dimensions == other.dimensions &&
+               this->element_type == other.element_type;
+    }
+    bool Array::operator!=(Array const& other) const {
+        return !(*this == other);
     }
 
     // Ref //
 
-    Ref::Ref(std::shared_ptr<Type> ref_type):
-        Type(TypeEnum::REF),
+    Ref::Ref(Type ref_type):
         ref_type(std::move(ref_type)) {}
-    bool Ref::equals(Type const* o) const {
-        if (Ref* o = o->as<Ref>())
-            return this->ref_type->equals(o->ref_type);
-        return false;
-    }
     std::string Ref::to_string() const {
-        return this->ref_type->to_string() + " ref";
+        return this->ref_type.to_string() + " ref";
+    }
+    bool Ref::operator==(Ref const& other) const {
+        return this->ref_type == other.ref_type;
+    }
+    bool Ref::operator!=(Ref const& other) const {
+        return !(*this == other);
     }
     // Function //
     
-    Function::Function(std::shared_ptr<Type> return_type):
-        Type(TypeEnum::FUNCTION),
+    Function::Function(Type return_type):
         return_type(std::move(return_type)) {}
-    bool Function::equals(Type const* o) const {
-        if (Function* o = o->as<Function>()) {
-            if (this->param_types.size() != o->param_types.size())
-                return false;
-            for (size_t i = 0; i < this->param_types.size(); i++)
-                if (!(this->param_types[i]->equals(o->param_types[i])))
-                    return false;
-            return this->return_type->equals(o->return_type);
-        }
-        return false;
-    }
     std::string Function::to_string() const {
         auto param_string = [&]() -> std::string {
             if (this->param_types.size() == 0)
                 return "unknown";
-            std::string tmp_string = this->param_types[0]->to_string();
+            std::string tmp_string = this->param_types[0].to_string();
             for (size_t i = 1; i < this->param_types.size(); i++)
-                tmp_string += " -> " + this->param_types[i]->to_string();
+                tmp_string += " -> " + this->param_types[i].to_string();
             return tmp_string;
         }();
         return "(" + param_string + " -> " +
-                this->return_type->to_string() + ")";
+                this->return_type.to_string() + ")";
+    }
+    bool Function::operator==(Function const& other) const {
+        return this->param_types.size() == other.param_types.size() &&
+               this->return_type == other.return_type &&
+               std::equal(
+                     this->param_types.begin(),
+                     this->param_types.end(),
+                     other.param_types.begin()
+                );
+    }
+    bool Function::operator!=(Function const& other) const {
+        return !(*this == other);
     }
     
-    // Constructor //
-
-    Constructor::Constructor(std::string_view name):
-        Type(TypeEnum::RECORD),
-        name(name) {}
-    bool Constructor::equals(Type const* o) const {
-        if (Constructor* o = o->as<Constructor>())
-            return this->custom_type->Type::equals(o->custom_type) &&
-                   this->name == o->name;
-        return false;
-    }
-    std::string Constructor::to_string() const {
-        return this->name;
-    }
-
     // Custom //
 
     Custom::Custom(std::string_view name):
-        Type(TypeEnum::CUSTOM),
         name(name) {}
-    bool Custom::equals(Type const* o) const {
-        if (Custom* o = o->as<Custom>())
-            //!Note(orf): make sure no shadowing is allowed
-            return this->name == o->name;
-        return false;
-    }
+    //!Note(orf): make sure no shadowing is allowed
     std::string Custom::to_string() const {
         return this->name;
     }
+    bool Custom::operator==(Custom const& other) const {
+        return this->name == other.name;
+    }
+    bool Custom::operator!=(Custom const& other) const {
+        return !(*this == other);
+    }
+    Custom::Constructor::Constructor(
+        std::string_view name,
+        Custom const& custom_type
+    ): name(name), custom_type(custom_type) {}
+
 
     // Unknown //
 
     unsigned long Unknown::next_id = 0;
-    Unknown::Unknown(): Type(TypeEnum::UNKNOWN), id(next_id++) {}
-    bool Unknown::equals(Type const* o) const {
-        if (Unknown* o = o->as<Unknown>())
-            return this->id == o->id;
-    }
+    Unknown::Unknown(): id(next_id++) {}
     std::string Unknown::to_string() const {
         return "@" + std::to_string(this->id);
+    }
+    bool Unknown::operator==(Unknown const& other) const {
+        return this->id == other.id;
+    }
+    bool Unknown::operator!=(Unknown const& other) const {
+        return !(*this == other);
     }
 }

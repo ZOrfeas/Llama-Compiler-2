@@ -5,20 +5,16 @@ FLEX=flex
 BISON=/opt/homebrew/opt/bison/bin/bison
 
 BUILD=./build
+OBJS=lexer.o parser.o ast-print.o typesystem.o error.o main.o
+OBJS_PATHS=$(patsubst %,$(BUILD)/%,$(OBJS))
 
 default: all
 
 all: llamac
 
 # Final linking
-llamac: $(BUILD)/lexer.o $(BUILD)/parser.o $(BUILD)/ast-print.o $(BUILD)/main.o $(BUILD)/typesystem.o
-	$(CXX) $(CXXFlAGS) -o llamac \
-	$(BUILD)/typesystem.o \
-	$(BUILD)/lexer.o \
-	$(BUILD)/parser.o \
-	$(BUILD)/ast-print.o \
-	$(BUILD)/main.o
-
+llamac: $(OBJS_PATHS)
+	$(CXX) $(CXXFlAGS) -o llamac $^
 
 # Auto-generated lexer and parser
 lexer.cpp: lexer.l
@@ -32,15 +28,22 @@ ast/ast.hpp: ast/parts/*.hpp
 
 # Object files
 $(BUILD)/lexer.o: lexer.cpp lexer.hpp parser.hpp ast/ast.hpp
-	$(CXX) $(CXXFLAGS) -c -o $@ $<
 $(BUILD)/parser.o: parser.cpp lexer.hpp ast/ast.hpp
-	$(CXX) $(CXXFLAGS) -c -o $@ $<
-$(BUILD)/ast-print.o: passes/print/ast-print.cpp passes/print/ast-print.hpp ast/ast.hpp
-	$(CXX) $(CXXFLAGS) -c -o $@ $<
-$(BUILD)/main.o: main.cpp parser.hpp ast/forward.hpp passes/print/ast-print.hpp
-	$(CXX) $(CXXFLAGS) -c -o $@ $<
-$(BUILD)/typesystem.o: typesystem/typesystem.cpp typesystem/typesystem.hpp
-	$(CXX) $(CXXFLAGS) -c -o $@ $<
+$(BUILD)/ast-print.o: passes/print/ast-print.cpp \
+ passes/print/ast-print.hpp ast/ast.hpp
+$(BUILD)/main.o: main.cpp parser.hpp \
+ ast/forward.hpp passes/print/ast-print.hpp
+$(BUILD)/typesystem.o: typesystem/typesystem.cpp \
+ typesystem/core.hpp typesystem/types.hpp \
+ error/error.hpp utils/utils.hpp
+$(BUILD)/error.o: error/error.cpp error/error.hpp
+
+# Grouping of rule-types with same recipe
+$(BUILD)/%.o: passes/*/%.cpp
+$(BUILD)/%.o: %/%.cpp
+$(BUILD)/%.o: %.cpp
+$(BUILD)/%.o:
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 clean:
 	$(RM) llamac
