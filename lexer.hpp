@@ -6,7 +6,7 @@
 #include "ast/forward.hpp"
 
 int yylex();
-void yyerror(ast::core::Program *&the_program, std::string_view msg);
+void yyerror(ast::core::Program &the_program, std::string_view msg);
 extern int yylineno;
 
 #endif

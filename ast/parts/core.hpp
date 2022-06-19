@@ -25,6 +25,7 @@ namespace ast::core {
     };
     class Program : public Node {
     public:
+        Program() = default;
         unique_ptr<vector<unique_ptr<DefStmt>>> defstmt_list;
         Program(vector<unique_ptr<DefStmt>> *statements)
             : defstmt_list(statements) {}

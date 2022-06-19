@@ -15,7 +15,7 @@
 // int yylineno = 1;
 int comment_cnt = 0;
 // void lex_error(const char *msg);
-ast::core::Program *dummy_program;
+ast::core::Program dummy_program;
 %}
 
 W [ \t\n\r]  
