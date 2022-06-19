@@ -10,10 +10,6 @@
 #include "lexer.hpp"
 #include "ast/ast.hpp"
 
-#include "passes/print/ast-print.hpp"
-
-// using std::std::vector;
-// using std::std::unique_ptr;
 // #define YYDEBUG 1 // comment out to disable debug feature compilation
 }
 %define parse.error verbose
