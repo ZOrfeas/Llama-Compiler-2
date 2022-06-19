@@ -72,8 +72,8 @@ namespace typesys {
         Type() = delete;
         template<BuiltinType T>
         static Type get() {
-            static auto singleton = std::make_shared<T>();
-            return Type(singleton);
+            static auto instance = std::make_shared<T>();
+            return Type(instance);
         }
         //!Note: Make sure the errors when giving wrong args are not too bad
         template<ComplexType T, typename... Args>
