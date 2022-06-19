@@ -1,7 +1,7 @@
 
 #include <string>
 
-#include "../../typesystem/utils.hpp"
+#include "../../typesystem/types.hpp"
 #include "./ast-print.hpp"
 #include "../../ast/ast.hpp"
 

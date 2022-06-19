@@ -29,9 +29,13 @@ ast/ast.hpp: ast/parts/*.hpp
 # Object files
 $(BUILD)/lexer.o: lexer.cpp lexer.hpp parser.hpp ast/ast.hpp
 $(BUILD)/parser.o: parser.cpp lexer.hpp ast/ast.hpp
-$(BUILD)/ast-print.o: passes/print/ast-print.cpp passes/print/ast-print.hpp ast/ast.hpp
-$(BUILD)/main.o: main.cpp parser.hpp ast/forward.hpp passes/print/ast-print.hpp
-$(BUILD)/typesystem.o: typesystem/typesystem.cpp typesystem/core.hpp typesystem/utils.hpp
+$(BUILD)/ast-print.o: passes/print/ast-print.cpp \
+ passes/print/ast-print.hpp ast/ast.hpp
+$(BUILD)/main.o: main.cpp parser.hpp \
+ ast/forward.hpp passes/print/ast-print.hpp
+$(BUILD)/typesystem.o: typesystem/typesystem.cpp \
+ typesystem/core.hpp typesystem/types.hpp \
+ error/error.hpp utils/utils.hpp
 $(BUILD)/error.o: error/error.cpp error/error.hpp
 
 # Grouping of rule-types with same recipe

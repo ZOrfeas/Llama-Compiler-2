@@ -5,6 +5,7 @@
 #include <variant>
 #include <concepts>
 
+#include "../utils/utils.hpp"
 #include "../error/error.hpp"
 #include "./forward.hpp"
 
@@ -23,17 +24,6 @@ namespace typesys {
         return builtin_name[static_cast<int>(b)];
     }
 
-    // TODO(orf): Move this ↓↓
-        template <typename T, template <typename...> class Z>
-        struct is_specialization_of : std::false_type {};
-        template <typename... Args, template <typename...> class Z>
-        struct is_specialization_of<Z<Args...>, Z> : std::true_type {};
-        template <typename T, template <typename...> class Z>
-        inline constexpr bool is_specialization_of_v = is_specialization_of<T,Z>::value;
-        template <typename T>
-        concept IsSharedPtr = is_specialization_of_v<T, std::shared_ptr>;
-    // TODO(orf): Move this ↑↑
-
     template<typename T>
     concept BuiltinType = std::is_same_v<T, Unit> ||
                           std::is_same_v<T, Int> ||
@@ -41,7 +31,7 @@ namespace typesys {
                           std::is_same_v<T, Bool> ||
                           std::is_same_v<T, Float>;
     template<typename T>
-    concept BuiltinTypePtr = IsSharedPtr<T> &&
+    concept BuiltinTypePtr = utils::IsSharedPtr<T> &&
                              BuiltinType<typename T::element_type>;
     template<typename T>
     concept ComplexType = std::is_same_v<T, Array> ||
@@ -50,7 +40,7 @@ namespace typesys {
                           std::is_same_v<T, Custom> ||
                           std::is_same_v<T, Unknown>;
     template<typename T>
-    concept ComplexTypePtr = IsSharedPtr<T> &&
+    concept ComplexTypePtr = utils::IsSharedPtr<T> &&
                              ComplexType<typename T::element_type>;
     template<typename T>
     concept AnyType = BuiltinType<T> || ComplexType<T>;
