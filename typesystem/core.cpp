@@ -1,5 +1,5 @@
 
-#include "./typesystem.hpp"
+#include "./utils.hpp"
 
 namespace typesys {
     Type::Type() {}
@@ -9,7 +9,7 @@ namespace typesys {
     std::string Type::to_string() const {
         return std::visit(overloaded{
             []<BuiltinTypePtr T>(T const& t) -> std::string {
-                return type_enum_to_str(T::type_enum);
+                return type_enum_to_str(T::element_type::type_enum);
             },
             []<ComplexTypePtr T>(T const& t) {
                 return t->to_string();

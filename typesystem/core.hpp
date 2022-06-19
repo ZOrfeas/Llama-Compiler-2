@@ -5,7 +5,7 @@
 #include <variant>
 #include <concepts>
 
-#include "../../error/error.hpp"
+#include "../error/error.hpp"
 #include "./forward.hpp"
 
 //!Note: I do not like to have to implement templates in headers ... :(
@@ -72,8 +72,11 @@ namespace typesys {
             std::shared_ptr<Unknown>
         > type_variant;
         template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
+        template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
+
     protected:
     public:
+        Type();
         // TODO(orf): Handle construction assignment and moving
         template<AnyType T>
         bool is() const {
@@ -92,10 +95,14 @@ namespace typesys {
                 return inner;
             }
             error::internal(
-                "Tried to downcast " +
-                std::string(get_type_enum_str()) +
-                " to " + std::string(type_enum_to_str(T::tEnum)) +
-                caller != "" ? " in " + caller : "";
+                std::string("Tried to downcast ") +
+                get_type_enum_str() +
+                std::string(" to ") + 
+                std::string(type_enum_to_str(T::tEnum)) +
+                std::string(caller) != std::string("") ? 
+                    std::string(" in ") +
+                    std::string(caller) 
+                :   std::string("")
             );
         }
         bool operator==(Type const& other) const;

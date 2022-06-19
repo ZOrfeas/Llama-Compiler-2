@@ -11,12 +11,13 @@ default: all
 all: llamac
 
 # Final linking
-llamac: $(BUILD)/lexer.o $(BUILD)/parser.o $(BUILD)/ast-print.o $(BUILD)/main.o $(BUILD)/typesystem.o
+llamac: $(BUILD)/lexer.o $(BUILD)/parser.o $(BUILD)/ast-print.o $(BUILD)/main.o $(BUILD)/typesystem.o $(BUILD)/error.o
 	$(CXX) $(CXXFlAGS) -o llamac \
 	$(BUILD)/typesystem.o \
 	$(BUILD)/lexer.o \
 	$(BUILD)/parser.o \
 	$(BUILD)/ast-print.o \
+	$(BUILD)/error.o \
 	$(BUILD)/main.o
 
 
@@ -39,9 +40,10 @@ $(BUILD)/ast-print.o: passes/print/ast-print.cpp passes/print/ast-print.hpp ast/
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 $(BUILD)/main.o: main.cpp parser.hpp ast/forward.hpp passes/print/ast-print.hpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
-$(BUILD)/typesystem.o: typesystem/typesystem.cpp typesystem/typesystem.hpp
+$(BUILD)/typesystem.o: typesystem/core.cpp typesystem/core.hpp typesystem/utils.hpp typesystem/utils.cpp
+	$(CXX) $(CXXFLAGS) -c -o $@ typesystem/typesystem.cpp
+$(BUILD)/error.o: error/error.cpp error/error.hpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
-
 clean:
 	$(RM) llamac
 
