@@ -27,7 +27,7 @@ namespace typesys {
     bool Type::operator==(Type const& other) const {
         return std::visit(overloaded{
             []<AnyTypePtr T>(T const& t1, T const& t2) {
-                // They are the safe || their contents are equal
+                // They are the same || their contents are equal
                 return t1 == t2 || *t1 == *t2;
             },
             [](auto&& t1, auto&& t2) { return false; }
