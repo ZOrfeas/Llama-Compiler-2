@@ -33,7 +33,7 @@ namespace typesys {
         using std::make_tuple;
         using utils::match;
         return make_tuple(type_variant, other.type_variant) | match {
-            [&]<AnyTypePtr T>(T const& t1, T const& t2) {
+            []<AnyTypePtr T>(T const& t1, T const& t2) {
                 // They are the same || their contents are equal
                 return t1 == t2 || *t1 == *t2;
             },
