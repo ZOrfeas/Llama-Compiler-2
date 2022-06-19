@@ -35,8 +35,8 @@ $(BUILD)/typesystem.o: typesystem/typesystem.cpp typesystem/core.hpp typesystem/
 $(BUILD)/error.o: error/error.cpp error/error.hpp
 
 # Grouping of rule-types with same recipe
-$(BUILD)/%.o: **/%.cpp
-$(BUILD)/%.o: */**/%.cpp
+$(BUILD)/%.o: passes/*/%.cpp
+$(BUILD)/%.o: %/%.cpp
 $(BUILD)/%.o: %.cpp
 $(BUILD)/%.o:
 	$(CXX) $(CXXFLAGS) -c $< -o $@
