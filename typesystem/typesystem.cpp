@@ -4,9 +4,6 @@
 #include "../utils/utils.hpp"
 
 namespace typesys {
-    // possibly nice syntax for matching variants:
-    // https://github.com/AVasK/vx/blob/main/vx.hpp
-
     std::string Type::to_string() const {
         using utils::match;
         return type_variant | match {
