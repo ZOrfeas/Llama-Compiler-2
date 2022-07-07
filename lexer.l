@@ -41,7 +41,6 @@ Hex [0-9a-f]
 "#include"  { BEGIN(INCLUDE_STMT); }
 <INCLUDE_STMT>{W}*  {/* eat whitespace */}
 <INCLUDE_STMT>[^ \t\n\r]+ {
-    
     using std::string_literals::operator""s;
     if (filename_set.find(yytext) != filename_set.end()) {
         std::string err = "Circular include: "s + yytext;

@@ -395,6 +395,5 @@ pattern_list
 
 void yyerror(ast::core::Program &the_program, std::string_view msg) {
     std::cerr << "Error in file " << filename_stack.back() << " line " << yylineno << ": " << msg << std::endl;
-    /* fprintf(stderr, "Error at line %d: %s\n", yylineno, msg); */
     std::exit(1);
 }
