@@ -4,6 +4,13 @@
 
 #include "typesystem/types.hpp"
 
+#include <vector>
+#include <unordered_set>
+
+std::unordered_set<std::string> filename_set;
+std::vector<std::string> filename_stack;
+
+
 void print_ast(ast::core::Program& p, std::ostream& os = std::cout) {
     auto v = PrintVisitor(os);
     p.accept(&v);
@@ -12,6 +19,8 @@ void print_ast(ast::core::Program& p, std::ostream& os = std::cout) {
 int main() {
     /* yydebug = 1; // default val is zero so just comment this to disable */
     ast::core::Program program;
+    filename_set.insert("dummy_filename_for_now");
+    filename_stack.push_back("dummy_filename_for_now");
     int result = yyparse(program);
     print_ast(program);
     if (result == 0) std::cout << "Success\n";
