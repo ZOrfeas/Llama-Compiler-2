@@ -2,10 +2,12 @@
 #include "parser.hpp"
 #include "passes/print/ast-print.hpp"
 
-#include "typesystem/types.hpp"
-
 #include <vector>
 #include <unordered_set>
+
+// TODO(ORF): Hide filename utilities and only provide push/pop/contains functionality.
+// TODO(ORF): Use cli-args to specify initial input file.
+// TODO(ORF): Think on how you want cwd to work. (Currently cwd is the active working directory when the compiler was invoked)
 
 std::unordered_set<std::string> filename_set;
 std::vector<std::string> filename_stack;
