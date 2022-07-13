@@ -588,16 +588,107 @@
 					"end": "(?<=\\s*)\\)(?=\\s*)", 
 					"patterns": [{"include": "#expr"}]
 				},
+				{"include": "#unop"},
+				{"include": "#binop"},
 				{
-					"comment": "unop expr",
-					"begin": "(\\+|\\-|\\+\\.|\\-\\.|\\!|not)",
-					"beginCaptures": {"0": {"patterns": [{"include": "#unop"}]}},
-					"end": "(?=\\s*(and|let|type|in[^t]|end|then|else|do|done|to|downto|with|true|false|dim|new|delete|begin|if|while|for|match|\\,|\\]|\\)|\\(|\\||(\\+|\\-|\\+\\.|\\-\\.|\\!|not)|(((\\+|\\-|\\*|\\/)(\\.)?)|mod|\\*\\*|\\=|\\<\\>|\\<|\\>|\\<\\=|\\>\\=|\\=\\=|\\!\\=|\\&\\&|\\|\\||\\;|\\:\\=)|([a-z]([a-zA-Z0-9]|\\_)*)|([A-Z]([a-zA-Z0-9]|\\_)*)|(?<!\\.)[0-9]+(?=\\s+)|[0-9]+\\.[0-9]+(e[\\+\\-]?[0-9]+)?|\\'([^'\"\\\\\\n\\r\\0]|(\\\\([ntr0\\'\"]|(x{[0-9a-f]}{[0-9a-f]}))))\\'|\"((.|[^\"\\n])?)*\"|true|false|\\(\\)))",
-					"contentName": "unop.expr.llama",
+					"begin": "(?<=\\s*)dim",
+					"end": "(?<=[a-z][[:word:]]*\\s*)",
+					"beginCaptures": {"0": {"name": "keyword.control.dim"}},
 					"patterns": [
-						{"include": "#expr"}
+						{"include": "#intLiteral"},
+						{"include": "#idlowervar"}
 					]
-				}
+				},
+				{
+					"begin": "begin",
+					"beginCaptures": {"0": {"name": "keyword.control.begin.llama"}},
+					"end": "end",
+					"endCaptures": {"0": {"name": "keyword.control.end.llama"}},
+					"patterns": [{"include": "#expr"}] 
+				},
+				{
+					"begin": "(?<=\\s*)while",
+					"end": "(?<=\\s*)done",
+					"beginCaptures": { "0": { "name": "keyword.control.while.llama" } },
+					"endCaptures": { "0": { "name": "keyword.control.done.llama" } },
+					"patterns": [
+					  {
+						"begin": "(?:(?<=(?:[^[:word:]]while|^while))(?![[:word:]]))",
+						"end": "(?<=\\s*)do",
+						"endCaptures": { "0": { "name": "keyword.control.do.llama" } },
+						"patterns": [{ "include": "#expr" }]
+					  },
+					  {
+						"begin": "(?:(?<=(?:[^[:word:]]do|^do))(?![[:word:]]))",
+						"end": "(?=\\s*done)",
+						"patterns": [{ "include": "#expr" }]
+					  }
+					]
+				},
+				{
+					"begin": "(?<=\\s*)for",
+					"end": "(?<=\\s*)done",
+					"beginCaptures": {"0": {"name": "keyword.control.for.llama"}},
+					"endCaptures": {"0": {"name": "keyword.control.done.llama"}},
+					"patterns": [
+						{
+							"begin": "(?<=for\\s*)",
+							"end": "(?<=\\s*)=",
+							"endCaptures": {"0": {"name": "equal.llama"}},
+							"patterns": [{"include": "#idlowervar"}]
+						},
+						{
+							"begin": "(?<==\\s*)",
+							"end": "(?<=\\s*)(to|downto)",
+							"endCaptures": {"0": {"name": "keyword.control.to.llama"}},
+							"patterns": [{"include": "#expr"}]
+						},
+						{
+							"begin": "(?<=(to|downto)\\s*)",
+							"end": "(?<=\\s*)do",
+							"endCaptures": {"0": {"name": "keyword.control.do.llama"}},
+							"patterns": [{"include": "#expr"}]
+						},
+						{
+							"begin": "(?<=do\\s*)",
+							"end": "(?=\\s*done)",
+							"patterns": [{"include": "#expr"}]
+						}
+					]
+
+				},
+				{
+					"begin": "(?<=\\s*)match",
+					"end": "(?<=\\s*)end",
+					"beginCaptures": {"0": {"name": "keyword.control.match.llama"}},
+					"endCaptures": {"0": {"name": "keyword.control.end.llama"}},
+					"patterns": [
+						{
+							"begin": "(?<=match\\s*)",
+							"end": "(?<=\\s*)with",
+							"endCaptures": {"0": {"name": "keyword.control.with.llama"}},
+							"patterns": [{"include": "#expr"}]
+						},
+						{
+							"begin": "(?<=with\\s*)",
+							"end": "(?=\\s*end)",
+							"patterns": [
+								{"include": "#clause"},
+								{
+									"name": "bar.llama",
+									"match": "\\|"
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "keyword.operator.llama",
+					"match": "(new|delete)"
+				},
+				{"include": "#type"},
+				{"include": "#idlowervar"},
+				{"include": "#idupper"}
 			]
 		},
 		"idlowervar": 
@@ -703,6 +794,49 @@
 				{
 					"name": "constant.language.unit.llama", 
 					"match": "\\(\\)"
+				}
+			]
+		},
+		"clause": 
+		{
+			"comment": "Only appears in match rule",
+			"begin": "(?<=(with|\\|)\\s*)",
+			"end": "(?=\\s*(end|\\|))",
+			"contentName": "clause.llama",
+			"patterns": [
+				{
+					"begin": "(?<=(with|\\|)\\s*)",
+					"end": "(?<=\\s*)\\-\\>",
+					"endCaptures": {"0": {"name": "arrow.llama"}},
+					"patterns": [{"include": "#pattern"}] 
+				},
+				{
+					"begin": "(?<=\\-\\>\\s*)",
+					"end": "(?=\\s*(end|\\|))",
+					"patterns": [{"include": "#expr"}]
+				}
+			]
+
+		},
+		"pattern": 
+		{
+			"patterns": [
+				{
+					"name": "pattern.unop.llama",
+					"match": "(\\+\\.|\\-\\.)(?=\\s*[0-9]+\\.[0-9]+(e[\\+\\-]?[0-9]+)?)|(\\+|\\-)(?=\\s*(?<!\\.)[0-9]+(?=\\s+))"
+				},
+				{"include": "#intLiteral"},
+				{"include": "#floatLiteral"},
+				{"include": "#charLiteral"}, 
+				{"include": "#boolLiteral"},
+				{"include": "#idlowervar"},
+				{
+					"begin": "(?<=\\s*)\\(",
+					"end": "(?<=\\s*)\\)",
+					"patterns": [{"include": "#pattern"}]
+				},
+				{
+					"comment": "Constructor pattern"
 				}
 			]
 		}
