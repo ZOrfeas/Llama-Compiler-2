@@ -48,6 +48,8 @@ void setup_frontend(CLI::App &compiler) {
     auto frontend = compiler.add_subcommand("frontend", "Compiler frontend options");
 
     setup_compilation_step_flags(frontend);
+    compiler.group(comp_step_grp_name)->require_option(-1);
+    
     setup_print_options_flags(frontend);
 }
 
@@ -80,5 +82,4 @@ void setup_compilation_step_flags(CLI::App *frontend) {
         ->group(comp_step_grp_name);
     only_parse = frontend->add_flag("--parse", "Stop after parsing")
         ->group(comp_step_grp_name);
-    frontend->group(comp_step_grp_name)->require_option(-1);
 }

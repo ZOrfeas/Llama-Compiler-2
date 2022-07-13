@@ -12,6 +12,11 @@
 
 // #define YYDEBUG 1 // comment out to disable debug feature compilation
 }
+%code provides {
+    namespace parser {
+        int parse(ast::core::Program& ast, std::string_view source);
+    }
+}
 %define parse.error verbose
 %expect 24
 %parse-param { ast::core::Program &the_program }
@@ -394,6 +399,15 @@ pattern_list
 %%
 
 void yyerror(ast::core::Program &the_program, std::string_view msg) {
-    std::cerr << "Error in file " << include_stack.top() << " line " << yylineno << ": " << msg << std::endl;
+    std::cerr << "Error in file " << lexer::get_current_file() << " line " << yylineno << ": " << msg << std::endl;
     std::exit(1);
+}
+namespace parser {
+    int parse(ast::core::Program &ast, std::string_view source) {
+        lexer::push_source_file(source);
+        if (int parse_res = yyparse(ast); parse_res) {
+            return parse_res;
+        }
+        return 0;
+    }
 }

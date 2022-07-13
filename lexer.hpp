@@ -12,18 +12,8 @@ int yylex();
 void yyerror(ast::core::Program&, std::string_view);
 extern int yylineno;
 
-class IncludeStack {
-private:
-    std::unordered_set<std::string> filename_set;
-    std::vector<std::string> filename_stack;
-public:
-    IncludeStack() = default;
-    bool is_empty() const;
-    bool has(std::string_view) const;
-    void push(std::string_view);
-    bool pop();
-    std::string_view top() const;
-};
-extern IncludeStack include_stack;
-
+namespace lexer {
+    std::string_view get_current_file();
+    void push_source_file(std::string_view);
+}
 #endif

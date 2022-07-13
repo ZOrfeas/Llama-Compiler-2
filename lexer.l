@@ -13,6 +13,20 @@
 // ast.cpp is linked and it brings parser.hpp and the functions that need yytokentype
 
 // int yylineno = 1;
+class IncludeStack {
+private:
+    std::unordered_set<std::string> filename_set;
+    std::vector<std::string> filename_stack;
+public:
+    IncludeStack() = default;
+    bool is_empty() const;
+    bool has(std::string_view) const;
+    void push(std::string_view);
+    bool pop();
+    std::string_view top() const;
+};
+IncludeStack include_stack;
+
 int comment_cnt = 0;
 ast::core::Program dummy_program;
 %}
@@ -120,7 +134,6 @@ Hex [0-9a-f]
 . { yyerror(dummy_program, "Illegal character"); }
 
 %%
-/* IncludeStack::IncludeStack() {} */
 bool IncludeStack::is_empty() const {
     return this->filename_stack.empty();
 }
@@ -156,6 +169,14 @@ std::string_view IncludeStack::top() const {
         return this->filename_stack.back();
     }
     return "";
+}
+namespace lexer {
+    std::string_view get_current_file() {
+        return include_stack.top();
+    }
+    void push_source_file(std::string_view filename) {
+        include_stack.push(filename);
+    }
 }
 
 /* void lex_error(const char *msg) {
