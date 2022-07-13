@@ -4,7 +4,7 @@
 	"patterns": 
 	[
 		{"include": "#program"},
-		{"include": "#literal"}
+		{"include": "#expr"}
 	],
 	"repository": {
 		"testrule": 
@@ -63,7 +63,7 @@
 			"comment": "Lookahead with ?= so that we hopefully stop at next definition",
 			"begin": "let", 
 			"beginCaptures": { "0": { "name": "keyword.control.let.llama" } }, 
-			"end": "(?=\\s*(let|type|in))",
+			"end": "(?=\\s*(let|type|in[^t]))",
 			"contentName": "letdef.llama",
 			"patterns": [
 				{
@@ -72,7 +72,7 @@
 				{
 					"comment": "First def, rec can only be here",
 					"begin": "(?<=let\\s+)",
-					"end": "(?=\\s*(let|type|in|and))",
+					"end": "(?=\\s*(let|type|in[^t]|and))",
 					"contentName": "first.def.llama",
 					"patterns": [
 						{
@@ -81,7 +81,7 @@
 						{
 							"comment": "If rec was found we are definitely here",
 							"begin": "(?=rec)",
-							"end": "(?=\\s*(let|type|in|and))",
+							"end": "(?=\\s*(let|type|in[^t]|and))",
 							"name": "rec.found.llama",
 							"patterns": [
 								{
@@ -99,7 +99,7 @@
 						{
 							"comment": "if rec wasn't found we are definitely here",
 							"begin": "(?=[a-z])",
-							"end": "(?=\\s*(let|type|in|and))",
+							"end": "(?=\\s*(let|type|in[^t]|and))",
 							"patterns": [
 								{
 									"include": "#comments"
@@ -115,7 +115,7 @@
 					"comment": "Continued letdef",
 					"begin": "and",
 					"beginCaptures": {"0": {"name": "letdef.and.llama"}},
-					"end": "(?=\\s*(let|type|in|and))",
+					"end": "(?=\\s*(let|type|in[^t]|and))",
 					"patterns": [
 						{
 							"include": "#comments"
@@ -151,34 +151,54 @@
 				{
 					"begin": "mutable",
 					"beginCaptures": { "0": { "name": "keyword.control.mutable.llama" } },
-					"end": "(?=\\s*(and|let|type|in)\\s*)",
-					"contentName": "def.llama",
+					"end": "(?=\\s*(and|let|type|in[^t])\\s*)",
+					"contentName": "defrec.llama",
 					"patterns": [
 						{
 							"include": "#comments"
 						},
 						{
 							"begin": "(?=\\s*[a-z])",
-							"end": "(?=\\s*(:|and|let|type|in))",
+							"end": "(?=\\s*(\\[|:|and|let|type|in[^t]))",
 							"patterns": [
 								{
 									"include": "#comments"
 								},
 								{
 									"include": "#idlowervar"
+								}
+							]
+						},
+						{
+							"begin": "(?=\\s*\\[)",
+							"end": "(?=\\s*(:|and|let|type|in[^t]))",
+							"patterns": [
+								{
+									"include": "#comments"
 								},
+								{
+									"name": "left.bracket.llama",
+									"match": "\\["
+								},
+								{
+									"name": "left.bracket.llama",
+									"match": "\\["
+								}, 
 								{
 									"include": "#expr"
 								}
 							]
 						},
 						{
-							"begin": ":",
-							"beginCaptures": {"0": {"name": "colon.llama"}},
-							"end": "(?=\\s*(and|let|type|in)\\s*)",
+							"begin": "(?=\\s*:)",
+							"end": "(?=\\s*(and|let|type|in[^t]))",
 							"patterns": [
 								{
 									"include": "#comments"
+								},
+								{
+									"name": "colon.llama",
+									"match": ":"
 								},
 								{
 									"include": "#type"
@@ -189,7 +209,7 @@
 				},
 				{
 					"begin": "(?<=rec\\s+)",
-					"end": "(?=\\s*(and|let|type|in))",
+					"end": "(?=\\s*(and|let|type|in[^t]))",
 					"contentName": "defrec.llama",
 					"patterns": [
 						{
@@ -240,9 +260,9 @@
 							]
 						},
 						{
-							"begin": "(?=\\s*)=",
+							"begin": "=(?=\\s*)",
 							"beginCaptures": {"0": {"name": "equal.llama"}},
-							"end": "(?=\\s*(and|let|type|in))",
+							"end": "(?=\\s*(and|let|type|in[^t]))",
 							"contentName": "rightside.llama",
 							"patterns": [
 								{
@@ -266,34 +286,55 @@
 				{
 					"begin": "mutable",
 					"beginCaptures": { "0": { "name": "keyword.control.mutable.llama" } },
-					"end": "(?=\\s*(and|let|type|in)\\s*)",
-					"contentName": "def.llama",
+					"end": "(?=\\s*(and|let|type|in[^t]))",
+					"contentName": "defnorec.llama",
 					"patterns": [
 						{
 							"include": "#comments"
 						},
 						{
 							"begin": "(?=\\s*[a-z])",
-							"end": "(?=\\s*(:|and|let|type|in))",
+							"end": "(?=\\s*(\\[|:|and|let|type|in[^t]))",
 							"patterns": [
 								{
 									"include": "#comments"
 								},
 								{
 									"include": "#idlowervar"
+								}
+							]
+						},
+						{
+							"begin": "(?=\\s*\\[)",
+							"end": "(?=\\s*(:|and|let|type|in[^t]))",
+							"patterns": [
+								{
+									"include": "#comments"
 								},
+								{
+									"name": "left.bracket.llama",
+									"match": "\\["
+								},
+								{
+									"name": "left.bracket.llama",
+									"match": "\\["
+								}, 
 								{
 									"include": "#expr"
 								}
 							]
 						},
 						{
-							"begin": ":",
-							"beginCaptures": {"0": {"name": "colon.llama"}},
-							"end": "(?=\\s*(and|let|type|in)\\s*)",
+							"begin": "(?=\\s*:)",
+							"end": "(?=\\s*(and|let|type|in[^t]))",
+							"contentName": "type.field",
 							"patterns": [
 								{
 									"include": "#comments"
+								},
+								{
+									"name": "colon.llama",
+									"match": ":"
 								},
 								{
 									"include": "#type"
@@ -304,7 +345,7 @@
 				},
 				{
 					"begin": "(?<=(and|let)\\s+)",
-					"end": "(?=\\s*(and|let|type|in))",
+					"end": "(?=\\s*(and|let|type|in[^t]))",
 					"contentName": "defnorec.llama",
 					"patterns": [
 						{
@@ -355,9 +396,9 @@
 							]
 						},
 						{
-							"begin": "(?=\\s*)=",
+							"begin": "=(?=\\s*)",
 							"beginCaptures": {"0": {"name": "equal.llama"}},
-							"end": "(?=\\s*(and|let|type|in))",
+							"end": "(?=\\s*(and|let|type|in[^t]))",
 							"contentName": "rightside.llama",
 							"patterns": [
 								{
@@ -501,14 +542,8 @@
 					"include": "#comments"
 				},
 				{
-					"begin": "(?=(unit|int|char|bool|float))",
-					"end": "(?<=(unit|int|char|bool|float))",
-					"patterns": [
-						{
-							"name": "storage.type.llama",
-							"match": "unit|int|char|bool|float"
-						}
-					]
+					"name": "storage.type.llama",
+					"match": "unit|int|char|bool|float"
 				},
 				{
 					"include": "#idlowertype"
@@ -549,14 +584,19 @@
 				{"include": "#literal"},
 				{
 					"comment": "( expr )",
-					"begin": "\\(",
-					"end": "\\)", 
+					"begin": "(?<=\\s*)\\((?=\\s*)",
+					"end": "(?<=\\s*)\\)(?=\\s*)", 
 					"patterns": [{"include": "#expr"}]
 				},
 				{
 					"comment": "unop expr",
-					"begin": "\\+|\\-|\\+\\.|\\-\\.|\\!|not",
-					"end": "Follow(expr)"
+					"begin": "(\\+|\\-|\\+\\.|\\-\\.|\\!|not)",
+					"beginCaptures": {"0": {"patterns": [{"include": "#unop"}]}},
+					"end": "(?=\\s*(and|let|type|in[^t]|end|then|else|do|done|to|downto|with|true|false|dim|new|delete|begin|if|while|for|match|\\,|\\]|\\)|\\(|\\||(\\+|\\-|\\+\\.|\\-\\.|\\!|not)|(((\\+|\\-|\\*|\\/)(\\.)?)|mod|\\*\\*|\\=|\\<\\>|\\<|\\>|\\<\\=|\\>\\=|\\=\\=|\\!\\=|\\&\\&|\\|\\||\\;|\\:\\=)|([a-z]([a-zA-Z0-9]|\\_)*)|([A-Z]([a-zA-Z0-9]|\\_)*)|(?<!\\.)[0-9]+(?=\\s+)|[0-9]+\\.[0-9]+(e[\\+\\-]?[0-9]+)?|\\'([^'\"\\\\\\n\\r\\0]|(\\\\([ntr0\\'\"]|(x{[0-9a-f]}{[0-9a-f]}))))\\'|\"((.|[^\"\\n])?)*\"|true|false|\\(\\)))",
+					"contentName": "unop.expr.llama",
+					"patterns": [
+						{"include": "#expr"}
+					]
 				}
 			]
 		},
@@ -599,7 +639,7 @@
 		},
 		"unop": 
 		{
-			"patterns": [{"match": "\\+|\\-|\\+\\.|\\-\\.|\\!|not"}]
+			"patterns": [{"name": "unop.llama", "match": "\\+|\\-|\\+\\.|\\-\\.|\\!|not"}]
 		},
 		"literal": 
 		{
