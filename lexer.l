@@ -4,7 +4,7 @@
 // #include "token-definitions.hpp"
 #include <string>
 // #include <cstdio>
-// #include <cstdlib> 
+#include <cstdlib>
 
 #include "lexer.hpp"
 #include "ast/ast.hpp"      // Doesn't include parser.hpp
@@ -14,8 +14,6 @@
 
 // int yylineno = 1;
 int comment_cnt = 0;
-
-// void lex_error(const char *msg);
 ast::core::Program dummy_program;
 %}
 
@@ -41,19 +39,7 @@ Hex [0-9a-f]
 "#include"  { BEGIN(INCLUDE_STMT); }
 <INCLUDE_STMT>{W}*  {/* eat whitespace */}
 <INCLUDE_STMT>[^ \t\n\r]+ {
-    using std::string_literals::operator""s;
-    if (filename_set.find(yytext) != filename_set.end()) {
-        std::string err = "Circular include: "s + yytext;
-        yyerror(dummy_program, err);
-    }
-    yyin = fopen(yytext, "r");
-    if (!yyin) {
-        std::string err = "Could not open file " + std::string(yytext);
-        yyerror(dummy_program, err);
-    }
-    filename_stack.push_back(yytext);
-    filename_set.insert(yytext);
-    yypush_buffer_state(yy_create_buffer(yyin, YY_BUF_SIZE));
+    include_stack.push(yytext);
     BEGIN(INITIAL);
 }
 
@@ -130,20 +116,48 @@ Hex [0-9a-f]
 <IN_COMMENT><<EOF>>         { yyerror(dummy_program, "EOF file in comment"); }
 
 {W}+    { /* nothing */ } 
-<<EOF>> {
-            yypop_buffer_state();
-            if (!filename_stack.empty()) {
-                std::string current_file = filename_stack.back();
-                filename_stack.pop_back();
-                filename_set.erase(current_file);
-            }
-            if (!YY_CURRENT_BUFFER) {
-                yyterminate();
-            }
-        }
+<<EOF>> { if (!include_stack.pop()) yyterminate(); }
 . { yyerror(dummy_program, "Illegal character"); }
 
 %%
+/* IncludeStack::IncludeStack() {} */
+bool IncludeStack::is_empty() const {
+    return this->filename_stack.empty();
+}
+bool IncludeStack::has(std::string_view name) const {
+    return this->filename_set.find(std::string(name)) != this->filename_set.end();
+}
+void IncludeStack::push(std::string_view name) {
+    if (this->has(name)) {
+        std::string err = "Circular include: " + std::string(name);
+        yyerror(dummy_program, err);
+    }
+    yyin = std::fopen(std::string(name).c_str(), "r");
+    if (!yyin) {
+        std::string err = "Could not open file " + std::string(name);
+        yyerror(dummy_program, err);
+    }
+    yypush_buffer_state(yy_create_buffer(yyin, YY_BUF_SIZE));
+    this->filename_stack.push_back(std::string(name));
+    this->filename_set.insert(std::string(name));
+}
+bool IncludeStack::pop() {
+    yypop_buffer_state();
+    if (!this->is_empty()) {
+        std::string current = this->filename_stack.back();
+        this->filename_stack.pop_back();
+        this->filename_set.erase(current);
+    }
+    return YY_CURRENT_BUFFER;
+
+}
+std::string_view IncludeStack::top() const {
+    if (!this->is_empty()) {
+        return this->filename_stack.back();
+    }
+    return "";
+}
+
 /* void lex_error(const char *msg) {
     fprintf(stderr, "Error at line %d, token %c (ASCII: %d): %s  \n",
         yylineno, yytext[0], yytext[0], msg);

@@ -1,6 +1,9 @@
 #include "ast/forward.hpp"
+#include "ast/parts/core.hpp"
+#include "lexer.hpp"
 #include "parser.hpp"
 #include "passes/print/ast-print.hpp"
+#include "cli/cli.hpp"
 
 #include <vector>
 #include <unordered_set>
@@ -9,24 +12,35 @@
 // TODO(ORF): Use cli-args to specify initial input file.
 // TODO(ORF): Think on how you want cwd to work. (Currently cwd is the active working directory when the compiler was invoked)
 
-std::unordered_set<std::string> filename_set;
-std::vector<std::string> filename_stack;
-
+IncludeStack include_stack{};
 
 void print_ast(ast::core::Program& p, std::ostream& os = std::cout) {
     auto v = PrintVisitor(os);
     p.accept(&v);
 }
+void handle_prints(ast::core::Program& ast) {
+    if (cli::ast_outfile.length() > 0) {
+        if (cli::ast_outfile == "stdout") {
+            print_ast(ast);
+        } else {
+            std::ofstream os(cli::ast_outfile);
+            print_ast(ast, os);
+        }
+    }
+}
 
-int main() {
-    /* yydebug = 1; // default val is zero so just comment this to disable */
-    ast::core::Program program;
-    filename_set.insert("dummy_filename_for_now");
-    filename_stack.push_back("dummy_filename_for_now");
-    int result = yyparse(program);
-    print_ast(program);
-    if (result == 0) std::cout << "Success\n";
-    return result;
+int main(int argc, char** argv) {
+    if(auto exit_code = cli::parse_cli(argc, argv); exit_code != 0) {
+        return exit_code;
+    }
+    include_stack.push(cli::source_file);
+    ast::core::Program ast;
+    if (int parse_result = yyparse(ast); parse_result != 0) {
+        return parse_result;
+    };
+    handle_prints(ast);
+    
+    
     // using namespace typesys;
     // Type t1 = Type::get<Unit>();
     // Type t2 = Type::get<Unit>();

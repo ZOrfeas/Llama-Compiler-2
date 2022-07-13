@@ -22,4 +22,6 @@ tmp-*
 .vscode
 .DS_Store
 notes.md
-test*
+compile_commands.json
+.cache
+test
