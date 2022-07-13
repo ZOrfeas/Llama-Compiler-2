@@ -1,41 +1,156 @@
-#include "./typesystem.hpp"
-
 #include <type_traits>
 
+#include "./types.hpp"
+#include "../utils/utils.hpp"
+
 namespace typesys {
-    const char* type_name(TypeEnum b) {
-        static const char* builtin_name[] = {
-            "unit", "int", "char", "bool", "float",
-            "array", "ref", "function", "custom", "unknown"
+    std::string Type::to_string() const {
+        using utils::match;
+        return type_variant | match {
+            []<BuiltinTypePtr T>(T const& t) -> std::string {
+                return type_enum_to_str(T::element_type::type_enum);
+            },
+            []<ComplexTypePtr T>(T const& t) {
+                return t->to_string();
+            }
         };
-        return builtin_name[static_cast<int>(b)];
+    }
+    std::ostream& operator<<(std::ostream& os, Type const& t) {
+        return os << t.to_string();
+    }
+    const char* Type::get_type_enum_str() const {
+        using utils::match;
+        return type_variant | match {
+            []<AnyTypePtr T>(T const& t) {
+                return type_enum_to_str(T::element_type::type_enum);
+            }
+        };
+    }
+    bool Type::operator==(Type const& other) const {
+        using std::make_tuple;
+        using utils::match;
+        return make_tuple(type_variant, other.type_variant) | match {
+            []<AnyTypePtr T>(T const& t1, T const& t2) {
+                // They are the same || their contents are equal
+                return t1 == t2 || *t1 == *t2;
+            },
+            [](auto&& t1, auto&& t2) { return false; }
+        };
+    }
+    bool Type::operator!=(Type const& other) const {
+        return !(*this == other);
     }
 
-    Type::Type(TypeEnum t): type(t) {}
-    Builtin::Builtin(TypeEnum b): Type(b) {}
+    // Array //
+
+    Array::Array(Type element_type, int dimensions):
+        element_type(std::move(element_type)),
+        dimensions(dimensions) {}
+    std::string Array::to_string() const {
+        const auto dim_low_bound = *this->dim_low_bound_ptr;
+        const auto dim_string = [&](){
+            if (dim_low_bound != 0) {
+                return "array of (at least" + 
+                        std::to_string(dim_low_bound) + 
+                        ") of";
+            } else {
+                std::string dim_string = " ";
+                if (this->dimensions > 1) {
+                    dim_string += "[";
+                    for (int i = 0; i < this->dimensions-1; ++i) {
+                        dim_string += "*,";
+                    }
+                    dim_string += "*]";
+                }
+                return "array" + dim_string + " of";
+            }
+        }();
+        return "(" + dim_string + " " +
+                this->element_type.to_string() + ")";        
+    }
+    bool Array::operator==(Array const& other) const {
+        return *this->dim_low_bound_ptr == 0 &&
+               *other.dim_low_bound_ptr == 0 &&
+               this->dimensions == other.dimensions &&
+               this->element_type == other.element_type;
+    }
+    bool Array::operator!=(Array const& other) const {
+        return !(*this == other);
+    }
+
+    // Ref //
+
+    Ref::Ref(Type ref_type):
+        ref_type(std::move(ref_type)) {}
+    std::string Ref::to_string() const {
+        return this->ref_type.to_string() + " ref";
+    }
+    bool Ref::operator==(Ref const& other) const {
+        return this->ref_type == other.ref_type;
+    }
+    bool Ref::operator!=(Ref const& other) const {
+        return !(*this == other);
+    }
+    // Function //
     
-    Unit::Unit(): Builtin(TypeEnum::UNIT) {}
-    Int::Int(): Builtin(TypeEnum::INT) {}
-    Char::Char(): Builtin(TypeEnum::CHAR) {}
-    Bool::Bool(): Builtin(TypeEnum::BOOL) {}
-    Float::Float(): Builtin(TypeEnum::FLOAT) {}
-
-    Array::Array(int dimensions, Type* element_type):
-        Type(TypeEnum::ARRAY),
-        dimensions(dimensions),
-        element_type(element_type) {}
-    Ref::Ref(Type* element_type):
-        Type(TypeEnum::REF),
-        element_type(element_type) {}
-    Function::Function(Type* return_type):
-        Type(TypeEnum::FUNCTION),
-        return_type(return_type) {}
-    void Function::add_param_type(Type* param_type) {
-        param_types.push_back(std::unique_ptr<Type>(param_type));
+    Function::Function(Type return_type):
+        return_type(std::move(return_type)) {}
+    std::string Function::to_string() const {
+        auto param_string = [&]() -> std::string {
+            if (this->param_types.size() == 0)
+                return "unknown";
+            std::string tmp_string = this->param_types[0].to_string();
+            for (size_t i = 1; i < this->param_types.size(); i++)
+                tmp_string += " -> " + this->param_types[i].to_string();
+            return tmp_string;
+        }();
+        return "(" + param_string + " -> " +
+                this->return_type.to_string() + ")";
     }
+    bool Function::operator==(Function const& other) const {
+        return this->param_types.size() == other.param_types.size() &&
+               this->return_type == other.return_type &&
+               std::equal(
+                     this->param_types.begin(),
+                     this->param_types.end(),
+                     other.param_types.begin()
+                );
+    }
+    bool Function::operator!=(Function const& other) const {
+        return !(*this == other);
+    }
+    
+    // Custom //
+
     Custom::Custom(std::string_view name):
-        Type(TypeEnum::CUSTOM),
         name(name) {}
+    //!Note(orf): make sure no shadowing is allowed
+    std::string Custom::to_string() const {
+        return this->name;
+    }
+    bool Custom::operator==(Custom const& other) const {
+        return this->name == other.name;
+    }
+    bool Custom::operator!=(Custom const& other) const {
+        return !(*this == other);
+    }
+    Custom::Constructor::Constructor(
+        std::string_view name,
+        Custom const& custom_type
+    ): name(name), custom_type(custom_type) {}
+
+
+    // Unknown //
+
     unsigned long Unknown::next_id = 0;
-    Unknown::Unknown(): Type(TypeEnum::UNKNOWN), id(next_id++) {}
+    Unknown::Unknown(): id(next_id++) {}
+    std::string Unknown::to_string() const {
+        return "@" + std::to_string(this->id);
+    }
+    bool Unknown::operator==(Unknown const& other) const {
+        return this->id == other.id;
+    }
+    bool Unknown::operator!=(Unknown const& other) const {
+        return !(*this == other);
+    }
 }

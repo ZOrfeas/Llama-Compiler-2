@@ -14,8 +14,9 @@
 
 // int yylineno = 1;
 int comment_cnt = 0;
+
 // void lex_error(const char *msg);
-ast::core::Program *dummy_program;
+ast::core::Program dummy_program;
 %}
 
 W [ \t\n\r]  
@@ -33,8 +34,28 @@ Hex [0-9a-f]
 %option noinput
 
 %x IN_COMMENT
+%x INCLUDE_STMT
 
 %%
+
+"#include"  { BEGIN(INCLUDE_STMT); }
+<INCLUDE_STMT>{W}*  {/* eat whitespace */}
+<INCLUDE_STMT>[^ \t\n\r]+ {
+    using std::string_literals::operator""s;
+    if (filename_set.find(yytext) != filename_set.end()) {
+        std::string err = "Circular include: "s + yytext;
+        yyerror(dummy_program, err);
+    }
+    yyin = fopen(yytext, "r");
+    if (!yyin) {
+        std::string err = "Could not open file " + std::string(yytext);
+        yyerror(dummy_program, err);
+    }
+    filename_stack.push_back(yytext);
+    filename_set.insert(yytext);
+    yypush_buffer_state(yy_create_buffer(yyin, YY_BUF_SIZE));
+    BEGIN(INITIAL);
+}
 
 "and"       { return T_and;     }
 "array"     { return T_array;   }
@@ -109,7 +130,17 @@ Hex [0-9a-f]
 <IN_COMMENT><<EOF>>         { yyerror(dummy_program, "EOF file in comment"); }
 
 {W}+    { /* nothing */ } 
-
+<<EOF>> {
+            yypop_buffer_state();
+            if (!filename_stack.empty()) {
+                std::string current_file = filename_stack.back();
+                filename_stack.pop_back();
+                filename_set.erase(current_file);
+            }
+            if (!YY_CURRENT_BUFFER) {
+                yyterminate();
+            }
+        }
 . { yyerror(dummy_program, "Illegal character"); }
 
 %%

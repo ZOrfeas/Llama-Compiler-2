@@ -10,15 +10,11 @@
 #include "lexer.hpp"
 #include "ast/ast.hpp"
 
-#include "passes/print/ast-print.hpp"
-
-// using std::std::vector;
-// using std::std::unique_ptr;
 // #define YYDEBUG 1 // comment out to disable debug feature compilation
 }
 %define parse.error verbose
 %expect 24
-%parse-param { ast::core::Program *&the_program }
+%parse-param { ast::core::Program &the_program }
 
 %union {
     ast::core::Program *program;
@@ -173,7 +169,7 @@
 %%
 
 program 
-    : program_list                          { the_program = new ast::core::Program($1); }
+    : program_list                          { the_program = ast::core::Program($1); }
 ;
 
 program_list
@@ -397,19 +393,7 @@ pattern_list
 
 %%
 
-void yyerror(ast::core::Program *&the_program, std::string_view msg) {
-    std::cerr << "Error at line " << yylineno << ": " << msg << std::endl;
-    /* fprintf(stderr, "Error at line %d: %s\n", yylineno, msg); */
+void yyerror(ast::core::Program &the_program, std::string_view msg) {
+    std::cerr << "Error in file " << filename_stack.back() << " line " << yylineno << ": " << msg << std::endl;
     std::exit(1);
 }
-
-// int main() {
-//     /* yydebug = 1; // default val is zero so just comment this to disable */
-//     ast::core::Program *program = nullptr;
-//     int result = yyparse(program);
-//     /* if (program == nullptr) std::cout << "Test"; */
-//     auto v = PrintVisitor();
-//     program->accept(v);
-//     if (result == 0) std::cout << "Success\n";
-//     return result;
-// }
