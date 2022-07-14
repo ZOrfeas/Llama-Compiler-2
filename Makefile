@@ -24,9 +24,9 @@ llamac: $(OBJS_PATHS)
 	$(CXX) $(CXXFlAGS) -o llamac $^
 
 # Auto-generated lexer and parser
-lexer.cpp: lexer.l
+lexer.cpp: lexer.l lexer.hpp ast/ast.hpp
 	$(FLEX) -s -o lexer.cpp lexer.l
-parser.hpp parser.cpp: parser.y
+parser.hpp parser.cpp: parser.y ast/ast.hpp error/error.hpp lexer.hpp
 	$(BISON) -dv -Wall -o parser.cpp parser.y
 
 # AST dependency management
