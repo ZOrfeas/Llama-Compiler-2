@@ -8,6 +8,4 @@
 #include "./parts/stmt.hpp"
 #include "./parts/annotation.hpp"
 
-#include "./visitor/visitor.hpp"
-
 #endif // __AST_HPP__

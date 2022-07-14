@@ -25,34 +25,37 @@ llamac: $(OBJS_PATHS)
 	$(CXX) $(CXXFlAGS) -o llamac $^
 
 # Auto-generated lexer and parser
-lexer.cpp: lexer.l lexer.hpp ast/ast.hpp
+lexer.cpp: lexer.l lexer.hpp ast/ast.hpp parser.hpp
 	$(FLEX) -s -o lexer.cpp lexer.l
-parser.hpp parser.cpp: parser.y ast/ast.hpp lexer.hpp
+parser.hpp parser.cpp: parser.y ast/ast.hpp lexer.hpp error/error.hpp
 	$(BISON) -dv -Wall -o parser.cpp parser.y
-# error/error.hpp
-
-# AST dependency management
-ast/ast.hpp: ast/parts/*.hpp
-	touch ast/ast.hpp
 
 # Object files
-$(BUILD)/lexer.o: lexer.cpp lexer.hpp parser.hpp ast/ast.hpp
-$(BUILD)/parser.o: parser.cpp lexer.hpp ast/ast.hpp
+$(BUILD)/lexer.o: lexer.cpp
+$(BUILD)/parser.o: parser.cpp
 $(BUILD)/ast-print.o: passes/print/ast-print.cpp \
- passes/print/ast-print.hpp ast/ast.hpp
-$(BUILD)/main.o: main.cpp parser.hpp \
- ast/forward.hpp passes/print/ast-print.hpp
+ passes/print/ast-print.hpp ast/ast.hpp typesystem/types.hpp 
+$(BUILD)/main.o: main.cpp parser.hpp lexer.hpp \
+ ast/forward.hpp passes/print/ast-print.hpp \
+ cli/cli.hpp
 $(BUILD)/typesystem.o: typesystem/typesystem.cpp \
- typesystem/core.hpp typesystem/types.hpp \
- utils/utils.hpp
-# error/error.hpp
-# $(BUILD)/error.o: error/error.cpp error/error.hpp
+ typesystem/types.hpp utils/utils.hpp
 $(BUILD)/cli.o: cli/cli.cpp cli/cli.hpp
 
+# header dependency management
+ast/ast.hpp: ast/parts/*.hpp
+passes/print/ast-print.hpp: ast/visitor/visitor.hpp
+typesystem/core.hpp: utils/utils.hpp error/error.hpp typesystem/forward.hpp
+typesystem/types.hpp: typesystem/core.hpp
+lexer.hpp: ast/forward.hpp
+
+
 # Grouping of rule-types with same recipe
-$(BUILD)/%.o: passes/*/%.cpp
-$(BUILD)/%.o: %/%.cpp
-$(BUILD)/%.o: %.cpp
+%.hpp:
+	touch $@
+# $(BUILD)/%.o: passes/*/%.cpp
+# $(BUILD)/%.o: %/%.cpp
+# $(BUILD)/%.o: %.cpp
 $(BUILD)/%.o:
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 

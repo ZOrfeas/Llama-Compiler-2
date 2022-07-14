@@ -1,5 +1,4 @@
 #include "ast/forward.hpp"
-#include "ast/parts/core.hpp"
 #include "lexer.hpp"
 #include "parser.hpp"
 #include "passes/print/ast-print.hpp"
@@ -16,7 +15,7 @@ void print_ast(ast::core::Program& p, std::ostream& os = std::cout) {
     auto v = PrintVisitor(os);
     p.accept(&v);
 }
-void handle_prints(ast::core::Program& ast) {
+void handle_ast_printing(ast::core::Program& ast) {
     if (cli::ast_outfile.length() > 0) {
         if (cli::ast_outfile == "stdout") {
             print_ast(ast);
@@ -26,16 +25,18 @@ void handle_prints(ast::core::Program& ast) {
         }
     }
 }
-
 int main(int argc, char** argv) {
     if(auto exit_code = cli::parse_cli(argc, argv); exit_code != 0) {
         return exit_code;
     }
     
     ast::core::Program ast{parser::parse(cli::source_file)};
-    handle_prints(ast);
+    handle_ast_printing(ast);
+    if (*cli::only_parse) return 0;
+
+
     
-    
+    return 0;
     // using namespace typesys;
     // Type t1 = Type::get<Unit>();
     // Type t2 = Type::get<Unit>();

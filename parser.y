@@ -409,8 +409,6 @@ void yyerror(ast::core::Program &the_program, std::string_view msg) {
         std::to_string(yylineno) +
         ": "s + std::string(msg);
     error::crash<error::Parsing>(err_msg);
-    /* std::cerr << "Error in file " << lexer::get_current_file() << " line " << yylineno << ": " << msg << std::endl;
-    std::exit(1); */
 }
 ast::core::Program parser::parse(std::string_view source) {
     ast::core::Program ast;

@@ -1,5 +1,4 @@
 #include "./cli.hpp"
-#include "CLI/Error.hpp"
 
 
 void setup_compilation_step_flags(CLI::App*);

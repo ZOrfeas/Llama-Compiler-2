@@ -1,6 +1,7 @@
 #ifndef __UTILS_HPP__
 #define __UTILS_HPP__
 
+#include <memory>
 #include <variant>
 
 namespace utils {
