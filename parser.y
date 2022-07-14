@@ -401,13 +401,14 @@ pattern_list
 %%
 
 void yyerror(ast::core::Program &the_program, std::string_view msg) {
+    using std::string_literals::operator""s;
     const std::string err_msg =
         "Error in file "s +
         std::string(lexer::get_current_file()) +
         " at line "s +
         std::to_string(yylineno) +
         ": "s + std::string(msg);
-    error::parse(err_msg);
+    error::crash<error::Parsing>(err_msg);
     /* std::cerr << "Error in file " << lexer::get_current_file() << " line " << yylineno << ": " << msg << std::endl;
     std::exit(1); */
 }
@@ -418,7 +419,7 @@ ast::core::Program parser::parse(std::string_view source) {
         const std::string err_msg =
             "Parser failed with error code " +
             std::to_string(parse_res);
-        error::parse(err_msg);
+        error::crash<error::Parsing>(err_msg, parse_res);
     }
     return ast;
 }

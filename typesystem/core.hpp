@@ -92,7 +92,7 @@ namespace typesys {
             if (auto inner = as<T>(); inner) {
                 return inner;
             }
-            error::internal(
+            error::crash<error::Internal>(
                 "Tried to downcast "s +
                 get_type_enum_str() +
                 " to " + 
