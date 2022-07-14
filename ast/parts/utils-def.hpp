@@ -1,6 +1,7 @@
 #ifndef __AST_UTILSDEF_HPP__
 #define __AST_UTILSDEF_HPP__
 
+#include <string>
 #include <vector>
 #include <memory>
 

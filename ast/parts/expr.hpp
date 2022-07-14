@@ -7,7 +7,6 @@
 
 #include "../visitor/visitor.hpp"
 #include "./core.hpp"
-#include "./expr.hpp"
 #include "./stmt.hpp"
 
 namespace ast::utils::match {

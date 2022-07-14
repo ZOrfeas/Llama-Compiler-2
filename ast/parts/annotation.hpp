@@ -2,7 +2,6 @@
 #define __AST_ANNOTATION_HPP__
 
 #include <string>
-#include <vector>
 #include <memory>
 
 #include "../../typesystem/types.hpp"
@@ -13,7 +12,6 @@
 namespace ast::annotation {
     using core::TypeAnnotation;
     using std::string;
-    using std::vector;
     using std::unique_ptr;
 
     class BasicType : public TypeAnnotation {

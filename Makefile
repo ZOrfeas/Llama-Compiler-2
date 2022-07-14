@@ -54,7 +54,7 @@ $(BUILD)/%.o:
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 clean:
-	$(RM) llamac
+	$(RM) llamac test
 
 distclean: clean
 	$(RM) lexer.cpp parser.hhp parser.cpp $(BUILD)/*.o
