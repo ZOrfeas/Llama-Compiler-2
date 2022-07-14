@@ -31,10 +31,8 @@ int main(int argc, char** argv) {
     if(auto exit_code = cli::parse_cli(argc, argv); exit_code != 0) {
         return exit_code;
     }
-    ast::core::Program ast;
-    if (int parse_result = parser::parse(ast, cli::source_file)) {
-        return parse_result;
-    };
+    
+    ast::core::Program ast{parser::parse(cli::source_file)};
     handle_prints(ast);
     
     

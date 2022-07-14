@@ -5,16 +5,18 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <stdexcept>
 #include <string_view>
 
 #include "lexer.hpp"
 #include "ast/ast.hpp"
+#include "error/error.hpp"
 
 // #define YYDEBUG 1 // comment out to disable debug feature compilation
 }
 %code provides {
     namespace parser {
-        int parse(ast::core::Program& ast, std::string_view source);
+        ast::core::Program parse(std::string_view source);
     }
 }
 %define parse.error verbose
@@ -399,13 +401,24 @@ pattern_list
 %%
 
 void yyerror(ast::core::Program &the_program, std::string_view msg) {
-    std::cerr << "Error in file " << lexer::get_current_file() << " line " << yylineno << ": " << msg << std::endl;
-    std::exit(1);
+    const std::string err_msg =
+        "Error in file "s +
+        std::string(lexer::get_current_file()) +
+        " at line "s +
+        std::to_string(yylineno) +
+        ": "s + std::string(msg);
+    error::parse(err_msg);
+    /* std::cerr << "Error in file " << lexer::get_current_file() << " line " << yylineno << ": " << msg << std::endl;
+    std::exit(1); */
 }
-int parser::parse(ast::core::Program &ast, std::string_view source) {
+ast::core::Program parser::parse(std::string_view source) {
+    ast::core::Program ast;
     lexer::push_source_file(source);
-    if (int parse_res = yyparse(ast); parse_res) {
-        return parse_res;
+    if (int parse_res = yyparse(ast)) {
+        const std::string err_msg =
+            "Parser failed with error code " +
+            std::to_string(parse_res);
+        error::parse(err_msg);
     }
-    return 0;
+    return ast;
 }

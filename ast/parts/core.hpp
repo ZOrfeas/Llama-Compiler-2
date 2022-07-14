@@ -26,6 +26,13 @@ namespace ast::core {
     class Program : public Node {
     public:
         Program() = default;
+        Program(Program &) = delete;
+        Program& operator=(Program && o) {
+            if (this == &o) return *this;
+            defstmt_list = std::move(o.defstmt_list);
+            return *this;
+        }
+        Program(Program && o) { *this = std::move(o); }
         unique_ptr<vector<unique_ptr<DefStmt>>> defstmt_list;
         Program(vector<unique_ptr<DefStmt>> *statements)
             : defstmt_list(statements) {}
