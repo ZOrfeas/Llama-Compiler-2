@@ -7,11 +7,9 @@
 #include <vector>
 #include <unordered_set>
 
-// TODO(ORF): Hide filename utilities and only provide push/pop/contains functionality.
-// TODO(ORF): Use cli-args to specify initial input file.
 // TODO(ORF): Think on how you want cwd to work. (Currently cwd is the active working directory when the compiler was invoked)
 
-void handle_ast_printing(ast::core::Program& ast) {
+void print_ast_if_enabled(ast::core::Program& ast) {
     if (cli::ast_outfile.length() > 0) {
         if (cli::ast_outfile == "stdout") {
             output_ast(ast);
@@ -22,16 +20,14 @@ void handle_ast_printing(ast::core::Program& ast) {
     }
 }
 int main(int argc, char** argv) {
-    if(auto exit_code = cli::parse_cli(argc, argv); exit_code != 0) {
+    if(auto exit_code = cli::parse_cli(argc, argv)) {
         return exit_code;
     }
     
     ast::core::Program ast{parser::parse(cli::source_file)};
-    handle_ast_printing(ast);
+    print_ast_if_enabled(ast);
     if (*cli::only_parse) return 0;
 
-
-    
     return 0;
     // using namespace typesys;
     // Type t1 = Type::get<Unit>();
