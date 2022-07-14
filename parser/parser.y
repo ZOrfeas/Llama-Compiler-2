@@ -9,8 +9,8 @@
 #include <string_view>
 
 #include "lexer.hpp"
-#include "ast/ast.hpp"
-#include "error/error.hpp"
+#include "../ast/ast.hpp"
+#include "../error/error.hpp"
 
 // #define YYDEBUG 1 // comment out to disable debug feature compilation
 }

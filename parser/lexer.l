@@ -7,8 +7,8 @@
 #include <cstdlib>
 
 #include "lexer.hpp"
-#include "ast/ast.hpp"      // Doesn't include parser.hpp
 #include "parser.hpp"   
+#include "../ast/ast.hpp"      // Doesn't include parser.hpp
 
 // ast.cpp is linked and it brings parser.hpp and the functions that need yytokentype
 

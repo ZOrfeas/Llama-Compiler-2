@@ -6,7 +6,7 @@
 #include <unordered_set>
 #include <string_view>
 
-#include "ast/forward.hpp"
+#include "../ast/forward.hpp"
 
 int yylex();
 void yyerror(ast::core::Program&, std::string_view);

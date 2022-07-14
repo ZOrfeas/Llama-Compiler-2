@@ -1,6 +1,6 @@
 #include "ast/forward.hpp"
-#include "lexer.hpp"
-#include "parser.hpp"
+#include "parser/lexer.hpp"
+#include "parser/parser.hpp"
 #include "passes/print/ast-print.hpp"
 #include "cli/cli.hpp"
 

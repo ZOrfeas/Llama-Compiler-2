@@ -25,17 +25,17 @@ llamac: $(OBJS_PATHS)
 	$(CXX) $(CXXFlAGS) -o llamac $^
 
 # Auto-generated lexer and parser
-lexer.cpp: lexer.l lexer.hpp ast/ast.hpp parser.hpp
-	$(FLEX) -s -o lexer.cpp lexer.l
-parser.hpp parser.cpp: parser.y ast/ast.hpp lexer.hpp error/error.hpp
-	$(BISON) -dv -Wall -o parser.cpp parser.y
+parser/lexer.cpp: parser/lexer.l parser/lexer.hpp ast/ast.hpp parser/parser.hpp
+	$(FLEX) -s -o $@ $<
+parser/parser.hpp parser/parser.cpp: parser/parser.y ast/ast.hpp parser/lexer.hpp error/error.hpp
+	$(BISON) -dv -Wall -o parser/parser.cpp $<
 
 # Object files
-$(BUILD)/lexer.o: lexer.cpp
-$(BUILD)/parser.o: parser.cpp
+$(BUILD)/lexer.o: parser/lexer.cpp
+$(BUILD)/parser.o: parser/parser.cpp
 $(BUILD)/ast-print.o: passes/print/ast-print.cpp \
  passes/print/ast-print.hpp ast/ast.hpp typesystem/types.hpp 
-$(BUILD)/main.o: main.cpp parser.hpp lexer.hpp \
+$(BUILD)/main.o: main.cpp parser/parser.hpp parser/lexer.hpp \
  ast/forward.hpp passes/print/ast-print.hpp \
  cli/cli.hpp
 $(BUILD)/typesystem.o: typesystem/typesystem.cpp \
@@ -47,7 +47,7 @@ ast/ast.hpp: ast/parts/*.hpp
 passes/print/ast-print.hpp: ast/visitor/visitor.hpp
 typesystem/core.hpp: utils/utils.hpp error/error.hpp typesystem/forward.hpp
 typesystem/types.hpp: typesystem/core.hpp
-lexer.hpp: ast/forward.hpp
+parser/lexer.hpp: ast/forward.hpp
 
 
 # Grouping of rule-types with same recipe
