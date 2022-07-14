@@ -5,6 +5,11 @@
 #include "./ast-print.hpp"
 #include "../../ast/ast.hpp"
 
+void output_ast(ast::core::Program& ast, std::ostream& os) {
+    PrintVisitor v(os);
+    v.visit(&ast);
+}
+
 const std::string PrintVisitor::full_vert = "│";
 const std::string PrintVisitor::split_vert = "├─";
 const std::string PrintVisitor::half_vert =  "└─";

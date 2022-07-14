@@ -11,17 +11,13 @@
 // TODO(ORF): Use cli-args to specify initial input file.
 // TODO(ORF): Think on how you want cwd to work. (Currently cwd is the active working directory when the compiler was invoked)
 
-void print_ast(ast::core::Program& p, std::ostream& os = std::cout) {
-    auto v = PrintVisitor(os);
-    p.accept(&v);
-}
 void handle_ast_printing(ast::core::Program& ast) {
     if (cli::ast_outfile.length() > 0) {
         if (cli::ast_outfile == "stdout") {
-            print_ast(ast);
+            output_ast(ast);
         } else {
             std::ofstream os(cli::ast_outfile);
-            print_ast(ast, os);
+            output_ast(ast, os);
         }
     }
 }

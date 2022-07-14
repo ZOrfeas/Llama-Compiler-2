@@ -77,6 +77,8 @@ public:
     void visit(ast::utils::match::Clause*) override;
 };
 
+void output_ast(ast::core::Program&, std::ostream& =  std::cout);
+
 #endif // __AST_PRINT_HPP__
 
 // Program
