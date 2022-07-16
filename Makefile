@@ -1,7 +1,15 @@
 .PHONY: default clean distclean
 CXX=$(CLANG)++
-CLI11_INCLUDE=-I/opt/homebrew/Cellar/cli11/2.2.0/include
-CXXFLAGS=-Wall -std=c++20 $(CLI11_INCLUDE)
+
+CLI11_INCLUDE=$(shell pkg-config --cflags cli11)
+SPDLOG_INCLUDE=$(shell pkg-config --cflags spdlog)
+CXXFLAGS_INCLUDE=$(CLI11_INCLUDE) $(SPDLOG_INCLUDE)
+CXXFLAGS=-Wall -std=c++20
+
+CLI11_LIBS=$(shell pkg-config --libs cli11)
+SPDLOG_LIBS=$(shell pkg-config --libs spdlog)
+CXXFLAGS_LIBS=$(CLI11_LIBS) $(SPDLOG_LIBS)
+
 FLEX=flex
 BISON=/opt/homebrew/opt/bison/bin/bison
 
@@ -18,11 +26,11 @@ all: llamac
 
 # $(CXX) $(CXXFLAGS) -c tests/drafts.cpp -o $(BUILD)/drafts.o
 test: $(NON_MAIN_OBJS_PATHS) tests/drafts.cpp
-	$(CXX) $(CXXFLAGS) -o test $^
+	$(CXX) $(CXXFLAGS) $(CXXFLAGS_INCLUDE) $(CXXFLAGS_LIBS) -o test $^
 
 # Final linking
 llamac: $(OBJS_PATHS)
-	$(CXX) $(CXXFlAGS) -o llamac $^
+	$(CXX) $(CXXFlAGS) $(CXXFLAGS_LIBS) -o llamac $^
 
 # Auto-generated lexer and parser
 parser/lexer.cpp: parser/lexer.l parser/lexer.hpp ast/ast.hpp parser/parser.hpp
@@ -57,7 +65,7 @@ parser/lexer.hpp: ast/forward.hpp
 # $(BUILD)/%.o: %/%.cpp
 # $(BUILD)/%.o: %.cpp
 $(BUILD)/%.o:
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) $(CXXFLAGS_INCLUDE) -c $< -o $@
 
 clean:
 	$(RM) llamac test

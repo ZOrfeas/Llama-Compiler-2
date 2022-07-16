@@ -10,8 +10,13 @@ SemVisitor::SemVisitor() {}
 
 // Visit method overloads
 
-void SemVisitor::visit(ast::core::Program* program) {}
-void SemVisitor::visit(ast::stmt::TypeStmt* type_stmt) {}
+void SemVisitor::visit(ast::core::Program* program) {
+    for (auto& def : *program->defstmt_list) {
+        def->accept(this);
+    }
+}
+void SemVisitor::visit(ast::stmt::TypeStmt* type_stmt) {
+}
 void SemVisitor::visit(ast::def::TypeDef* type_def) {}
 void SemVisitor::visit(ast::stmt::LetStmt* let_stmt) {}
 void SemVisitor::visit(ast::def::Constant* cnst) {}
