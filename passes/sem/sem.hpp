@@ -3,9 +3,21 @@
 
 #include "../../ast/visitor/visitor.hpp"
 
+#include "utils/tables.hpp"
+#include <memory>
+#include <optional>
+
 class SemVisitor : public ast::visit::Visitor {
 private:
-    
+    sem::tables::Scope<> tt; // TypeTable
+    sem::tables::Scope<> ct; // ConstructorTable
+    sem::tables::Table st;   // SymbolTable
+
+    // TODO: Think of possible improvements.
+    // TODO:  Current solution, one member var for each typesys::Type sub.
+
+    std::optional<typesys::Type> passed_type;
+
 public:
     SemVisitor();
     void visit(ast::core::Program*) override;

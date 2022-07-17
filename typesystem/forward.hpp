@@ -11,7 +11,7 @@ namespace typesys {
     class Array;
     class Ref;
     class Function;
-    // class Constructor;
+    class Constructor;
     class Custom;
     class Unknown;
 }

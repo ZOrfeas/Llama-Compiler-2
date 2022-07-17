@@ -1,30 +1,29 @@
 #ifndef __ERROR_HPP__
 #define __ERROR_HPP__
 
+#include "spdlog/spdlog.h"
 #include <iostream>
 #include <string_view>
 #include <concepts>
 #include <type_traits>
 
 namespace error {
-    template<typename T>
-    concept ErrorTy = requires (T t) {
-        { T::NAME } -> std::convertible_to<const char *>;
+    enum ErrorTy {
+        INTERNAL = 0, RUNTIME, PARSING, SEMANTIC,
     };
-    template<ErrorTy E>
-    void crash(std::string_view msg, int exit_code = 1) {
-        std::cerr << E::NAME << " error: " << msg << '\n';
-        std::exit(exit_code);
+    inline auto err_to_str(ErrorTy err) {
+        static const char *err_str[] = {
+            "Internal", "Runtime", "Parsing", "Semantic"
+        };
+        return err_str[static_cast<int>(err)];
     }
-    class Internal {
-    public: static constexpr const char* NAME = "Internal";
-    };
-    class Runtime {
-    public: static constexpr const char* NAME = "Runtime";
-    };
-    class Parsing {
-    public: static constexpr const char* NAME = "Parsing";
-    };
+    template<ErrorTy E, typename... T>
+    void crash(std::string_view msg, T&&... args) {
+        const auto fmt_msg = 
+            spdlog::fmt_lib::format(msg, std::forward<T>(args)...);
+        spdlog::error("{} error: {}", err_to_str(E), fmt_msg);
+        std::exit(1);
+    }
 }
 
 #endif // __ERROR_HPP__

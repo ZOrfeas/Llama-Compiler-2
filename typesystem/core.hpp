@@ -1,6 +1,7 @@
 #ifndef __TYPESYSTEM_CORE_HPP__
 #define __TYPESYSTEM_CORE_HPP__
 
+#include <memory>
 #include <ostream>
 #include <string>
 #include <string_view>
@@ -16,12 +17,12 @@
 namespace typesys {
     enum class TypeEnum {
         UNIT, INT, CHAR, BOOL, FLOAT,
-        ARRAY, REF, FUNCTION, CUSTOM, UNKNOWN
+        ARRAY, REF, FUNCTION, CUSTOM, CONSTRUCTOR, UNKNOWN
     };
     inline const char* type_enum_to_str(TypeEnum b) {
         static const char* builtin_name[] = {
             "unit", "int", "char", "bool", "float",
-            "array", "ref", "function", "custom", "unknown"
+            "array", "ref", "function", "custom", "constructor", "unknown"
         };
         return builtin_name[static_cast<int>(b)];
     }
@@ -40,6 +41,7 @@ namespace typesys {
                           std::is_same_v<T, Ref> ||
                           std::is_same_v<T, Function> ||
                           std::is_same_v<T, Custom> ||
+                          std::is_same_v<T, Constructor> ||
                           std::is_same_v<T, Unknown>;
     template<typename T>
     concept ComplexTypePtr = utils::IsSharedPtr<T> &&
@@ -57,11 +59,13 @@ namespace typesys {
             std::shared_ptr<Char>, std::shared_ptr<Bool>,
             std::shared_ptr<Float>, std::shared_ptr<Array>,
             std::shared_ptr<Ref>, std::shared_ptr<Function>,
-            std::shared_ptr<Custom>, std::shared_ptr<Unknown>
+            std::shared_ptr<Custom>, std::shared_ptr<Constructor>,
+            std::shared_ptr<Unknown>
         > type_variant;
+        std::shared_ptr<void> raw_inner_ptr;
     protected:
         template<AnyTypePtr T>
-        Type(T t) : type_variant(std::move(t)) {}
+        Type(T t) : type_variant(t), raw_inner_ptr(t) {}
     public:
         Type() = delete;
         template<BuiltinType T>
@@ -77,8 +81,17 @@ namespace typesys {
             ));
         }
         template<AnyType T>
+        static Type wrap(std::shared_ptr<T> t) {
+            return Type(t);
+        }
+        template<AnyType T>
         bool is() const {
             return std::holds_alternative<std::shared_ptr<T>>(type_variant);
+        }
+        // Method is to be used ONLY when inner held type is known.
+        template<AnyType T>
+        std::shared_ptr<T> unsafe_as() const {
+            return static_pointer_cast<T>(raw_inner_ptr);
         }
         template<AnyType T>
         std::shared_ptr<T> as(std::string_view caller = "") const {
@@ -92,7 +105,7 @@ namespace typesys {
             if (auto inner = as<T>(); inner) {
                 return inner;
             }
-            error::crash<error::Internal>(
+            error::crash<error::INTERNAL>(
                 "Tried to downcast "s +
                 get_type_enum_str() +
                 " to " + 

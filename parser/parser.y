@@ -408,7 +408,7 @@ void yyerror(ast::core::Program &the_program, std::string_view msg) {
         " at line "s +
         std::to_string(yylineno) +
         ": "s + std::string(msg);
-    error::crash<error::Parsing>(err_msg);
+    error::crash<error::PARSING>(err_msg);
 }
 ast::core::Program parser::parse(std::string_view source) {
     ast::core::Program ast;
@@ -417,7 +417,7 @@ ast::core::Program parser::parse(std::string_view source) {
         const std::string err_msg =
             "Parser failed with error code " +
             std::to_string(parse_res);
-        error::crash<error::Parsing>(err_msg, parse_res);
+        error::crash<error::PARSING>(err_msg, parse_res);
     }
     return ast;
 }

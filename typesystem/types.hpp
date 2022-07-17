@@ -69,25 +69,29 @@ namespace typesys {
         bool operator==(Function const&) const;
         bool operator!=(Function const&) const;
     };
+    class Constructor {
+    public:
+        static constexpr TypeEnum type_enum = TypeEnum::CONSTRUCTOR;
+        std::string name;
+        Custom const& custom_type;
+        std::vector<Type> field_types;
+        Constructor(std::string_view name, Custom const& custom_type);
+        std::string to_string() const;
+        bool operator==(Constructor const&) const;
+        bool operator!=(Constructor const&) const;
+    };
+
     class Custom {
     public:
         static constexpr TypeEnum type_enum = TypeEnum::CUSTOM;
-        class Constructor {
-        protected:
-            friend class Custom;
-            Constructor(std::string_view name, Custom const& custom_type);
-        public:
-            std::string name;
-            Custom const& custom_type;
-            std::vector<Type> field_types;
-        };
         std::string name;
-        std::vector<Constructor> constructor_types;
+        std::vector<std::shared_ptr<Constructor>> constructor_types;
         Custom(std::string_view name);
         std::string to_string() const;
         bool operator==(Custom const&) const;
         bool operator!=(Custom const&) const;
     };
+
 
     class Unknown {
     private:

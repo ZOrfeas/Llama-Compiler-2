@@ -1,3 +1,7 @@
+#include <algorithm>
+#include <array>
+#include <memory>
+#include <spdlog/spdlog.h>
 
 #include "./sem.hpp"
 #include "../../ast/ast.hpp"
@@ -8,17 +12,61 @@ SemVisitor::SemVisitor() {}
 
 // Utilities
 
+
+
 // Visit method overloads
 
 void SemVisitor::visit(ast::core::Program* program) {
+    spdlog::trace("[sem::SemVisitor] running sem on program");
     for (auto& def : *program->defstmt_list) {
         def->accept(this);
     }
 }
 void SemVisitor::visit(ast::stmt::TypeStmt* type_stmt) {
+    spdlog::trace("[sem::SemVisitor] running sem on type_stmt");
+    auto& def_list = *type_stmt->def_list;
+    std::vector<typesys::Type> types(def_list.size());
+    for (size_t i = 0; i < def_list.size(); i++) {
+        auto& tdef = def_list[i];
+        types[i] = typesys::Type::get<typesys::Custom>(tdef->id);
+        if (!tt.insert(tdef->id, tdef.get(), types[i]))
+            error::crash<error::SEMANTIC>("type '{}' redeclared", tdef->id);
+    }
+    for (size_t i = 0; i < def_list.size(); i++) {
+        auto& tdef = def_list[i];
+        passed_type = types[i];
+        tdef->accept(this);
+    }
 }
-void SemVisitor::visit(ast::def::TypeDef* type_def) {}
-void SemVisitor::visit(ast::stmt::LetStmt* let_stmt) {}
+void SemVisitor::visit(ast::def::TypeDef* type_def) {
+    spdlog::trace("[sem::SemVisitor] running sem on type_def {}", type_def->id);
+    auto my_type = passed_type;
+    for (auto& constructor : *type_def->constructor_list) {
+        constructor->accept(this);
+        my_type->unsafe_as<typesys::Custom>()
+            ->constructor_types.push_back(
+                passed_type->unsafe_as<typesys::Constructor>()
+            );
+    }
+    passed_type = my_type;
+}
+void SemVisitor::visit(ast::stmt::LetStmt* let_stmt) {
+    auto insert_let_names = [](ast::stmt::LetStmt* let_stmt) {
+        for (auto& def : *let_stmt->def_list) {
+            st.insert(def->id, def, )
+        }
+    }
+    if (let_stmt->is_recursive) {
+
+    }
+    for (auto& def : *let_stmt->def_list) {
+
+    }
+    if (!let_stmt->is_recursive) {
+
+    }
+
+}
 void SemVisitor::visit(ast::def::Constant* cnst) {}
 void SemVisitor::visit(ast::def::Function* fn) {}
 void SemVisitor::visit(ast::def::Array* arr) {}

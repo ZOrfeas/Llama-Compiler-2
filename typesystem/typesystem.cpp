@@ -119,27 +119,35 @@ namespace typesys {
     bool Function::operator!=(Function const& other) const {
         return !(*this == other);
     }
-    
     // Custom //
 
     Custom::Custom(std::string_view name):
         name(name) {}
-    //!Note(orf): make sure no shadowing is allowed
     std::string Custom::to_string() const {
         return this->name;
     }
+    //!Note(orf): make sure no shadowing is allowed
     bool Custom::operator==(Custom const& other) const {
         return this->name == other.name;
     }
     bool Custom::operator!=(Custom const& other) const {
         return !(*this == other);
     }
-    Custom::Constructor::Constructor(
+    // Constructor //
+    
+    Constructor::Constructor(
         std::string_view name,
         Custom const& custom_type
     ): name(name), custom_type(custom_type) {}
-
-
+    std::string Constructor::to_string() const {
+        return this->name + "(" + this->custom_type.to_string() + ")";
+    }
+    bool Constructor::operator==(Constructor const& other) const {
+        return this->name == other.name;
+    }
+    bool Constructor::operator!=(Constructor const& other) const {
+        return !(*this == other);
+    }
     // Unknown //
 
     unsigned long Unknown::next_id = 0;
