@@ -6,7 +6,7 @@
 namespace typesys {
     std::string Type::to_string() const {
         using utils::match;
-        return type_variant | match {
+        return v | match {
             []<BuiltinTypePtr T>(T const& t) -> std::string {
                 return type_enum_to_str(T::element_type::type_enum);
             },
@@ -20,7 +20,7 @@ namespace typesys {
     }
     const char* Type::get_type_enum_str() const {
         using utils::match;
-        return type_variant | match {
+        return v | match {
             []<AnyTypePtr T>(T const& t) {
                 return type_enum_to_str(T::element_type::type_enum);
             }
@@ -29,7 +29,7 @@ namespace typesys {
     bool Type::operator==(Type const& other) const {
         using std::make_tuple;
         using utils::match;
-        return make_tuple(type_variant, other.type_variant) | match {
+        return make_tuple(v, other.v) | match {
             []<AnyTypePtr T>(T const& t1, T const& t2) {
                 // They are the same || their contents are equal
                 return t1 == t2 || *t1 == *t2;

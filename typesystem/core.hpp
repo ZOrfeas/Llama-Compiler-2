@@ -52,22 +52,17 @@ namespace typesys {
     concept AnyTypePtr = BuiltinTypePtr<T> || ComplexTypePtr<T>;
     
     using namespace std::string_literals;
-    class Type {
-    private:
-        std::variant<
-            std::shared_ptr<Unit>, std::shared_ptr<Int>,
-            std::shared_ptr<Char>, std::shared_ptr<Bool>,
-            std::shared_ptr<Float>, std::shared_ptr<Array>,
-            std::shared_ptr<Ref>, std::shared_ptr<Function>,
-            std::shared_ptr<Custom>, std::shared_ptr<Constructor>,
-            std::shared_ptr<Unknown>
-        > type_variant;
-        std::shared_ptr<void> raw_inner_ptr;
+    class Type : public utils::SharedPtrVariant<
+        Unit, Int, Char, Bool, Float, Array, Ref,
+        Function, Custom, Constructor, Unknown
+    > {
     protected:
-        template<AnyTypePtr T>
-        Type(T t) : type_variant(t), raw_inner_ptr(t) {}
+        using Base = utils::SharedPtrVariant<
+            Unit, Int, Char, Bool, Float, Array, Ref,
+            Function, Custom, Constructor, Unknown
+        >;
+        using Base::Base;
     public:
-        Type() = delete;
         template<BuiltinType T>
         static Type get() {
             static auto instance = std::make_shared<T>();
@@ -81,37 +76,13 @@ namespace typesys {
             ));
         }
         template<AnyType T>
-        static Type wrap(std::shared_ptr<T> t) {
-            return Type(t);
-        }
-        template<AnyType T>
-        bool is() const {
-            return std::holds_alternative<std::shared_ptr<T>>(type_variant);
-        }
-        // Method is to be used ONLY when inner held type is known.
-        template<AnyType T>
-        std::shared_ptr<T> unsafe_as() const {
-            return static_pointer_cast<T>(raw_inner_ptr);
-        }
-        template<AnyType T>
-        std::shared_ptr<T> as(std::string_view caller = "") const {
-            if (auto ptr_to_inner = std::get_if<std::shared_ptr<T>>(type_variant)) {
-                return *ptr_to_inner;
-            }
-            return std::shared_ptr<T>();            
-        }
-        template<AnyType T>
         std::shared_ptr<T> safe_as(std::string_view caller = "") const {
-            if (auto inner = as<T>(); inner) {
-                return inner;
-            }
-            error::crash<error::INTERNAL>(
-                "Tried to downcast "s +
+            const auto msg = "Tried to downcast "s +
                 get_type_enum_str() +
                 " to " + 
                 type_enum_to_str(T::tEnum) +
-                caller != "" ? " in " + std::string(caller) :   ""
-            );
+                caller != "" ? " in " + std::string(caller) :   "";
+            return Base::safe_as<T>(msg);
         }
         bool operator==(Type const& other) const;
         bool operator!=(Type const& other) const;
