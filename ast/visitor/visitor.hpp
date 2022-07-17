@@ -52,9 +52,10 @@ namespace ast::visit {
     class RelaxedVisitor : public Visitor {
     private:
         void crash(std::string_view node_type) {
-            error::crash<error::INTERNAL>(
+            const auto msg = spdlog::fmt_lib::format(
                 "Visitor {}, called on node of type {}", visitor_name, node_type
             );
+            error::crash<error::INTERNAL>(msg);
         }
         std::string_view visitor_name;
     public:

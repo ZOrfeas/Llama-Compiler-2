@@ -29,8 +29,12 @@ void SemVisitor::visit(ast::stmt::TypeStmt* type_stmt) {
     for (size_t i = 0; i < def_list.size(); i++) {
         auto& tdef = def_list[i];
         types[i] = typesys::Type::get<typesys::Custom>(tdef->id);
-        if (!tt.insert(tdef->id, tdef.get(), types[i]))
-            error::crash<error::SEMANTIC>("type '{}' redeclared", tdef->id);
+        if (!tt.insert(tdef->id, tdef.get(), types[i])) {
+            const auto msg = spdlog::fmt_lib::format(
+                "type '{}' redeclared", tdef->id
+            );
+            error::crash<error::SEMANTIC>(msg);
+        }
     }
     for (size_t i = 0; i < def_list.size(); i++) {
         auto& tdef = def_list[i];
@@ -51,20 +55,20 @@ void SemVisitor::visit(ast::def::TypeDef* type_def) {
     passed_type = my_type;
 }
 void SemVisitor::visit(ast::stmt::LetStmt* let_stmt) {
-    auto insert_let_names = [](ast::stmt::LetStmt* let_stmt) {
-        for (auto& def : *let_stmt->def_list) {
-            st.insert(def->id, def, )
-        }
-    }
-    if (let_stmt->is_recursive) {
+    // auto insert_let_names = [](ast::stmt::LetStmt* let_stmt) {
+    //     for (auto& def : *let_stmt->def_list) {
+    //         st.insert(def->id, def, )
+    //     }
+    // }
+    // if (let_stmt->is_recursive) {
 
-    }
-    for (auto& def : *let_stmt->def_list) {
+    // }
+    // for (auto& def : *let_stmt->def_list) {
 
-    }
-    if (!let_stmt->is_recursive) {
+    // }
+    // if (!let_stmt->is_recursive) {
 
-    }
+    // }
 
 }
 void SemVisitor::visit(ast::def::Constant* cnst) {}
