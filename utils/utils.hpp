@@ -1,5 +1,5 @@
-#ifndef __UTILS_HPP__
-#define __UTILS_HPP__
+#ifndef UTILS_HPP
+#define UTILS_HPP
 
 #include <__tuple>
 #include <algorithm>
@@ -28,59 +28,28 @@ namespace utils {
     struct match : Fs... {using Fs::operator()...;};
     template<class... Ts> match(Ts...) -> match<Ts...>; // needed even though c++20... bad clang
 
-    template <typename... Ts, typename... Fs>
-    constexpr decltype(auto) operator| (std::variant<Ts...> const& v, match<Fs...> const& match) {
-        return std::visit(match, v);
-    }
-    template <typename... Ts1, typename... Ts2, typename... Fs>
-    constexpr decltype(auto) operator| (std::tuple<std::variant<Ts1...>, std::variant<Ts2...>> const& v, match<Fs...> const& match) {
-        auto& [v1, v2] = v;
-        return std::visit(match, v1, v2);
-    }
-
     template<typename... Ts>
-    class SharedPtrVariant {
+    class Variant : public std::variant<Ts...> {
     protected:
-        using shared_ptr_pack = std::tuple<std::shared_ptr<Ts>...>;
-        static constexpr auto type_cnt = sizeof...(Ts);
-
-        std::variant<std::shared_ptr<Ts>...> v;
-        std::shared_ptr<void> raw_data;
+        using base_variant_t = std::variant<Ts...>;
     public:
-        SharedPtrVariant() = delete; // TODO: think this through
-        template<typename T> requires (std::disjunction_v<std::is_same<T, Ts>...>)
-        SharedPtrVariant(T t) : v(t), raw_data(t) {}
+        Variant() = delete;
+        using base_variant_t::base_variant_t; // inherit constructors
+        using base_variant_t::operator=; // inherit assignment operator
 
         template<typename T> requires (std::disjunction_v<std::is_same<T, Ts>...>)
-        static SharedPtrVariant wrap(std::shared_ptr<T> t) {
-            return SharedPtrVariant(t);
-        }
+        bool is() const { return std::holds_alternative<T>(*this); }
+        
         template<typename T> requires (std::disjunction_v<std::is_same<T, Ts>...>)
-        bool is() const {
-            return std::holds_alternative<std::shared_ptr<T>>(v);
-        }
-        template<typename T> requires (std::disjunction_v<std::is_same<T, Ts>...>)
-        std::shared_ptr<T> unsafe_as() const {
-            return std::static_pointer_cast<T>(raw_data);
-        }
-        template<typename T> requires (std::disjunction_v<std::is_same<T, Ts>...>)
-        std::shared_ptr<T> as() const {
-            if (auto ptr_to_inner = std::get_if<std::shared_ptr<T>>(v)) {
-                return *ptr_to_inner;
-            }
-            return std::shared_ptr<T>();
-        }
-        template<typename T> requires (std::disjunction_v<std::is_same<T, Ts>...>)
-        std::shared_ptr<T> safe_as(std::string_view msg) const {
-            if (auto inner = as<T>(); inner) {
-                return inner;
-            }
+        T& as(std::string_view msg) const {
+            if (auto ptr = std::get_if<T>(this)) return *ptr;
             error::crash<error::INTERNAL>(msg);
         }
     };
+
 
     // TODO: If feeling adventurous, try and make this template
     // TODO:  able to be instantiated by combining many of itself
 }
 
-#endif // __UTILS_HPP__
+#endif // UTILS_HPP

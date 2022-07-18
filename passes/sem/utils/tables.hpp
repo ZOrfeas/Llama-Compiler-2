@@ -1,5 +1,5 @@
-#ifndef __SEM_TABLES_HPP__
-#define __SEM_TABLES_HPP__
+#ifndef SEM_TABLES_HPP
+#define SEM_TABLES_HPP
 
 #include <optional>
 #include <unordered_map>
@@ -83,4 +83,4 @@ namespace sem::tables {
 
 }
 
-#endif // __SEM_TABLES_HPP__
+#endif // SEM_TABLES_HPP

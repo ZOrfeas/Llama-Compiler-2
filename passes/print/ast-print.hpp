@@ -1,6 +1,6 @@
-#ifndef __AST_PRINT_HPP__
+#ifndef AST_PRINT_HPP
+#define AST_PRINT_HPP
 
-#define __AST_PRINT_HPP__
 #include <iostream>
 #include <string>
 #include <vector>
@@ -79,7 +79,7 @@ public:
 
 void output_ast(ast::core::Program&, std::ostream& =  std::cout);
 
-#endif // __AST_PRINT_HPP__
+#endif // AST_PRINT_HPP
 
 // Program
 // │

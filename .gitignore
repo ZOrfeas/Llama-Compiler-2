@@ -11,7 +11,7 @@ lexer.*
 #----------------
 parser.*
 !parser.asm
-!parser.y
+!parser.yy
 #----------------
 llamac*
 #----------------

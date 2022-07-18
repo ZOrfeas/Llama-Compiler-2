@@ -1,5 +1,5 @@
-#ifndef __SEM_HPP__
-#define __SEM_HPP__
+#ifndef SEM_HPP
+#define SEM_HPP
 
 #include "../../ast/visitor/visitor.hpp"
 
@@ -64,4 +64,4 @@ public:
     void visit(ast::utils::match::Clause*) override;
 };
 
-#endif // __SEM_HPP__
+#endif // SEM_HPP

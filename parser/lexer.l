@@ -6,30 +6,18 @@
 // #include <cstdio>
 #include <cstdlib>
 
-#include "lexer.hpp"
+#include "driver.hpp"
 #include "parser.hpp"   
 #include "../ast/ast.hpp"      // Doesn't include parser.hpp
 
 // ast.cpp is linked and it brings parser.hpp and the functions that need yytokentype
 
 // int yylineno = 1;
-class IncludeStack {
-private:
-    std::unordered_set<std::string> filename_set;
-    std::vector<std::string> filename_stack;
-public:
-    IncludeStack() = default;
-    bool is_empty() const;
-    bool has(std::string_view) const;
-    void push(std::string_view);
-    bool pop();
-    std::string_view top() const;
-};
-IncludeStack include_stack;
-
+yy::parser::symbol_type handle_single_char_token(char tok);
 int comment_cnt = 0;
-ast::core::Program dummy_program;
+// ast::core::Program dummy_program;
 %}
+%option yylineno noyywrap nounput noinput
 
 W [ \t\n\r]  
 D  [0-9]     
@@ -38,18 +26,13 @@ Lu [A-Z]
 L  [A-Za-z]
 Hex [0-9a-f] 
 
-%option noyywrap
-
-/* use variable yylineno to get current input line number */
-%option yylineno 
-%option nounput
-%option noinput
-
 %x IN_COMMENT
 %x INCLUDE_STMT
 
 %%
-
+%{  // this runs whenever yylex is called
+    IncludeStack& include_stack = drv.include_stack;
+%}
 "#include"  { BEGIN(INCLUDE_STMT); }
 <INCLUDE_STMT>{W}*  {/* eat whitespace */}
 <INCLUDE_STMT>[^ \t\n\r]+ {
@@ -57,67 +40,75 @@ Hex [0-9a-f]
     BEGIN(INITIAL);
 }
 
-"and"       { return T_and;     }
-"array"     { return T_array;   }
-"begin"     { return T_begin;   }
-"bool"      { return T_bool;    }
-"char"      { return T_char;    }
-"delete"    { yylval.op = T_delete; return T_delete;  }
-"dim"       { return T_dim;     }
-"do"        { return T_do;      }
-"done"      { return T_done;    }
-"downto"    { return T_downto;  }
-"else"      { return T_else;    }
-"end"       { return T_end;     }
-"false"     { return T_false;   }
-"float"     { return T_float;   }
-"for"       { return T_for;     }
-"if"        { return T_if;      }
-"in"        { return T_in;      }
-"int"       { return T_int;     }
-"let"       { return T_let;     }
-"match"     { return T_match;   }
-"mod"       { yylval.op = T_mod; return T_mod;     }
-"mutable"   { return T_mutable; }
-"new"       { return T_new;     }
-"not"       { yylval.op = T_not; return T_not;     }
-"of"        { return T_of;      }
-"rec"       { return T_rec;     }
-"ref"       { return T_ref;     }
-"then"      { return T_then;    }
-"to"        { return T_to;      }
-"true"      { return T_true;    }
-"type"      { return T_type;    }
-"unit"      { return T_unit;    }
-"while"     { return T_while;   }
-"with"      { return T_with;    }
+"and"       { return yy::parser::make_AND();     }
+"array"     { return yy::parser::make_ARRAY();   }
+"begin"     { return yy::parser::make_BEGIN();   }
+"bool"      { return yy::parser::make_BOOL();    }
+"char"      { return yy::parser::make_CHAR();    }
+"delete"    { return yy::parser::make_DELETE();  }
+"dim"       { return yy::parser::make_DIM();     }
+"do"        { return yy::parser::make_DO();      }
+"done"      { return yy::parser::make_DONE();    }
+"downto"    { return yy::parser::make_DOWNTO();  }
+"else"      { return yy::parser::make_ELSE();    }
+"end"       { return yy::parser::make_END();     }
+"false"     { return yy::parser::make_FALSE();   }
+"float"     { return yy::parser::make_FLOAT();   }
+"for"       { return yy::parser::make_FOR();     }
+"if"        { return yy::parser::make_IF();      }
+"in"        { return yy::parser::make_IN();      }
+"int"       { return yy::parser::make_INT();     }
+"let"       { return yy::parser::make_LET();     }
+"match"     { return yy::parser::make_MATCH();   }
+"mod"       { return yy::parser::make_MOD();     }
+"mutable"   { return yy::parser::make_MUTABLE(); }
+"new"       { return yy::parser::make_NEW();     }
+"not"       { return yy::parser::make_NOT();     }
+"of"        { return yy::parser::make_OF();      }
+"rec"       { return yy::parser::make_REC();     }
+"ref"       { return yy::parser::make_REF();     }
+"then"      { return yy::parser::make_THEN();    }
+"to"        { return yy::parser::make_TO();      }
+"true"      { return yy::parser::make_TRUE();    }
+"type"      { return yy::parser::make_TYPE();    }
+"unit"      { return yy::parser::make_UNIT();    }
+"while"     { return yy::parser::make_WHILE();   }
+"with"      { return yy::parser::make_WITH();    }
 
-{Ll}({L}|{D}|_)*    { yylval.id = new std::string(yytext); return T_idlower; }
-{Lu}({L}|{D}|_)*    { yylval.id = new std::string(yytext); return T_idupper; }
+{Ll}({L}|{D}|_)*    { return yy::parser::make_idlower(std::string(yytext)); }
+{Lu}({L}|{D}|_)*    { return yy::parser::make_idupper(std::string(yytext)); }
 
-{D}+                        { yylval.str = new std::string(yytext);  return T_intconst;   }
-({D}+\.{D}+(e[+\-]?{D}+)?)   { yylval.str = new std::string(yytext); return T_floatconst; }
+{D}+                        { 
+    return yy::parser::make_intconst(std::string(yytext));
+}
+({D}+\.{D}+(e[+\-]?{D}+)?)   { 
+    return yy::parser::make_floatconst(std::string(yytext));
+}
 
-\'([^'"\\\n\r\0]|(\\([ntr0\\'"]|(x{Hex}{Hex}))))\'    { yylval.str = new std::string(yytext); return T_charconst; }
-\"((\\.|[^"\\\n])?)*\"    { yylval.str = new std::string(yytext); return T_stringliteral; }
+\'([^'"\\\n\r\0]|(\\([ntr0\\'"]|(x{Hex}{Hex}))))\'    { 
+    return yy::parser::make_charconst(std::string(yytext));
+}
+\"((\\.|[^"\\\n])?)*\"    { 
+    return yy::parser::make_stringliteral(std::string(yytext));
+    }
 
-[=\|+\-\*/!;<>]    { yylval.op = yytext[0]; return yytext[0]; }
-[\(\)\[\],:]        { yylval.op = yytext[0]; return yytext[0]; }
+[=\|+\-\*/!;<>]    { return handle_single_char_token(yytext[0]); }
+[\(\)\[\],:]        { return handle_single_char_token(yytext[0]); }
 
-"->" { yylval.op = T_dashgreater;  return T_dashgreater;  }
-"+." { yylval.op = T_plusdot;      return T_plusdot;      }
-"-." { yylval.op = T_minusdot;     return T_minusdot;     }
-"*." { yylval.op = T_stardot;      return T_stardot;      }
-"/." { yylval.op = T_slashdot;     return T_slashdot;     }
-"**" { yylval.op = T_dblstar;      return T_dblstar;      }
-"&&" { yylval.op = T_dblampersand; return T_dblampersand; }
-"||" { yylval.op = T_dblbar;       return T_dblbar;       }
-"<>" { yylval.op = T_lessgreater;  return T_lessgreater;  }
-"<=" { yylval.op = T_leq;          return T_leq;          }
-">=" { yylval.op = T_geq;          return T_geq;          }
-"==" { yylval.op = T_dbleq;        return T_dbleq;        }
-"!=" { yylval.op = T_exclameq;     return T_exclameq;     }
-":=" { yylval.op = T_coloneq;      return T_coloneq;      }
+"->" { return yy::parser::make_DASHGREATER(); }
+"+." { return yy::parser::make_PLUSDOT(); }
+"-." { return yy::parser::make_MINUSDOT(); }
+"*." { return yy::parser::make_STARDOT(); }
+"/." { return yy::parser::make_SLASHDOT(); }
+"**" { return yy::parser::make_DBLSTAR(); }
+"&&" { return yy::parser::make_DBLAMPERSAND(); }
+"||" { return yy::parser::make_DBLBAR(); }
+"<>" { return yy::parser::make_LTGT(); }
+"<=" { return yy::parser::make_LEQ(); }
+">=" { return yy::parser::make_GEQ(); }
+"==" { return yy::parser::make_DBLEQ(); }
+"!=" { return yy::parser::make_EXCLAMEQ(); }
+":=" { return yy::parser::make_COLONEQ(); }
 
 --.*  { /* nothing */ }
 
@@ -127,13 +118,14 @@ Hex [0-9a-f]
 <IN_COMMENT>"*"             { /* nothing */ }
 <IN_COMMENT>[^(*]+          { /* nothing */ }
 <IN_COMMENT>"("             { /* nothing */ }
-<IN_COMMENT><<EOF>>         { yyerror(dummy_program, "EOF file in comment"); }
+<IN_COMMENT><<EOF>>         { drv.error("EOF file in comment"); }
 
 {W}+    { /* nothing */ } 
-<<EOF>> { if (!include_stack.pop()) yyterminate(); }
-. { yyerror(dummy_program, "Illegal character"); }
+<<EOF>> { if (!include_stack.pop()) return yy::parser::make_STOP(); }
+. { drv.error("Illegal character"); }
 
 %%
+IncludeStack::IncludeStack(ParseDriver& drv) : owning_driver(drv) {}
 bool IncludeStack::is_empty() const {
     return this->filename_stack.empty();
 }
@@ -143,12 +135,12 @@ bool IncludeStack::has(std::string_view name) const {
 void IncludeStack::push(std::string_view name) {
     if (this->has(name)) {
         std::string err = "Circular include: " + std::string(name);
-        yyerror(dummy_program, err);
+        owning_driver.error(err);
     }
     yyin = std::fopen(std::string(name).c_str(), "r");
     if (!yyin) {
         std::string err = "Could not open file " + std::string(name);
-        yyerror(dummy_program, err);
+        owning_driver.error(err);
     }
     yypush_buffer_state(yy_create_buffer(yyin, YY_BUF_SIZE));
     this->filename_stack.push_back(std::string(name));
@@ -170,12 +162,25 @@ std::string_view IncludeStack::top() const {
     }
     return "";
 }
-namespace lexer {
-    std::string_view get_current_file() {
-        return include_stack.top();
-    }
-    void push_source_file(std::string_view filename) {
-        include_stack.push(filename);
+yy::parser::symbol_type handle_single_char_token(char tok) {
+    switch (tok) {
+        case '=': return yy::parser::make_EQ();
+        case '|': return yy::parser::make_BAR();
+        case '+': return yy::parser::make_PLUS();
+        case '-': return yy::parser::make_MINUS();
+        case '*': return yy::parser::make_STAR();
+        case '/': return yy::parser::make_SLASH();
+        case '!': return yy::parser::make_EXCLAM();
+        case ';': return yy::parser::make_SEMICOLON();
+        case '<': return yy::parser::make_LT();
+        case '>': return yy::parser::make_GT();
+        case '(': return yy::parser::make_LPAREN();
+        case ')': return yy::parser::make_RPAREN();
+        case '[': return yy::parser::make_LBRACKET();
+        case ']': return yy::parser::make_RBRACKET();
+        case ',': return yy::parser::make_COMMA();
+        case ':': return yy::parser::make_COLON();
+        default: std::exit(1);
     }
 }
 

@@ -71,4 +71,6 @@ clean:
 	$(RM) llamac test
 
 distclean: clean
-	$(RM) lexer.cpp parser.hhp parser.cpp $(BUILD)/*.o
+	$(RM) lexer.cpp parser.hpp parser.cpp $(BUILD)/*.o \
+		parser/lexer.cpp parser/parser.cpp parser/parser.hpp \
+		parser/parser.output

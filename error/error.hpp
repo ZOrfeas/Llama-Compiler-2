@@ -1,5 +1,5 @@
-#ifndef __ERROR_HPP__
-#define __ERROR_HPP__
+#ifndef ERROR_HPP
+#define ERROR_HPP
 
 #include "spdlog/spdlog.h"
 #include <iostream>
@@ -24,4 +24,4 @@ namespace error {
     }
 }
 
-#endif // __ERROR_HPP__
+#endif // ERROR_HPP
