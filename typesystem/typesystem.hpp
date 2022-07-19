@@ -6,6 +6,7 @@
 #include <memory>
 #include <string_view>
 
+#include "fmt/color.h"
 #include "forward.hpp"
 #include "../utils/utils.hpp"
 
@@ -144,12 +145,10 @@ namespace typesys {
         }
         template<AnyType T>
         T& as(std::string_view caller = "") const {
-            const auto msg = spdlog::fmt_lib::format(
-               "Tried to downcast {} to {} {}",
+            return Base::as<T>(fmt::format(
+                "Tried to downcast {} to {} {}", 
                 get_type_enum_str(), type_enum_to_str(T::tEnum),
-                caller != "" ? " in " + std::string(caller) : ""
-            );
-            return Base::as<T>(msg);
+                caller != "" ? " in " + std::string(caller) : ""));
         }
         bool operator==(Type const& other) const;
         bool operator!=(Type const& other) const;

@@ -1,37 +1,53 @@
 %require "3.8.2"
-%language "C++"
-%define api.value.type variant
+%skeleton "lalr1.cc"
+
+%defines
 %define api.token.constructor
-/* This has a runtime overhead with RTTI but provides
-      some more guarantees */
-/* %define parser.assert */ 
-%define parse.error detailed /* or 'verbose' */
-%define parse.lac full
-%define api.token.raw /* performance improved. cannot use plain chars in lexer */
+%define api.value.type variant
+/* %define parser.assert */ /* This has a runtime overhead with RTTI but provides some more guarantees */ 
+%define parse.lac full /* improves error reporting (supposedly without much overhead)*/
+%define api.token.raw /* performance improved(a bit). cannot use plain chars in lexer */
+%define api.parser.class { Parser }
+%define api.namespace { ast }
 /* %locations */
 
 %code requires {
-// #include <cstdio>
-// #include <cstdlib>
 #include <iostream>
 #include <string>
 #include <vector>
 #include <memory>
 #include <stdexcept>
 #include <string_view>
-
 #include "../ast/ast.hpp"
-#include "../error/error.hpp"
+
+#include "../log/log.hpp"
 
 // #define YYDEBUG 1 // comment out to disable debug feature compilation
-class ParseDriver;
+    namespace ast {
+        class Scanner;
+        class Generator;
+    }
+
 }
 %expect 24
-%param { ParseDriver& drv }
+%define parse.error detailed /* or 'verbose' */
 
-%code {
-#include "driver.hpp"
+%code top {
+    // check which of those are necessary
+#include "scanner.hpp"
+#include "generator.hpp"
+// #include "parser.hpp"
+
+static ast::Parser::symbol_type
+yylex(ast::Scanner& scanner, ast::Generator& gen) {
+    return scanner.get_next_token();
 }
+}
+%lex-param { ast::Scanner& scanner }
+%lex-param { ast::Generator& gen }
+%parse-param { ast::Scanner& scanner }
+%parse-param { ast::Generator& gen }
+/* %locations */
 
 %define api.token.prefix {TOK_}
 %token 
@@ -170,10 +186,10 @@ class ParseDriver;
 
 /* %printer { yyo << $$; } <*>; */
 
+%start program
 %%
-
 program 
-    : program_list                          {  }
+    : program_list                          { }
 ;
 
 program_list
@@ -394,8 +410,8 @@ pattern_list
 
 
 %%
-namespace yy {
-void parser::error (const std::string & msg) {
-    drv.error(msg);
+namespace ast {
+void Parser::error (const std::string & msg) {
+    gen.error(msg);
 }
 }

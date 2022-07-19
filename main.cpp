@@ -1,7 +1,5 @@
 #include "ast/forward.hpp"
-#include "parser/lexer.hpp"
 #include "parser/parser.hpp"
-#include "passes/print/ast-print.hpp"
 #include "cli/cli.hpp"
 
 #include <vector>
@@ -9,24 +7,25 @@
 
 // TODO(ORF): Think on how you want cwd to work. (Currently cwd is the active working directory when the compiler was invoked)
 
-void print_ast_if_enabled(ast::core::Program& ast) {
-    if (cli::ast_outfile.length() > 0) {
-        if (cli::ast_outfile == "stdout") {
-            output_ast(ast);
-        } else {
-            std::ofstream os(cli::ast_outfile);
-            output_ast(ast, os);
-        }
-    }
-}
+// void print_ast_if_enabled(ast::core::Program& ast) {
+//     if (cli::ast_outfile.length() > 0) {
+//         if (cli::ast_outfile == "stdout") {
+//             output_ast(ast);
+//         } else {
+//             std::ofstream os(cli::ast_outfile);
+//             output_ast(ast, os);
+//         }
+//     }
+// }
 int main(int argc, char** argv) {
-    if(auto exit_code = cli::parse_cli(argc, argv)) {
-        return exit_code;
+    auto args = cli::Args(argc, argv);
+    if(args.result) {
+        return args.result;
     }
     
-    ast::core::Program ast{parser::parse(cli::source_file)};
-    print_ast_if_enabled(ast);
-    if (*cli::only_parse) return 0;
+    // ast::core::Program ast{parser::parse(cli::source_file)};
+    // print_ast_if_enabled(ast);
+    if (*args.only_parse) return 0;
 
     return 0;
     // using namespace typesys;

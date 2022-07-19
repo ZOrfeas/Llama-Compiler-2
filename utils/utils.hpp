@@ -10,7 +10,7 @@
 #include <variant>
 #include <concepts>
 
-#include "../error/error.hpp"
+#include "../log/log.hpp"
 
 namespace utils {
     template <typename T, template <typename...> class Z>
@@ -43,7 +43,7 @@ namespace utils {
         template<typename T> requires (std::disjunction_v<std::is_same<T, Ts>...>)
         T& as(std::string_view msg) const {
             if (auto ptr = std::get_if<T>(this)) return *ptr;
-            error::crash<error::INTERNAL>(msg);
+            log::crash("{}\n", msg);
         }
     };
 
