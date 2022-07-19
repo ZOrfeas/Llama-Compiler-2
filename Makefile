@@ -14,7 +14,6 @@ BISON=/opt/homebrew/opt/bison/bin/bison
 
 BUILD=./build
 NON_MAIN_OBJS=scanner.o parser.o ast-print.o typesystem.o cli.o
-# error.o
 OBJS=$(NON_MAIN_OBJS) main.o
 NON_MAIN_OBJS_PATHS=$(patsubst %,$(BUILD)/%,$(NON_MAIN_OBJS))
 OBJS_PATHS=$(patsubst %,$(BUILD)/%,$(OBJS))
@@ -34,7 +33,7 @@ llamac: $(OBJS_PATHS)
 # Auto-generated lexer and parser
 parser/scanner.cpp: parser/scanner.l parser/scanner.hpp ast/ast.hpp parser/parser.hpp
 	$(FLEX) -s -o $@ $<
-parser/parser.hpp parser/parser.cpp: parser/parser.y ast/ast.hpp parser/scanner.hpp error/error.hpp
+parser/parser.hpp parser/parser.cpp: parser/parser.y ast/ast.hpp parser/scanner.hpp log/log.hpp
 	$(BISON) -dv -Wall -o parser/parser.cpp $<
 
 # Object files
@@ -52,7 +51,7 @@ $(BUILD)/cli.o: cli/cli.cpp cli/cli.hpp
 # header dependency management
 ast/ast.hpp: ast/parts/*.hpp
 passes/print/ast-print.hpp: ast/visitor/visitor.hpp
-typesystem/core.hpp: utils/utils.hpp error/error.hpp typesystem/forward.hpp
+typesystem/core.hpp: utils/utils.hpp log/log.hpp typesystem/forward.hpp
 typesystem/types.hpp: typesystem/core.hpp
 parser/scanner.hpp: ast/forward.hpp
 
