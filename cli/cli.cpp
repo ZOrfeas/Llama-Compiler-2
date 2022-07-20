@@ -1,58 +1,45 @@
 #include "./cli.hpp"
 
+using namespace cli;
 
-void setup_compilation_step_flags(CLI::App*);
-void setup_print_options_flags(CLI::App*);
-void setup_frontend(CLI::App&);
-
-namespace cli {
-    CLI::Option
-        *only_parse, *only_sem,
-        *only_ir, *only_asm;
-    std::string
-        source_file,
-        ast_outfile, types_outfile,
-        ir_outfile, asm_outfile;
-
-    int parse_cli(int argc, char **argv) {
-        CLI::App compiler{"Compiler for the Llama language", "llamac"};
-        compiler.get_formatter()->column_width(60);
-        compiler.set_help_all_flag("--help-all", "More detailed help");
-
-        compiler.add_option("source", source_file, "The source file to compile")
-            ->check(CLI::ExistingFile)
-            ->required();
-
-        setup_frontend(compiler);
-        try {
-            compiler.parse(argc, argv);
-        } catch (const CLI::CallForHelp& e) {
-            compiler.exit(e);
-            return 99;
-        } catch (const CLI::CallForAllHelp& e) {
-            compiler.exit(e);
-            return 98;
-        } catch (const CLI::Error& e) {
-            return compiler.exit(e);
-        }
-
-        // CLI11_PARSE(compiler, argc, argv);
-        return 0;
-    }
-}
 constexpr auto comp_step_grp_name = "Compilation-steps";
 constexpr auto print_opts_grp_name = "Print-options";
 
-void setup_frontend(CLI::App &compiler) {    
-    auto frontend = compiler.add_subcommand("frontend", "Compiler frontend options");
+Args::Args(int argc, char **argv):
+    the_app("Compiler for the Llama language", "llamac") {
+    the_app.get_formatter()->column_width(60);
+    the_app.set_help_all_flag("--help-all", "More detailed help");
+
+    the_app.add_option("source", source_file, "The source file to compile")
+        ->check(CLI::ExistingFile)
+        ->required();
+
+    setup_frontend();
+    result = 0;
+    try {
+        the_app.parse(argc, argv);
+    } catch (const CLI::CallForHelp& e) {
+        the_app.exit(e);
+        result = 99;
+    } catch (const CLI::CallForAllHelp& e) {
+        the_app.exit(e);
+        result =  98;
+    } catch (const CLI::Error& e) {
+        result = the_app.exit(e);
+    }
+}
+
+
+void Args::setup_frontend() {    
+    auto frontend = the_app.add_subcommand("frontend", "Compiler frontend options");
 
     setup_compilation_step_flags(frontend);
-    compiler.group(comp_step_grp_name)->require_option(-1);
+    the_app.group(comp_step_grp_name)->require_option(-1);
     
     setup_print_options_flags(frontend);
 }
 
-void setup_print_options_flags(CLI::App *frontend) {
+void Args::setup_print_options_flags(CLI::App* frontend) {
     using namespace cli;
     frontend->add_flag("--print-ast{stdout}", ast_outfile, "Print the AST")
         ->group(print_opts_grp_name)
@@ -71,7 +58,7 @@ void setup_print_options_flags(CLI::App *frontend) {
         ->expected(0, 1);
 }
 
-void setup_compilation_step_flags(CLI::App *frontend) {
+void Args::setup_compilation_step_flags(CLI::App *frontend) {
     using namespace cli;
     only_asm = frontend->add_flag("--asm", "Stop after assembly generation")
         ->group(comp_step_grp_name);

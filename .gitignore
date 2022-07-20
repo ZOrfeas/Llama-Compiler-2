@@ -5,13 +5,13 @@ build
 tmp_*
 llexer*
 #----------------
-lexer.*
-!lexer.l
-!lexer.hpp
+scanner.*
+!scanner.l
+!scanner.hpp
 #----------------
 parser.*
 !parser.asm
-!parser.y
+!parser.yy
 #----------------
 llamac*
 #----------------

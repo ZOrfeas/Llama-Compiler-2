@@ -1,41 +1,43 @@
 #include <type_traits>
 
-#include "./types.hpp"
-#include "../utils/utils.hpp"
+#include "./typesystem.hpp"
 
 namespace typesys {
     std::string Type::to_string() const {
         using utils::match;
-        return v | match {
-            []<BuiltinTypePtr T>(T const& t) -> std::string {
-                return type_enum_to_str(T::element_type::type_enum);
+        return std::visit(match{
+            []<BuiltinType T>(T const& t) -> std::string {
+                return type_enum_to_str(T::type_enum);
             },
-            []<ComplexTypePtr T>(T const& t) {
-                return t->to_string();
+            []<ComplexType T>(T const& t) {
+                return t.to_string();
             }
-        };
+        }, *this);
     }
     std::ostream& operator<<(std::ostream& os, Type const& t) {
         return os << t.to_string();
     }
     const char* Type::get_type_enum_str() const {
         using utils::match;
-        return v | match {
-            []<AnyTypePtr T>(T const& t) {
-                return type_enum_to_str(T::element_type::type_enum);
+        return std::visit(match{
+            []<AnyType T>(T const& t) {
+                return type_enum_to_str(T::type_enum);
             }
-        };
+        }, *this);
     }
     bool Type::operator==(Type const& other) const {
         using std::make_tuple;
         using utils::match;
-        return make_tuple(v, other.v) | match {
-            []<AnyTypePtr T>(T const& t1, T const& t2) {
-                // They are the same || their contents are equal
-                return t1 == t2 || *t1 == *t2;
+        return std::visit(match{
+            []<BuiltinType T>(T const&, T const&) {
+                return true;
             },
-            [](auto&& t1, auto&& t2) { return false; }
-        };
+            []<ComplexType T>(T const& t1, T const& t2) {
+                // They are the same || their contents are equal
+                return t1 == t2 || &t1 == &t2;
+            },
+            [](auto& t1, auto& t2) { return false; }
+        }, *this, other);
     }
     bool Type::operator!=(Type const& other) const {
         return !(*this == other);
@@ -43,7 +45,7 @@ namespace typesys {
 
     // Array //
 
-    Array::Array(Type element_type, int dimensions):
+    Array::Array(std::shared_ptr<Type> element_type, int dimensions):
         element_type(std::move(element_type)),
         dimensions(dimensions) {}
     std::string Array::to_string() const {
@@ -66,7 +68,7 @@ namespace typesys {
             }
         }();
         return "(" + dim_string + " " +
-                this->element_type.to_string() + ")";        
+                this->element_type->to_string() + ")";        
     }
     bool Array::operator==(Array const& other) const {
         return *this->dim_low_bound_ptr == 0 &&
@@ -80,10 +82,10 @@ namespace typesys {
 
     // Ref //
 
-    Ref::Ref(Type ref_type):
+    Ref::Ref(std::shared_ptr<Type> ref_type):
         ref_type(std::move(ref_type)) {}
     std::string Ref::to_string() const {
-        return this->ref_type.to_string() + " ref";
+        return this->ref_type->to_string() + " ref";
     }
     bool Ref::operator==(Ref const& other) const {
         return this->ref_type == other.ref_type;
@@ -93,7 +95,7 @@ namespace typesys {
     }
     // Function //
     
-    Function::Function(Type return_type):
+    Function::Function(std::shared_ptr<Type> return_type):
         return_type(std::move(return_type)) {}
     std::string Function::to_string() const {
         auto param_string = [&]() -> std::string {
@@ -105,7 +107,7 @@ namespace typesys {
             return tmp_string;
         }();
         return "(" + param_string + " -> " +
-                this->return_type.to_string() + ")";
+                this->return_type->to_string() + ")";
     }
     bool Function::operator==(Function const& other) const {
         return this->param_types.size() == other.param_types.size() &&

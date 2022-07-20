@@ -1,27 +1,16 @@
 
-#include "../passes/sem/utils/tables.hpp"
-#include "../ast/ast.hpp"
-#include "spdlog/spdlog.h"
-#include <iostream>
-
 int main(int argc, char** argv) {
-    using namespace sem::tables;
-    // std::unordered_map<std::string, int> m;
-    spdlog::set_level(spdlog::level::trace);
-    Table t;
+    
+    // using namespace typesys;
+    // Type t1 = Type::get<Unit>();
+    // Type t2 = Type::get<Unit>();
+    // Type t3 = Type::get<Int>();
+    // Type arr = Type::get<Array>(t1, 2);
+    // Type arr2 = Type::get<Array>(t2, 2);
+    // Type ref = Type::get<Ref>(t3);
+    // std::cout << arr  << " == " << arr2 << ' ' << std::boolalpha << (arr == arr2) << '\n';
+    // std::cout << arr << " == " << ref << ' ' << std::boolalpha << (arr == ref) << '\n';
 
-    t.insert("a", new ast::core::Program());
-    t.insert("b", new ast::core::Program());
-    t.insert("c", new ast::core::Program());
-
-    std::cout << std::boolalpha << !!t.lookup("a") << std::endl;
-    std::cout << std::boolalpha << !!t.lookup("b") << std::endl;
-
-    t.open_scope();
-    t.insert("a", new ast::core::Program());
-
-    std::cout << std::boolalpha << !!t.lookup("a") << std::endl;
-    std::cout << std::boolalpha << !!t.lookup("b") << std::endl;
 
     return 0;
 }

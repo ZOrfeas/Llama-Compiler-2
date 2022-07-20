@@ -1,53 +1,7 @@
-#ifndef __AST_ANNOTATION_HPP__
-#define __AST_ANNOTATION_HPP__
+#ifndef AST_ANNOTATION_HPP
+#define AST_ANNOTATION_HPP
 
-#include <string>
-#include <memory>
-
-#include "../../typesystem/types.hpp"
-#include "../visitor/visitor.hpp"
-#include "./core.hpp"
-
-// Nodes for explicitly notated types
 namespace ast::annotation {
-    using core::TypeAnnotation;
-    using std::string;
-    using std::unique_ptr;
-
-    class BasicType : public TypeAnnotation {
-    public:
-        typesys::TypeEnum t;
-        BasicType(typesys::TypeEnum t): t(t) {}
-        void accept(visit::Visitor *v) override { v->visit(this); }
-    };
-    class FunctionType : public TypeAnnotation {
-    public:
-        unique_ptr<TypeAnnotation> lhs,rhs;
-        FunctionType(TypeAnnotation *lhs, TypeAnnotation *rhs)
-            : lhs(lhs), rhs(rhs) {}
-            void accept(visit::Visitor *v) override { v->visit(this); }
-    };
-    class ArrayType : public TypeAnnotation {
-    public:
-        size_t dims;
-        unique_ptr<TypeAnnotation> contained_type;
-        ArrayType(size_t dimensions, TypeAnnotation *contained_type)
-            : dims(dimensions), contained_type(contained_type) {}
-            void accept(visit::Visitor *v) override { v->visit(this); }
-    };
-    class RefType : public TypeAnnotation {
-    public:
-        unique_ptr<TypeAnnotation> contained_type;
-        RefType(TypeAnnotation *contained_type)
-            : contained_type(contained_type) {}
-            void accept(visit::Visitor *v) override { v->visit(this); }
-    };
-    class CustomType : public TypeAnnotation {
-    public:
-        string id;
-        CustomType(string id): id(id) {}
-        void accept(visit::Visitor *v) override { v->visit(this); }
-    };
 } // namespace annotation
 
-#endif // __AST_ANNOTATION_HPP__
+#endif // AST_ANNOTATION_HPP

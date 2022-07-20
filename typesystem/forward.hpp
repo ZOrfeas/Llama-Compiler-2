@@ -1,7 +1,11 @@
-#ifndef __TYPESYSTEM_FORWARD_HPP__
-#define __TYPESYSTEM_FORWARD_HPP__
+#ifndef TYPESYSTEM_FORWARD_HPP
+#define TYPESYSTEM_FORWARD_HPP
 
 namespace typesys {
+    enum class TypeEnum {
+        UNIT, INT, CHAR, BOOL, FLOAT,
+        ARRAY, REF, FUNCTION, CUSTOM, CONSTRUCTOR, UNKNOWN
+    };
     class Type;
     struct Unit;
     struct Int;
@@ -16,4 +20,4 @@ namespace typesys {
     class Unknown;
 }
 
-#endif // __TYPESYSTEM_FORWARD_HPP__
+#endif // TYPESYSTEM_FORWARD_HPP
