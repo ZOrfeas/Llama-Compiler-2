@@ -31,11 +31,12 @@ namespace utils {
     template<typename... Ts>
     class Variant : public std::variant<Ts...> {
     protected:
-        using base_variant_t = std::variant<Ts...>;
     public:
+        using base_std_variant_t = std::variant<Ts...>;
+        using type = Variant;
         Variant() = delete;
-        using base_variant_t::base_variant_t; // inherit constructors
-        using base_variant_t::operator=; // inherit assignment operator
+        using base_std_variant_t::base_std_variant_t; // inherit constructors
+        using base_std_variant_t::operator=; // inherit assignment operator
 
         template<typename T> requires (std::disjunction_v<std::is_same<T, Ts>...>)
         bool is() const { return std::holds_alternative<T>(*this); }
@@ -47,9 +48,15 @@ namespace utils {
         }
     };
 
+    template<typename T>
+    concept IsVariant = is_specialization_of_v<T, Variant>;
 
-    // TODO: If feeling adventurous, try and make this template
-    // TODO:  able to be instantiated by combining many of itself
+    template <IsVariant Var1, IsVariant Var2> struct concat_variants;
+    template <typename... Ts1, typename... Ts2>
+    struct concat_variants<Variant<Ts1...>, Variant<Ts2...>> {
+        using type = Variant<Ts1..., Ts2...>;
+    };
+    
 }
 
 #endif // UTILS_HPP

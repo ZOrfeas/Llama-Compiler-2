@@ -1,18 +1,16 @@
-#include "../parser/generator.hpp"
-#include "../cli/cli.hpp"
-#include "../log/log.hpp"
-#include <iostream>
 
 int main(int argc, char** argv) {
-    auto args = cli::Args(argc, argv);
-    if(args.result) {
-        return args.result;
-    }
-    // log::log<log::Error>("This {} went wrong\n", "Hello,");
-    // log::log<log::Warning>("This {} went wrong\n", "Hello,");
-    // log::log<log::Info>("This {} went wrong\n", "Hello,");
-    // log::log<log::Debug>("This {} went wrong\n", "Hello,");
     
-    // std::cout << ast::Generator().parse(args.source_file) << '\n';
+    // using namespace typesys;
+    // Type t1 = Type::get<Unit>();
+    // Type t2 = Type::get<Unit>();
+    // Type t3 = Type::get<Int>();
+    // Type arr = Type::get<Array>(t1, 2);
+    // Type arr2 = Type::get<Array>(t2, 2);
+    // Type ref = Type::get<Ref>(t3);
+    // std::cout << arr  << " == " << arr2 << ' ' << std::boolalpha << (arr == arr2) << '\n';
+    // std::cout << arr << " == " << ref << ' ' << std::boolalpha << (arr == ref) << '\n';
+
+
     return 0;
 }
