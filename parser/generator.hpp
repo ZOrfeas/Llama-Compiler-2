@@ -6,25 +6,10 @@
 #include <string_view>
 
 #include "scanner.hpp"
-
 #include "parser.hpp"
 
-// class IncludeStack {
-// private:
-//     std::unordered_set<std::string> filename_set;
-//     std::vector<std::string> filename_stack;
-//     ParseDriver& owning_driver;
-// public:
-//     IncludeStack(ParseDriver& drv);
-//     bool is_empty() const;
-//     bool has(std::string_view) const;
-//     void push(std::string_view);
-//     bool pop();
-//     std::string_view top() const;
-// };
-
 namespace ast {
-class Program;
+struct Program;
 
 class Generator {
 private:
@@ -32,24 +17,16 @@ private:
     Parser parser;
     // location
     // include_stack
+    std::unique_ptr<ast::Program> ast;
 public:
     Generator();
-    int parse(std::string_view);
-    void error(std::string_view) const;
-    void clear();
-    friend class Scanner;
-    friend class Parser;
+    auto parse(std::string_view) -> int;
+    auto error(std::string_view) const -> void;
+    auto set_ast(std::unique_ptr<Program> ast) -> void;
+    auto extract_ast() && -> std::unique_ptr<Program>;
+    // friend class Scanner;
+    // friend class Parser;
 };
-
-}
-
-// class ParseDriver {
-// public:
-//     // IncludeStack include_stack;
-//     ast::Parser parser;
-//     ParseDriver(std::string_view source);
-//     int parse();
-//     void error(std::string_view msg) const;
-// };
+} // namespace ast
 
 #endif // GENERATOR_HPP

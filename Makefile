@@ -1,19 +1,18 @@
 .PHONY: default clean distclean
 CXX=$(CLANG)++
 
-CLI11_INCLUDE=$(shell pkg-config --cflags cli11)
+LIBS=cli11 fmt
 FLEX_INCLUDE=-I/opt/homebrew/opt/flex/include
-CXXFLAGS_INCLUDE=$(CLI11_INCLUDE) $(FLEX_INCLUDE)
+CXXFLAGS_INCLUDE=$(shell pkg-config --cflags $(LIBS)) $(FLEX_INCLUDE)
 CXXFLAGS=-Wall -std=c++20
 
-CLI11_LIBS=$(shell pkg-config --libs cli11)
-CXXFLAGS_LIBS=$(CLI11_LIBS)
+CXXFLAGS_LIBS=$(shell pkg-config --libs $(LIBS))
 
 FLEX=/opt/homebrew/Cellar/flex/2.6.4_2/bin/flex
 BISON=/opt/homebrew/opt/bison/bin/bison
 
 BUILD=./build
-NON_MAIN_OBJS=scanner.o parser.o ast-print.o typesystem.o cli.o
+NON_MAIN_OBJS=scanner.o parser.o generator.o typesystem.o cli.o
 OBJS=$(NON_MAIN_OBJS) main.o
 NON_MAIN_OBJS_PATHS=$(patsubst %,$(BUILD)/%,$(NON_MAIN_OBJS))
 OBJS_PATHS=$(patsubst %,$(BUILD)/%,$(OBJS))
@@ -30,27 +29,28 @@ test: $(NON_MAIN_OBJS_PATHS) tests/drafts.cpp
 llamac: $(OBJS_PATHS)
 	$(CXX) $(CXXFlAGS) $(CXXFLAGS_LIBS) -o llamac $^
 
-# Auto-generated lexer and parser
+# Auto-generated scanner and parser
 parser/scanner.cpp: parser/scanner.l parser/scanner.hpp ast/ast.hpp parser/parser.hpp
 	$(FLEX) -s -o $@ $<
-parser/parser.hpp parser/parser.cpp: parser/parser.y ast/ast.hpp parser/scanner.hpp log/log.hpp
+parser/parser.hpp parser/parser.cpp: parser/parser.yy ast/ast.hpp parser/scanner.hpp log/log.hpp
 	$(BISON) -dv -Wall -o parser/parser.cpp $<
 
 # Object files
-$(BUILD)/scanner.o: parser/scanner.cpp
-$(BUILD)/parser.o: parser/parser.cpp
-$(BUILD)/ast-print.o: passes/print/ast-print.cpp \
- passes/print/ast-print.hpp ast/ast.hpp typesystem/types.hpp 
-$(BUILD)/main.o: main.cpp parser/parser.hpp parser/scanner.hpp \
- ast/forward.hpp passes/print/ast-print.hpp \
- cli/cli.hpp
+$(BUILD)/scanner.o: parser/scanner.cpp parser/scanner.hpp \
+ parser/generator.hpp parser/parser.hpp
+$(BUILD)/parser.o: parser/parser.cpp parser/parser.hpp \
+ parser/scanner.hpp parser/generator.hpp ast/ast.hpp
+$(BUILD)/generator.o: parser/generator.cpp parser/generator.hpp \
+ ast/ast.hpp
+$(BUILD)/main.o: main.cpp parser/generator.hpp \
+ ast/ast.hpp cli/cli.hpp
 $(BUILD)/typesystem.o: typesystem/typesystem.cpp \
  typesystem/types.hpp utils/utils.hpp
 $(BUILD)/cli.o: cli/cli.cpp cli/cli.hpp
 
 # header dependency management
 ast/ast.hpp: ast/parts/*.hpp
-passes/print/ast-print.hpp: ast/visitor/visitor.hpp
+
 typesystem/core.hpp: utils/utils.hpp log/log.hpp typesystem/forward.hpp
 typesystem/types.hpp: typesystem/core.hpp
 parser/scanner.hpp: ast/forward.hpp

@@ -13,7 +13,7 @@ namespace log {
     enum Level {
         Info, Warning, Error, Debug
     };
-    constexpr inline std::string_view level_to_string(Level level) {
+    constexpr inline auto level_to_string(Level level) -> std::string_view {
         switch (level) {
             case Level::Info: return "Info";
             case Level::Warning: return "Warn";
@@ -21,7 +21,7 @@ namespace log {
             case Level::Debug: return "Debug";
         }
     }
-    constexpr inline auto level_to_outfile(Level level) {
+    constexpr inline auto level_to_outfile(Level level) -> FILE* {
         switch (level) {
             case Level::Info: return stdout;
             case Level::Warning: return stderr;
@@ -29,7 +29,7 @@ namespace log {
             case Level::Debug: return stderr;
         }
     }
-    constexpr inline fmt::text_style style(Level level) {
+    constexpr inline auto style(Level level) -> fmt::text_style {
         const auto color = [](Level level) {
             switch(level) {
                 case Level::Info: return fmt::color::green;
@@ -41,16 +41,16 @@ namespace log {
         return fmt::emphasis::bold | fmt::fg(color);
     }
     template<Level l>
-    void print_preamble() {
+    auto print_preamble() -> void {
         fmt::print(level_to_outfile(l), style(l), "[{}] ", level_to_string(l));
     }
     template<Level l, typename... Args>
-    void log(fmt::format_string<Args...> s, Args&&... args) {
+    auto log(fmt::format_string<Args...> s, Args&&... args) -> void {
         print_preamble<l>();
         fmt::print(level_to_outfile(l), s, std::forward<Args>(args)...);
     }
     template<typename... Args>
-    void crash(fmt::format_string<Args...> s, Args&&... args) {
+    auto crash(fmt::format_string<Args...> s, Args&&... args) -> void {
         log<Error>(s, std::forward<Args>(args)...);
         std::exit(1);
     }

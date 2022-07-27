@@ -30,7 +30,7 @@ Args::Args(int argc, char **argv):
 }
 
 
-void Args::setup_frontend() {    
+auto Args::setup_frontend() -> void {
     auto frontend = the_app.add_subcommand("frontend", "Compiler frontend options");
 
     setup_compilation_step_flags(frontend);
@@ -39,7 +39,7 @@ void Args::setup_frontend() {
     setup_print_options_flags(frontend);
 }
 
-void Args::setup_print_options_flags(CLI::App* frontend) {
+auto Args::setup_print_options_flags(CLI::App* frontend) -> void {
     using namespace cli;
     frontend->add_flag("--print-ast{stdout}", ast_outfile, "Print the AST")
         ->group(print_opts_grp_name)
@@ -58,7 +58,7 @@ void Args::setup_print_options_flags(CLI::App* frontend) {
         ->expected(0, 1);
 }
 
-void Args::setup_compilation_step_flags(CLI::App *frontend) {
+auto Args::setup_compilation_step_flags(CLI::App *frontend) -> void {
     using namespace cli;
     only_asm = frontend->add_flag("--asm", "Stop after assembly generation")
         ->group(comp_step_grp_name);

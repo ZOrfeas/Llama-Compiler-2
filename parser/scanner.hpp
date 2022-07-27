@@ -15,6 +15,7 @@
 #include <fstream>
 #include <memory>
 #include <utility>
+#include <string>
 
 namespace ast {
 class Generator;
@@ -28,20 +29,24 @@ private:
         Scanner& scanner;
     public:
         IncludeStack(Scanner& scanner);
-        bool is_empty() const;
-        bool has(std::string_view) const;
-        void push(std::string_view);
-        bool pop();
-        std::string_view top() const;
+        auto is_empty() const -> bool;
+        auto has(std::string_view) const -> bool;
+        auto push(std::string_view) -> void;
+        auto pop() -> bool;
+        auto top() const -> std::string_view;
     };
     Generator& gen;
+    auto single_char_token_switch(char c) -> ast::Parser::symbol_type;
 protected:
     friend class Generator;
+    friend class Parser;
     IncludeStack include_stack;
+    // auto extract_char(std::string_view str) const -> char;
+    // auto extract_string(std::string_view str) const -> std::string;
 public:
     Scanner(Generator &gen): gen(gen), include_stack(*this) {}
 	virtual ~Scanner() {}
-	virtual ast::Parser::symbol_type get_next_token();
+	virtual auto get_next_token() -> ast::Parser::symbol_type;
 };
 }
 

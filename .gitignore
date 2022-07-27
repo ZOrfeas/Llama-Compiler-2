@@ -12,6 +12,7 @@ scanner.*
 parser.*
 !parser.asm
 !parser.yy
+parser/location.hh
 #----------------
 llamac*
 #----------------

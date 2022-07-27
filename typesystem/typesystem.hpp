@@ -13,7 +13,7 @@
 //!NOTE: consider singleton pattern for Builtins
 
 namespace typesys {
-    inline const char* type_enum_to_str(TypeEnum b) {
+    inline auto type_enum_to_str(TypeEnum b) -> const char* {
         static const char* builtin_name[] = {
             "unit", "int", "char", "bool", "float",
             "array", "ref", "function", "custom", 
@@ -62,18 +62,18 @@ namespace typesys {
         std::shared_ptr<Type> element_type;
         int dimensions;
         Array(std::shared_ptr<Type> element_type, int dimensions = 0);
-        std::string to_string() const;
-        bool operator==(Array const&) const;
-        bool operator!=(Array const&) const;
+        auto to_string() const -> std::string;
+        auto operator==(Array const&) const -> bool;
+        auto operator!=(Array const&) const -> bool;
     };
     class Ref {
     public:
         static constexpr TypeEnum type_enum = TypeEnum::REF;
         std::shared_ptr<Type> ref_type;
         Ref(std::shared_ptr<Type> ref_type);
-        std::string to_string() const;
-        bool operator==(Ref const&) const;
-        bool operator!=(Ref const&) const;
+        auto to_string() const -> std::string;
+        auto operator==(Ref const&) const -> bool;
+        auto operator!=(Ref const&) const -> bool;
     };
     class Function {
     public:
@@ -81,9 +81,9 @@ namespace typesys {
         std::vector<Type> param_types;
         std::shared_ptr<Type> return_type;
         Function(std::shared_ptr<Type> return_type);
-        std::string to_string() const;
-        bool operator==(Function const&) const;
-        bool operator!=(Function const&) const;
+        auto to_string() const -> std::string;
+        auto operator==(Function const&) const -> bool;
+        auto operator!=(Function const&) const -> bool;
     };
     class Constructor {
     public:
@@ -92,31 +92,32 @@ namespace typesys {
         Custom const& custom_type;
         std::vector<Type> field_types;
         Constructor(std::string_view name, Custom const& custom_type);
-        std::string to_string() const;
-        bool operator==(Constructor const&) const;
-        bool operator!=(Constructor const&) const;
+        auto to_string() const -> std::string;
+        auto operator==(Constructor const&) const -> bool;
+        auto operator!=(Constructor const&) const -> bool;
     };
-
     class Custom {
     public:
         static constexpr TypeEnum type_enum = TypeEnum::CUSTOM;
         std::string name;
         std::vector<Constructor> constructor_types;
         Custom(std::string_view name);
-        std::string to_string() const;
-        bool operator==(Custom const&) const;
-        bool operator!=(Custom const&) const;
+        auto to_string() const -> std::string;
+        auto operator==(Custom const&) const -> bool;
+        auto operator!=(Custom const&) const -> bool;
     };
     class Unknown {
     private:
+        // TODO: This static disallows "re-entrancy" of the type system.
+        // TODO: Wrapping all typesystem "permanent" state in a class, that can be recreated.
         static unsigned long next_id;
     public:
         static constexpr TypeEnum type_enum = TypeEnum::UNKNOWN;
         unsigned long id;
         Unknown();
-        std::string to_string() const;
-        bool operator==(Unknown const&) const;
-        bool operator!=(Unknown const&) const;
+        auto to_string() const -> std::string;
+        auto operator==(Unknown const&) const -> bool;
+        auto operator!=(Unknown const&) const -> bool;
     };
 
     using namespace std::string_literals;
@@ -125,27 +126,23 @@ namespace typesys {
         Function, Custom, Constructor, Unknown
     > {
     protected:
-        using Base = utils::Variant<
-            Unit, Int, Char, Bool, Float, Array, Ref,
-            Function, Custom, Constructor, Unknown
-        >;
-        using Base::Base;
+        using Variant::Variant;
     public:
         template<BuiltinType T>
-        static std::shared_ptr<Type> get() {
+        static auto get() -> std::shared_ptr<Type> {
             static auto instance = T();
             return std::make_shared<Type>(instance);
         }
         //!Note: Make sure the errors when giving wrong args are not too bad
         template<ComplexType T, typename... Args>
-        static std::shared_ptr<Type> get(Args&&... args) {
+        static auto get(Args&&... args) -> std::shared_ptr<Type> {
             return std::make_shared<Type>(T(
                 std::forward<Args>(args)...
             ));
         }
         template<AnyType T>
         T& as(std::string_view caller = "") const {
-            return Base::as<T>(fmt::format(
+            return Variant::as<T>(fmt::format(
                 "Tried to downcast {} to {} {}", 
                 get_type_enum_str(), type_enum_to_str(T::tEnum),
                 caller != "" ? " in " + std::string(caller) : ""));
