@@ -1,0 +1,3 @@
+type color = Red | Blue
+
+let a = 5.0 +. 2.0
