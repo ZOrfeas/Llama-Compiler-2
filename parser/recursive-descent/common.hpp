@@ -94,6 +94,6 @@ enum token_kind
 struct token 
 {
     token_kind t;
-    std::string name;
+    std::string value;
     position start, end;
 };

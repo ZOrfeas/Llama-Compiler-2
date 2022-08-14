@@ -39,7 +39,7 @@ token Lexer::next_token()
     if (match_end())
     {
         ans.t = token_kind::STOP;
-        ans.name = this->cur_s;
+        ans.value = this->cur_s;
         ans.end = pos;
         return ans;
     }
@@ -48,7 +48,7 @@ token Lexer::next_token()
     if (match_single_line_comment() || match_single_line_comment())
     {
         ans.t = token_kind::COMMENT;
-        ans.name = this->cur_s;
+        ans.value = this->cur_s;
         ans.end = pos;
         return ans;
     }
@@ -95,7 +95,7 @@ token Lexer::next_token()
         if (match_prefix_word_with(k.name)) 
         {
             ans.t = k.t;
-            ans.name = k.name;
+            ans.value = k.name;
             ans.end = this->pos;
             return ans;
         }
@@ -105,19 +105,53 @@ token Lexer::next_token()
     if (match_id()) 
     {
         ans.t = token_kind::idlower;
-        ans.name = cur_s;
+        ans.value = cur_s;
         ans.end = this->pos;
         return ans;
     }
     if (match_Id())
     {
         ans.t = token_kind::idupper;
-        ans.name = cur_s;
+        ans.value = cur_s;
         ans.end = this->pos;
         return ans;
     } 
     
-    // Literal int, float, character, string (+escape sequences)
+    // Literal float
+    if (match_literal_float())
+    {
+        ans.t = token_kind::floatconst;
+        ans.value = this->cur_s;
+        ans.end = this->pos;
+        return ans;
+    }
+
+    // Literal int
+    if (match_literal_int())
+    {
+        ans.t = token_kind::intconst;
+        ans.value = this->cur_s;
+        ans.end = this->pos;
+        return ans;
+    }
+
+    // Literal char (+ escape sequences)
+    if (match_literal_char())
+    {
+        ans.t = token_kind::charconst;
+        ans.value = this->cur_s;
+        ans.end = this->pos;
+        return ans;
+    }
+
+    // Literal string (+ escape sequences)
+    if (match_literal_string)
+    {
+        ans.t = token_kind::stringliteral;
+        ans.value = this->cur_s;
+        ans.end = this->pos;
+        return ans;
+    } 
     
     // Symbolic operators (multiple chars)
     std::vector<reserved> symops = {
@@ -141,7 +175,7 @@ token Lexer::next_token()
         if (match_prefix_word_with(k.name)) 
         {
             ans.t = k.t;
-            ans.name = k.name;
+            ans.value = k.name;
             ans.end = this->pos;
             return ans;
         }
@@ -171,7 +205,7 @@ token Lexer::next_token()
         if (match_prefix_word_with(k.name)) 
         {
             ans.t = k.t;
-            ans.name = k.name;
+            ans.value = k.name;
             ans.end = this->pos;
             return ans;
         }
@@ -180,7 +214,7 @@ token Lexer::next_token()
     // Can't match token
     match_unmatched();
     ans.t = token_kind::UNMATCHED;
-    ans.name = this->cur_s;
+    ans.value = this->cur_s;
     ans.end = this->pos;
     return ans;
 }
@@ -387,6 +421,114 @@ void Lexer::match_unmatched()
     //! This is where I can make it error tolerant by matching whatever until next whitespace for instance
     this->cur_s = std::string(this->it, this->text.end());
 }
+bool Lexer::match_literal_float()
+{
+    std::string::iterator it_temp = this->it;
+
+    // Consume at least one digit for the integer part
+    if (!std::isdigit(*it_temp)) 
+    {
+        return false;
+    }
+    it_temp++;
+
+    // Consume all remaining consecutive digits
+    while (std::isdigit(*it_temp)) 
+    {
+        it_temp++;
+    }
+
+    // Check . after integer part
+    if (it_temp == this->text.end() || *it_temp != '.') 
+    {
+        return false;
+    }
+    it_temp++;
+
+    // Consume at least one digit for the decimal part
+    if (!std::isdigit(*it_temp)) 
+    {
+        //! This is a good place for an error since we know it is a float written without decimal part
+        return false;
+    }
+    it_temp++;
+    
+    // Consume all remaining consecutive digits
+    while (std::isdigit(*it_temp))
+    {
+        it_temp++;
+    } 
+
+    // Check e after integer part
+    if (it_temp == this->text.end() || *it_temp != 'e') 
+    {
+        // So far we have a valid float without exponential part
+        this->pos.column += std::distance(this->it, it_temp);
+        this->cur_s = std::string(this->it, it_temp);
+        this->it = it_temp;
+        return true;
+    }
+    it_temp++;
+
+    // Consume +/- if found
+    if (*it_temp == '+' || *it_temp == '-')
+    {
+        it_temp++;
+    }
+    
+    // Consume at least one digit for exponential part
+    if (! std::isdigit(*it_temp)) 
+    {
+        return false;
+    }
+    it_temp++;
+
+    // Consume all remaining digits in exponential part
+    while (std::isdigit(*it_temp))
+    {
+        it_temp++;
+    }
+
+    // So far we have a valid float with exponential part
+    this->pos.column += std::distance(this->it, it_temp);
+    this->cur_s = std::string(this->it, it_temp);
+    this->it = it_temp;
+    return true;
+}
+bool Lexer::match_literal_int()
+{
+    std::string::iterator it_temp = this->it;
+
+    // Consume at least one digit of the integer
+    if (!std::isdigit(*it_temp)) 
+    {
+        return false;
+    }
+    it_temp++;
+
+    // Consume all remaining consecutive digits
+    while (std::isdigit(*it_temp)) 
+    {
+        it_temp++;
+    }
+
+    // Check . after integer part
+    if (*it_temp == '.') 
+    {
+        // Dot can't be part of an integer 
+        return false;
+    }
+    
+    // Matched the literal integer
+    this->pos.column += std::distance(it, it_temp);
+    this->cur_s = std::string(it, it_temp);
+    this->it = it_temp;
+    return true;
+}
+bool Lexer::match_literal_char()
+{
+    
+}
 
 //?NOTE: No regex needed, I can easily match keywords with one function, and do custom stuff for the rest
 
@@ -408,7 +550,7 @@ int main()
     for (auto& t: tokens)
     {
         std::cout   << t.t 
-                    << "(" << t.name << ")"
+                    << "(" << t.value << ")"
                     << " (" << t.start.line << ", " << t.start.column << "),"
                     << " (" << t.end.line << ", " << t.end.column << ")" 
                     << std::endl;
