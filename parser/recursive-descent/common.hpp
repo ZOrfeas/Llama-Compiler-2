@@ -7,7 +7,6 @@
 #include <regex>
 
 
-
 struct position {
     int line; 
     int column;
@@ -15,6 +14,8 @@ struct position {
 
 enum token_kind 
 {
+    COMMENT,
+    UNMATCHED,
     STOP,
     AND,
     ARRAY,
@@ -71,7 +72,7 @@ enum token_kind
     GEQ,
     DBLEQ,
     EXCLAMEQ,
-    CLONEQ,
+    COLONEQ,
     SEMICOLON,
     EQ,
     GT,
@@ -93,6 +94,6 @@ enum token_kind
 struct token 
 {
     token_kind t;
-    std::string value;
+    std::string name;
     position start, end;
 };

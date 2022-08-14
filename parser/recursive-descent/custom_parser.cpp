@@ -18,27 +18,6 @@ std::vector<std::string> split_words_from_string(std::string s) {
     return words;
 }
 
-/* Fetches a token and sets the end of it (a lexer, to be honest) */
-token get_next_token(std::vector<std::string>& text, position& start) 
-{
-    // Token coulde be a ...
-    
-    // Whole comment
-    
-    // Keyword
-    
-    // Identifier (id/Id)
-    /* std::regex_search(token, std::regex("\\b[[:lower:]][[:alnum:]_]*\\b")); */
-    /* std::regex_search(token, std::regex("\\b[[:upper:]][[:alnum:]_]*\\b")); */
-    
-    // Literal int, float, character, string (+escape sequences)
-    
-    // Symbolic operators
-    
-    // Separators
-    
-    // White space (\n, \t, \r, \f, \v, space)
-}
 
 /* Consumes spaces, newlines */
 void eat_white_space(std::vector<std::string>& text, position& start)
