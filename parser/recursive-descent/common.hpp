@@ -1,19 +1,18 @@
 #pragma once
 
-#include <string>
-#include <vector>
 #include <fstream>
 #include <iostream>
+#include <string>
+#include <vector>
 
 #define TAB_SIZE 8
 
 struct position {
-    int line; 
+    int line;
     int column;
 };
 
-enum class token_kind 
-{
+enum class token_kind {
     COMMENT,
     UNMATCHED,
     STOP,
@@ -91,8 +90,7 @@ enum class token_kind
     EXCLAM
 };
 
-struct token 
-{
+struct token {
     token_kind t;
     std::string value;
     position start, end;

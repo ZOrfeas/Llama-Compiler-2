@@ -6,12 +6,12 @@ struct reserved {
     token_kind t;
 };
 
-class Lexer 
-{
+class Lexer {
 public:
-    Lexer(std::string& text);
+    Lexer(std::string &text);
     void lex();
     std::vector<token> get_tokens();
+
 private:
     /* Finds the next token in the sequence */
     token next_token();
@@ -31,11 +31,9 @@ private:
     // Input and output
     std::string text;
     std::vector<token> tokens;
-    
+
     // Initialized by lex()
     std::string::iterator it;
     position pos;
     std::string cur_s;
 };
-
-
