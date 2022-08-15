@@ -46,7 +46,7 @@ token Lexer::next_token()
     }
 
     // Whole comment
-    if (match_single_line_comment() || match_single_line_comment())
+    if (match_single_line_comment() || match_multi_line_comment())
     {
         ans.t = token_kind::COMMENT;
         ans.value = this->cur_s;
@@ -55,7 +55,7 @@ token Lexer::next_token()
     }
         
     // Keyword
-    std::vector<reserved> keywords = {
+    static std::vector<reserved> keywords = {
     {"and",     token_kind::AND},
     {"array",   token_kind::ARRAY},
     {"begin",   token_kind::BEGIN},
@@ -155,7 +155,7 @@ token Lexer::next_token()
     } 
     
     // Symbolic operators (multiple chars)
-    std::vector<reserved> symops = {
+    static std::vector<reserved> symops = {
     { "->", token_kind::DASHGREATER },
     { "+.", token_kind::PLUSDOT },
     { "-.", token_kind::MINUSDOT },
@@ -183,7 +183,7 @@ token Lexer::next_token()
     }
 
     // Separators and single char operators
-    std::vector<reserved> single_char = {
+    static std::vector<reserved> single_char = {
     { "=", token_kind::EQ },
     { "|", token_kind::BAR },
     { "+", token_kind::PLUS },

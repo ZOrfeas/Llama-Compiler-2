@@ -12,7 +12,7 @@ struct position {
     int column;
 };
 
-enum token_kind 
+enum class token_kind 
 {
     COMMENT,
     UNMATCHED,

@@ -1,4 +1,6 @@
-#include <common.hpp>
+#include <regex>
+
+#include "common.hpp"
 
 std::vector<std::string> split_words_from_string(std::string s) {
     std::vector<std::string> words = {};
@@ -48,46 +50,20 @@ bool parse_type(std::vector<std::string>& text, position& start, position& end)
     end = current_token.end;
     
     switch (current_token.t) {
-        case token_kind::UNIT:
-            if(parse_type_helper(text, current_token.end, end)) {
-                return true;
-            }
-        case token_kind::INT:
-            if(parse_type_helper(text, current_token.end, end)) {
-                return true;
-            }
-        case token_kind::FLOAT:
-            if(parse_type_helper(text, current_token.end, end)) {
-                return true;
-            }
-        case token_kind::CHAR:
-            if(parse_type_helper(text, current_token.end, end)) {
-                return true;
-            }
-        case token_kind::stringliteral:
-            if(parse_type_helper(text, current_token.end, end)) {
-                return true;
-            }
-        case token_kind::TRUE:
-            if(parse_type_helper(text, current_token.end, end)) {
-                return true;
-            }  
-        case token_kind::FALSE:
-            if(parse_type_helper(text, current_token.end, end)) {
-                return true;
-            }
+        case token_kind::UNIT: // fallthrough
+        case token_kind::INT: // fallthrough
+        case token_kind::FLOAT: // fallthrough
+        case token_kind::CHAR: // fallthrough
+        case token_kind::stringliteral: // fallthrough
+        case token_kind::TRUE: // fallthrough
+        case token_kind::FALSE: // fallthrough
+        case token_kind::ARRAY: // fallthrough
+        case token_kind::idlower:
+            return parse_type_helper(text, current_token.end, end);
         case token_kind::LPAREN:
             return true;
         case token_kind::RPAREN:
             return false;
-        case token_kind::ARRAY:
-            if(parse_type_helper(text, current_token.end, end)) {
-                return true;
-            }
-        case token_kind::idlower:
-            if(parse_type_helper(text, current_token.end, end)) {
-                return true;
-            }
         default:
             return false;
     }
