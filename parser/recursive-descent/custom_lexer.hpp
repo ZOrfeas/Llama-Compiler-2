@@ -12,6 +12,8 @@ public:
     Lexer(std::string& text);
     void lex();
     std::vector<token> get_tokens();
+    void print_tokens();
+
 private:
     /* Finds the next token in the sequence */
     token next_token();

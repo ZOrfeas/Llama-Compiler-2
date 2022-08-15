@@ -4,6 +4,7 @@
 #include <vector>
 #include <fstream>
 #include <iostream>
+#include <map>
 
 #define TAB_SIZE 8
 
@@ -96,4 +97,82 @@ struct token
     token_kind t;
     std::string value;
     position start, end;
+};
+
+// Create map with token kinds and their string representations
+std::map<token_kind, std::string> token_kind_string =
+{
+    {COMMENT, "COMMENT"},
+    {UNMATCHED, "UNMATCHED"},
+    {STOP, "STOP"},
+    {AND, "AND"},
+    {ARRAY, "ARRAY"},
+    {BEGIN, "BEGIN"},
+    {BOOL, "BOOL"},
+    {CHAR, "CHAR"},
+    {DELETE, "DELETE"},
+    {DIM, "DIM"},
+    {DO, "DO"},
+    {DONE, "DONE"},
+    {DOWNTO, "DOWNTO"},
+    {ELSE, "ELSE"},
+    {END, "END"},
+    {FALSE, "FALSE"},
+    {FLOAT, "FLOAT"},
+    {FOR, "FOR"},
+    {IF, "IF"},
+    {IN, "IN"},
+    {INT, "INT"},
+    {LET, "LET"},
+    {MATCH, "MATCH"},
+    {MOD, "MOD"},
+    {MUTABLE, "MUTABLE"},
+    {NEW, "NEW"},
+    {NOT, "NOT"},
+    {OF, "OF"},
+    {REC, "REC"},
+    {REF, "REF"},
+    {THEN, "THEN"},
+    {TO, "TO"},
+    {TRUE, "TRUE"},
+    {TYPE, "TYPE"},
+    {UNIT, "UNIT"},
+    {WHILE, "WHILE"},
+    {WITH, "WITH"},
+    {idlower, "idlower"},
+    {idupper, "idupper"},
+    {intconst, "intconst"},
+    {floatconst, "floatconst"},
+    {charconst, "charconst"},
+    {stringliteral, "stringliteral"},
+    {DASHGREATER, "DASHGREATER"},
+    {PLUSDOT, "PLUSDOT"},
+    {MINUSDOT, "MINUSDOT"},
+    {STARDOT, "STARDOT"},
+    {SLASHDOT, "SLASHDOT"},
+    {DBLSTAR, "DBLSTAR"},
+    {DBLAMPERSAND, "DBLAMPERS"}, 
+    {DBLBAR, "DBLBAR"},
+    {LTGT, "LTGT"},
+    {LEQ, "LEQ"},
+    {GEQ, "GEQ"},
+    {DBLEQ, "DBLEQ"},
+    {EXCLAMEQ, "EXCLAMEQ"},
+    {COLONEQ, "COLONEQ"},
+    {SEMICOLON, "SEMICOLON"},
+    {EQ, "EQ"},
+    {GT, "GT"},
+    {LT, "LT"},
+    {PLUS, "PLUS"},
+    {MINUS, "MINUS"},
+    {STAR, "STAR"},
+    {SLASH, "SLASH"},
+    {COLON, "COLON"},
+    {COMMA, "COMMA"},
+    {LBRACKET, "LBRACKET"},
+    {RBRACKET, "RBRACKET"},
+    {LPAREN, "LPAREN"},
+    {RPAREN, "RPAREN"},
+    {BAR, "BAR"},
+    {EXCLAM, "EXCLAM"}
 };
