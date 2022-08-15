@@ -29,12 +29,13 @@ void Lexer::lex()
     }
 token Lexer::next_token()
 {
+    
+    // Consume all white space (\n, \t, \r, space)
+    match_whitespace(); // no token just skip ahead
+    
     // Token could be a ...
     token ans = {token_kind::UNMATCHED, "", this->pos, this->pos};
 
-    // White space (\n, \t, \r, space)
-    match_whitespace(); // no token just skip ahead
-    
     // EOF
     if (match_end())
     {
@@ -55,40 +56,40 @@ token Lexer::next_token()
         
     // Keyword
     std::vector<reserved> keywords = {
-    {"and", AND},
-    {"array", ARRAY},
-    {"begin", BEGIN},
-    {"bool", BOOL},
-    {"char", CHAR},
-    {"delete", DELETE},
-    {"dim", DIM},
-    {"do", DO},
-    {"done", DONE},
-    {"downto", DOWNTO},
-    {"else", ELSE},
-    {"end", END},
-    {"false", FALSE},
-    {"float", FLOAT},
-    {"for", FOR},
-    {"if", IF},
-    {"in", IN},
-    {"int", INT},
-    {"let", LET},
-    {"match", MATCH},
-    {"mod", MOD},
-    {"mutable", MUTABLE},
-    {"new", NEW},
-    {"not", NOT},
-    {"of", OF},
-    {"rec", REC},
-    {"ref", REF},
-    {"then", THEN},
-    {"to", TO},
-    {"true", TRUE},
-    {"type", TYPE},
-    {"unit", UNIT},
-    {"while", WHILE},
-    {"with", WITH}
+    {"and",     token_kind::AND},
+    {"array",   token_kind::ARRAY},
+    {"begin",   token_kind::BEGIN},
+    {"bool",    token_kind::BOOL},
+    {"char",    token_kind::CHAR},
+    {"delete",  token_kind::DELETE},
+    {"dim",     token_kind::DIM},
+    {"do",      token_kind::DO},
+    {"done",    token_kind::DONE},
+    {"downto",  token_kind::DOWNTO},
+    {"else",    token_kind::ELSE},
+    {"end",     token_kind::END},
+    {"false",   token_kind::FALSE},
+    {"float",   token_kind::FLOAT},
+    {"for",     token_kind::FOR},
+    {"if",      token_kind::IF},
+    {"in",      token_kind::IN},
+    {"int",     token_kind::INT},
+    {"let",     token_kind::LET},
+    {"match",   token_kind::MATCH},
+    {"mod",     token_kind::MOD},
+    {"mutable", token_kind::MUTABLE},
+    {"new",     token_kind::NEW},
+    {"not",     token_kind::NOT},
+    {"of",      token_kind::OF},
+    {"rec",     token_kind::REC},
+    {"ref",     token_kind::REF},
+    {"then",    token_kind::THEN},
+    {"to",      token_kind::TO},
+    {"true",    token_kind::TRUE},
+    {"type",    token_kind::TYPE},
+    {"unit",    token_kind::UNIT},
+    {"while",   token_kind::WHILE},
+    {"with",    token_kind::WITH}
 };
     for (auto& k : keywords)
     {
@@ -144,8 +145,8 @@ token Lexer::next_token()
         return ans;
     }
 
-    // Literal string (+ escape sequences)
-    if (match_literal_string)
+    // Literal string (can't span more than one string in the code + stray \)
+    if (match_literal_string())
     {
         ans.t = token_kind::stringliteral;
         ans.value = this->cur_s;
@@ -248,26 +249,26 @@ void Lexer::match_whitespace()
 {
     std::string::iterator it_temp = this->it;
     
-    if (*it_temp == '\n' || *it_temp == '\r') 
+    while (it_temp != this->text.end() && std::isspace(*it_temp))
+    {
+        if (*it_temp == '\n' || *it_temp == '\r') 
         {
             this->pos.line++;
             this->pos.column = 0;
         }
-    else if (*it_temp == '\t')
+        else if (*it_temp == '\t')
         {
             //!NOTE: how many spaces is a tab in current editor?
-            this->pos.column += 8 - (this->pos.column % 8);
+            this->pos.column += TAB_SIZE - (this->pos.column % TAB_SIZE);
         }
-    else if (*it_temp == ' ')
+        else if (*it_temp == ' ')
         {
             this->pos.column++;
         }
-    else
-    {
-        return;
+
+        it_temp++;
     }
     
-    it_temp++;
     this->it = it_temp;
     return;
 }
@@ -420,6 +421,7 @@ void Lexer::match_unmatched()
 {
     //! This is where I can make it error tolerant by matching whatever until next whitespace for instance
     this->cur_s = std::string(this->it, this->text.end());
+    this->it = this->text.end();
 }
 bool Lexer::match_literal_float()
 {
@@ -527,7 +529,126 @@ bool Lexer::match_literal_int()
 }
 bool Lexer::match_literal_char()
 {
-    
+    std::string::iterator it_temp = this->it;
+
+    // Check starting single quote
+    if (*it_temp != '\'')
+    {
+        return false;
+    }
+    it_temp++;
+
+    // Single character case
+    if (*it_temp == '\'' ||
+        *it_temp == '\"' ||
+        *it_temp == '\n' ||
+        *it_temp == '\r' ||
+        *it_temp == '\0')
+    {
+        //! Error illegar literal char
+        return false;
+    }
+
+    // Escape sequence
+    if (*it_temp == '\\')
+    {
+        it_temp++;
+        if (*it_temp != 'n' &&
+            *it_temp != 't' && 
+            *it_temp != 'r' && 
+            *it_temp != '0' &&
+            *it_temp != '\\' &&
+            *it_temp != '\'' &&
+            *it_temp != '\"' &&
+            *it_temp != 'x')
+        {
+            return false;
+        }
+
+        // Hex
+        if (*it_temp == 'x')
+        {
+            it_temp++;
+            
+            if(!std::isdigit(*it_temp) && !(*it_temp >= 'a' && *it_temp <= 'f'))
+            {
+                //! Error invalid hex
+                return false;
+            }
+            it_temp++;
+            
+            if(!std::isdigit(*it_temp) && !(*it_temp >= 'a' && *it_temp <= 'f'))
+            {
+                //! Error invalid hex
+                return false;
+            }
+            it_temp++;
+        }
+
+        // Other escape sequence 
+        else 
+        {
+            it_temp++;
+        }
+    }
+
+    // Check ending single quote
+    if (*it_temp != '\'')
+    {
+        //! Error expected single quote
+        return false;
+    }
+    it_temp++;
+
+    this->pos.column += std::distance(this->it, it_temp);
+    this->cur_s = std::string(this->it, it_temp);
+    this->it = it_temp;
+    return true;
+}
+bool Lexer::match_literal_string()
+{
+    std::string::iterator it_temp = it;
+
+    // Check doublequotes
+    if (*it_temp != '\"')
+    {
+        return false;
+    }
+    it_temp++;
+
+    // Consume the rest of the string (at most the rest of the line)
+    while (it_temp != this->text.end() && *it_temp != '\"')
+    {
+        // String only spans one string
+        if (*it_temp == '\n')
+        {
+            //! Error string spans more than one line
+            return false;
+        }
+        
+        // Escape sequence
+        if (*it_temp == '\\')
+        {
+            it_temp++;
+
+            // Newline is not covered by escape sequence
+            if (*it_temp == '\n')
+            {
+                //! Error string spans more than one line
+                return false;
+            }
+        }
+
+        // Consume the next character
+        it_temp++;
+    }
+
+    it_temp++;
+
+    this->pos.column += std::distance(this->it, it_temp);
+    this->cur_s = std::string(this->it, it_temp);
+    this->it = it_temp;
+    return true;
 }
 
 //?NOTE: No regex needed, I can easily match keywords with one function, and do custom stuff for the rest

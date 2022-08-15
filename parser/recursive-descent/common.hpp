@@ -4,8 +4,8 @@
 #include <vector>
 #include <fstream>
 #include <iostream>
-#include <regex>
 
+#define TAB_SIZE 8
 
 struct position {
     int line; 

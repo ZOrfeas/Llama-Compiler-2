@@ -1,3 +1,4 @@
 type color = Red | Blue
 
-let a =  5; 7
+let a =  7; 55.7; '\n'; '\xff' ; "he\nllo"
+
