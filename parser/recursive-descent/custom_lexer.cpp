@@ -268,7 +268,7 @@ bool Lexer::match_single_line_comment() {
     return true;
 }
 bool Lexer::match_multi_line_comment() {
-    std::string::iterator it_temp = it;
+    std::string::iterator it_temp = this->it;
     int balance = 0;
 
     // Match (* to start comment
@@ -280,7 +280,7 @@ bool Lexer::match_multi_line_comment() {
     balance++;
     it_temp += 2;
 
-    while (it_temp != this->text.end() || balance == 0) {
+    while (it_temp != this->text.end() || balance != 0) {
         if (*it_temp == '(' && *(it_temp + 1) == '*') {
             // Found (*
             balance++;
@@ -291,7 +291,6 @@ bool Lexer::match_multi_line_comment() {
             balance--;
             it_temp += 2;
             this->pos.column += 2;
-
         } else if (*it_temp == '\n' || *it_temp == '\r') {
             // Beware end of line
             it_temp++;
@@ -518,6 +517,14 @@ bool Lexer::match_literal_string() {
     this->it = it_temp;
     return true;
 }
+void Lexer::print_tokens() {
+    for (auto &t : this->tokens) {
+        std::cout << token_kind_string[t.t] << "(" << t.value << ")"
+                  << " (" << t.start.line << ", " << t.start.column << "),"
+                  << " (" << t.end.line << ", " << t.end.column << ")"
+                  << std::endl;
+    }
+}
 
 //?NOTE: No regex needed, I can easily match keywords with one function, and do
 // custom stuff for the rest
@@ -535,11 +542,5 @@ int main() {
 
     Lexer lexer(text);
     lexer.lex();
-    auto tokens = lexer.get_tokens();
-    for (auto &t : tokens) {
-        std::cout << t.t << "(" << t.value << ")"
-                  << " (" << t.start.line << ", " << t.start.column << "),"
-                  << " (" << t.end.line << ", " << t.end.column << ")"
-                  << std::endl;
-    }
+    lexer.print_tokens();
 }
