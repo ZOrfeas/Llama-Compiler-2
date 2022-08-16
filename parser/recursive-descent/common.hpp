@@ -4,7 +4,6 @@
 #include <fstream>
 #include <iostream>
 #include <string>
-#include <unordered_map>
 
 #define TAB_SIZE 8
 
@@ -97,80 +96,38 @@ struct token {
     position start, end;
 };
 
-// Create map with token kinds and their string representations
-std::unordered_map<token_kind, std::string> token_kind_string = {
-    {token_kind::COMMENT, "COMMENT"},
-    {token_kind::UNMATCHED, "UNMATCHED"},
-    {token_kind::STOP, "STOP"},
-    {token_kind::AND, "AND"},
-    {token_kind::ARRAY, "ARRAY"},
-    {token_kind::BEGIN, "BEGIN"},
-    {token_kind::BOOL, "BOOL"},
-    {token_kind::CHAR, "CHAR"},
-    {token_kind::DELETE, "DELETE"},
-    {token_kind::DIM, "DIM"},
-    {token_kind::DO, "DO"},
-    {token_kind::DONE, "DONE"},
-    {token_kind::DOWNTO, "DOWNTO"},
-    {token_kind::ELSE, "ELSE"},
-    {token_kind::END, "END"},
-    {token_kind::FALSE, "FALSE"},
-    {token_kind::FLOAT, "FLOAT"},
-    {token_kind::FOR, "FOR"},
-    {token_kind::IF, "IF"},
-    {token_kind::IN, "IN"},
-    {token_kind::INT, "INT"},
-    {token_kind::LET, "LET"},
-    {token_kind::MATCH, "MATCH"},
-    {token_kind::MOD, "MOD"},
-    {token_kind::MUTABLE, "MUTABLE"},
-    {token_kind::NEW, "NEW"},
-    {token_kind::NOT, "NOT"},
-    {token_kind::OF, "OF"},
-    {token_kind::REC, "REC"},
-    {token_kind::REF, "REF"},
-    {token_kind::THEN, "THEN"},
-    {token_kind::TO, "TO"},
-    {token_kind::TRUE, "TRUE"},
-    {token_kind::TYPE, "TYPE"},
-    {token_kind::UNIT, "UNIT"},
-    {token_kind::WHILE, "WHILE"},
-    {token_kind::WITH, "WITH"},
-    {token_kind::idlower, "idlower"},
-    {token_kind::idupper, "idupper"},
-    {token_kind::intconst, "intconst"},
-    {token_kind::floatconst, "floatconst"},
-    {token_kind::charconst, "charconst"},
-    {token_kind::stringliteral, "stringliteral"},
-    {token_kind::DASHGREATER, "DASHGREATER"},
-    {token_kind::PLUSDOT, "PLUSDOT"},
-    {token_kind::MINUSDOT, "MINUSDOT"},
-    {token_kind::STARDOT, "STARDOT"},
-    {token_kind::SLASHDOT, "SLASHDOT"},
-    {token_kind::DBLSTAR, "DBLSTAR"},
-    {token_kind::DBLAMPERSAND, "DBLAMPERS"},
-    {token_kind::DBLBAR, "DBLBAR"},
-    {token_kind::LTGT, "LTGT"},
-    {token_kind::LEQ, "LEQ"},
-    {token_kind::GEQ, "GEQ"},
-    {token_kind::DBLEQ, "DBLEQ"},
-    {token_kind::EXCLAMEQ, "EXCLAMEQ"},
-    {token_kind::COLONEQ, "COLONEQ"},
-    {token_kind::SEMICOLON, "SEMICOLON"},
-    {token_kind::EQ, "EQ"},
-    {token_kind::GT, "GT"},
-    {token_kind::LT, "LT"},
-    {token_kind::PLUS, "PLUS"},
-    {token_kind::MINUS, "MINUS"},
-    {token_kind::STAR, "STAR"},
-    {token_kind::SLASH, "SLASH"},
-    {token_kind::COLON, "COLON"},
-    {token_kind::COMMA, "COMMA"},
-    {token_kind::LBRACKET, "LBRACKET"},
-    {token_kind::RBRACKET, "RBRACKET"},
-    {token_kind::LPAREN, "LPAREN"},
-    {token_kind::RPAREN, "RPAREN"},
-    {token_kind::BAR, "BAR"},
-    {token_kind::EXCLAM, "EXCLAM"}};
+// inlined functions with static variables
+// usually use the same storage for all instances after linking
+inline auto token_kind_string(token_kind t) -> std::string {
+    static const char *token_strings[] = {
+        "COMMENT",      "UNMATCHED", "STOP",
+        "AND",          "ARRAY",     "BEGIN",
+        "BOOL",         "CHAR",      "DELETE",
+        "DIM",          "DO",        "DONE",
+        "DOWNTO",       "ELSE",      "END",
+        "FALSE",        "FLOAT",     "FOR",
+        "IF",           "IN",        "INT",
+        "LET",          "MATCH",     "MOD",
+        "MUTABLE",      "NEW",       "NOT",
+        "OF",           "REC",       "REF",
+        "THEN",         "TO",        "TRUE",
+        "TYPE",         "UNIT",      "WHILE",
+        "WITH",
+
+        "idlower",      "idupper",   "intconst",
+        "floatconst",   "charconst", "stringliteral",
+
+        "DASHGREATER",  "PLUSDOT",   "MINUSDOT",
+        "STARDOT",      "SLASHDOT",  "DBLSTAR",
+        "DBLAMPERSAND", "DBLBAR",    "LTGT",
+        "LEQ",          "GEQ",       "DBLEQ",
+        "EXCLAMEQ",     "COLONEQ",   "SEMICOLON",
+        "EQ",           "GT",        "LT",
+        "PLUS",         "MINUS",     "STAR",
+        "SLASH",        "COLON",     "COMMA",
+        "LBRACKET",     "RBRACKET",  "LPAREN",
+        "RPAREN",       "BAR",       "EXCLAM"};
+    return token_strings[static_cast<int>(t)];
+}
 
 #endif // PARSING_COMMON_HPP

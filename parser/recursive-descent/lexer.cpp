@@ -541,7 +541,7 @@ auto Lexer::match_literal_string() -> bool {
     return true;
 }
 auto Lexer::print_token(token t) -> void {
-    fmt::print("{}({})({}, {}),({}, {})\n", token_kind_string[t.t], t.value,
+    fmt::print("{}({})({}, {}),({}, {})\n", token_kind_string(t.t), t.value,
                t.start.line, t.start.column, t.end.line, t.end.column);
 }
 auto Lexer::flush_print_tokens() -> void {
