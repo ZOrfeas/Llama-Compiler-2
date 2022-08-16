@@ -4,7 +4,7 @@
 
 std::vector<std::string> split_words_from_string(std::string s) {
     std::vector<std::string> words = {};
-    std::regex wbound("\\b\\w+\\b");
+    std::regex wbound(R"(\b\w+\b)");
     std::regex nwbound("[[:punct:]]+");
     std::sregex_iterator words_begin(s.begin(), s.end(), nwbound);
     std::sregex_iterator words_end;
@@ -22,8 +22,8 @@ std::vector<std::string> split_words_from_string(std::string s) {
 /* Consumes spaces, newlines */
 void eat_white_space(std::vector<std::string> &text, position &start) {
     bool flag = false;
-    for (int line = start.line; line < text.size(); line++) {
-        for (int column = start.column; column < text[line].size(); column++) {
+    for (auto line = start.line; line < text.size(); line++) {
+        for (auto column = start.column; column < text[line].size(); column++) {
             if (std::isspace(text[start.line][start.column])) {
                 flag = true;
                 break;
