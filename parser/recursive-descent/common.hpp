@@ -8,8 +8,8 @@
 #define TAB_SIZE 8
 
 struct position {
-    int line;
-    int column;
+    unsigned long line;
+    unsigned long column;
 };
 
 enum class token_kind {

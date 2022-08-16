@@ -5,7 +5,7 @@ auto Lexer::read_file_to_string(std::string_view filename) -> std::string {
     std::ifstream file(filename);
     // Weird way to read file in one string, should be fast
     file.seekg(0, std::ios::end);
-    size_t size = file.tellg();
+    auto size = file.tellg();
     std::string text(size, ' ');
     file.seekg(0);
     file.read(&text[0], size);
