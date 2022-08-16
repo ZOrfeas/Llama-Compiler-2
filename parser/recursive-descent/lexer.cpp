@@ -558,7 +558,7 @@ auto Lexer::flush_print_tokens() -> void {
 //?NOTE: No regex needed, I can easily match keywords with one function, and do
 // custom stuff for the rest
 
-int main() {
+auto main() -> int {
     std::string filename = "test.lla";
     Lexer lexer(filename);
     // lexer.lex();

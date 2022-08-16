@@ -1,6 +1,7 @@
 #ifndef PARSING_COMMON_HPP
 #define PARSING_COMMON_HPP
 
+#include <array>
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -99,7 +100,7 @@ struct token {
 // inlined functions with static variables
 // usually use the same storage for all instances after linking
 inline auto token_kind_string(token_kind t) -> std::string {
-    static const char *token_strings[] = {
+    static const std::array token_strings = {
         "COMMENT",      "UNMATCHED", "STOP",
         "AND",          "ARRAY",     "BEGIN",
         "BOOL",         "CHAR",      "DELETE",

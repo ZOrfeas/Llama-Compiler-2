@@ -2,7 +2,7 @@
 
 #include "common.hpp"
 
-std::vector<std::string> split_words_from_string(std::string s) {
+auto split_words_from_string(std::string s) -> std::vector<std::string> {
     std::vector<std::string> words = {};
     std::regex wbound(R"(\b\w+\b)");
     std::regex nwbound("[[:punct:]]+");
@@ -20,7 +20,7 @@ std::vector<std::string> split_words_from_string(std::string s) {
 }
 
 /* Consumes spaces, newlines */
-void eat_white_space(std::vector<std::string> &text, position &start) {
+auto eat_white_space(std::vector<std::string> &text, position &start) -> void {
     bool flag = false;
     for (auto line = start.line; line < text.size(); line++) {
         for (auto column = start.column; column < text[line].size(); column++) {
@@ -36,13 +36,13 @@ void eat_white_space(std::vector<std::string> &text, position &start) {
     }
 }
 
-bool parse_type_helper(std::vector<std::string> &text, position &start,
-                       position &end);
+auto parse_type_helper(std::vector<std::string> &text, position &start,
+                       position &end) -> bool;
 
 // start must point to the first character of non terminal
 // end must be modified to point to the end of non terminal
-bool parse_type(std::vector<std::string> &text, position &start,
-                position &end) {
+auto parse_type(std::vector<std::string> &text, position &start, position &end)
+    -> bool {
     token current_token = get_next_token(text, start);
     end = current_token.end;
 
@@ -66,8 +66,8 @@ bool parse_type(std::vector<std::string> &text, position &start,
     }
 }
 
-bool parse_type_helper(std::vector<std::string> &text, position &start,
-                       position &end) {
+auto parse_type_helper(std::vector<std::string> &text, position &start,
+                       position &end) -> bool {
     token current_token = get_next_token(text, start);
     end = current_token.end;
 
@@ -81,7 +81,7 @@ bool parse_type_helper(std::vector<std::string> &text, position &start,
     }
 }
 
-int main(int argc, char **argv) {
+auto main(int argc, char **argv) -> int {
     std::string filename = "test.lla";
     std::ifstream file;
     file.open(filename);

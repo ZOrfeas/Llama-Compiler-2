@@ -1,6 +1,6 @@
 # https://gist.github.com/fbaeuerlein/2895f889e451a817d7b2b36fd60e2873
 ---
-Checks:          'clang-diagnostic-*,clang-analyzer-*,cppcoreguidelines-*,modernize-*,-modernize-use-trailing-return-type'
+Checks:          'clang-diagnostic-*,clang-analyzer-*,cppcoreguidelines-*,-cppcoreguidelines-pro-bounds-constant-array-index,modernize-*'
 WarningsAsErrors: true
 HeaderFilterRegex: ''
 AnalyzeTemporaryDtors: false
