@@ -3,9 +3,11 @@
 
 auto Lexer::read_file_to_string(std::string_view filename)
     -> std::vector<char> {
-    std::ifstream file(filename, std::ios::ate);
+    //* NOTE: binary mode is supposed to help tellg report file size reliably,
+    //* NOTE:    plus llamac only accepts ascii source files anyway
+    // std::ios::ate places the file pointer at the end of the file
+    std::ifstream file(filename, std::ios::binary | std::ios::ate);
     // Weird way to read file in one string, should be fast
-    // file.seekg(0, std::ios::end);
     auto size = file.tellg();
     std::vector<char> text(size);
     file.seekg(0);
@@ -543,8 +545,8 @@ auto Lexer::match_literal_string() -> bool {
     return true;
 }
 auto Lexer::print_token(token t) -> void {
-    fmt::print("{}({})({}, {}),({}, {})\n", token_kind_string(t.t), t.value,
-               t.start.line, t.start.column, t.end.line, t.end.column);
+    fmt::print("{}: {} <from ({}, {}) to ({}, {})>\n", token_kind_string(t.t),
+               t.value, t.start.line, t.start.column, t.end.line, t.end.column);
 }
 auto Lexer::flush_print_tokens() -> void {
     token cur_token;
@@ -565,16 +567,17 @@ auto main() -> int {
     Lexer lexer(filename);
     // lexer.lex();
     // lexer.print_tokens();
-    lexer.print_token(lexer.get_next_token());
-    lexer.print_token(lexer.lookahead());
-    lexer.print_token(lexer.lookahead());
-    lexer.print_token(lexer.lookahead());
+    lexer.flush_print_tokens();
+    // lexer.print_token(lexer.get_next_token());
+    // lexer.print_token(lexer.lookahead());
+    // lexer.print_token(lexer.lookahead());
+    // lexer.print_token(lexer.lookahead());
 
-    lexer.print_token(lexer.get_next_token());
-    lexer.print_token(lexer.get_next_token());
     // lexer.print_token(lexer.get_next_token());
     // lexer.print_token(lexer.get_next_token());
+    // // lexer.print_token(lexer.get_next_token());
+    // // lexer.print_token(lexer.get_next_token());
+    // // lexer.print_token(lexer.get_next_token());
+    // lexer.fast_forward_to_lookahead();
     // lexer.print_token(lexer.get_next_token());
-    lexer.fast_forward_to_lookahead();
-    lexer.print_token(lexer.get_next_token());
 }
