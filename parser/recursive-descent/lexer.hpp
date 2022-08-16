@@ -34,16 +34,16 @@ private:
     auto match_unmatched() -> void;
 
     // Input and output
-    std::string text;
+    std::vector<char> text;
     std::vector<token> token_buf;
     std::vector<token>::iterator cur_token_it;
 
     // Initialized by lex()
-    std::string::iterator it;
+    std::vector<char>::iterator it;
     position pos;
     std::string cur_s;
 
-    static auto read_file_to_string(std::string_view) -> std::string;
+    static auto read_file_to_string(std::string_view) -> std::vector<char>;
     struct reserved {
         std::string name;
         token_kind t;

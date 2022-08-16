@@ -1,14 +1,16 @@
 #include "lexer.hpp"
 #include "fmt/format.h"
 
-auto Lexer::read_file_to_string(std::string_view filename) -> std::string {
-    std::ifstream file(filename);
+auto Lexer::read_file_to_string(std::string_view filename)
+    -> std::vector<char> {
+    std::ifstream file(filename, std::ios::ate);
     // Weird way to read file in one string, should be fast
-    file.seekg(0, std::ios::end);
+    // file.seekg(0, std::ios::end);
     auto size = file.tellg();
-    std::string text(size, ' ');
+    std::vector<char> text(size);
     file.seekg(0);
-    file.read(&text[0], size);
+    // TODO: handle file.read error
+    file.read(text.data(), size);
     return text;
 }
 // initialisation order is same as field order in class
