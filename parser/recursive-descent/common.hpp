@@ -1,4 +1,5 @@
-#pragma once
+#ifndef PARSING_COMMON_HPP
+#define PARSING_COMMON_HPP
 
 #include <fstream>
 #include <iostream>
@@ -171,3 +172,5 @@ std::unordered_map<token_kind, std::string> token_kind_string = {
     {token_kind::RPAREN, "RPAREN"},
     {token_kind::BAR, "BAR"},
     {token_kind::EXCLAM, "EXCLAM"}};
+
+#endif // PARSING_COMMON_HPP

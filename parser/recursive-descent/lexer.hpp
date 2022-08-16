@@ -1,4 +1,6 @@
-#pragma once
+#ifndef LEXER_HPP
+#define LEXER_HPP
+
 #include "common.hpp"
 #include <string_view>
 #include <vector>
@@ -47,3 +49,5 @@ private:
         token_kind t;
     };
 };
+
+#endif // LEXER_HPP

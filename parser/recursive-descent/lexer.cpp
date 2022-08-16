@@ -1,4 +1,4 @@
-#include "custom_lexer.hpp"
+#include "lexer.hpp"
 #include "fmt/format.h"
 
 auto Lexer::read_file_to_string(std::string_view filename) -> std::string {
