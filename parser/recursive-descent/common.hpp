@@ -2,8 +2,8 @@
 
 #include <fstream>
 #include <iostream>
-#include <map>
 #include <string>
+#include <unordered_map>
 
 #define TAB_SIZE 8
 
@@ -97,7 +97,7 @@ struct token {
 };
 
 // Create map with token kinds and their string representations
-std::map<token_kind, std::string> token_kind_string = {
+std::unordered_map<token_kind, std::string> token_kind_string = {
     {token_kind::COMMENT, "COMMENT"},
     {token_kind::UNMATCHED, "UNMATCHED"},
     {token_kind::STOP, "STOP"},

@@ -1,22 +1,45 @@
 #include "custom_lexer.hpp"
+#include "fmt/format.h"
 
-Lexer::Lexer(std::string &text) : text(text) { tokens = std::vector<token>(); }
-std::vector<token> Lexer::get_tokens() { return tokens; }
-void Lexer::lex() {
-    this->it = this->text.begin();
-    this->pos = {0, 0};
-
-    token cur_token;
-    while (true) {
-        cur_token = next_token();
-        tokens.push_back(cur_token);
-        if (cur_token.t == token_kind::STOP) {
-            break;
+auto Lexer::read_file_to_string(std::string_view filename) -> std::string {
+    std::ifstream file(filename);
+    // Weird way to read file in one string, should be fast
+    file.seekg(0, std::ios::end);
+    size_t size = file.tellg();
+    std::string text(size, ' ');
+    file.seekg(0);
+    file.read(&text[0], size);
+    return text;
+}
+// initialisation order is same as field order in class
+Lexer::Lexer(std::string_view filename)
+    : text(read_file_to_string(filename)), token_buf({}),
+      cur_token_it(token_buf.end()), it(text.begin()), pos{0, 0} {}
+auto Lexer::lookahead() -> token {
+    auto offset = std::distance(token_buf.begin(), cur_token_it);
+    auto tok = read_one_token();
+    token_buf.push_back(tok);
+    // this is required cause iterators are invalidated by push_back.
+    cur_token_it = token_buf.begin() + offset;
+    return tok;
+}
+auto Lexer::get_next_token() -> token {
+    if (cur_token_it != token_buf.end()) {
+        auto tok = *cur_token_it++;
+        if (cur_token_it == token_buf.end()) {
+            token_buf.clear();
+            cur_token_it = token_buf.end();
         }
+        return tok;
+    } else {
+        return read_one_token();
     }
 }
-token Lexer::next_token() {
-
+auto Lexer::fast_forward_to_lookahead() -> void {
+    token_buf.clear();
+    cur_token_it = token_buf.end();
+}
+auto Lexer::read_one_token() -> token {
     // Consume all white space (\n, \t, \r, space)
     match_whitespace(); // no token just skip ahead
 
@@ -40,7 +63,7 @@ token Lexer::next_token() {
     }
 
     // Keyword
-    static std::vector<reserved> keywords = {
+    static const std::vector<reserved> keywords = {
         {"and", token_kind::AND},     {"array", token_kind::ARRAY},
         {"begin", token_kind::BEGIN}, {"bool", token_kind::BOOL},
         {"char", token_kind::CHAR},   {"delete", token_kind::DELETE},
@@ -114,7 +137,7 @@ token Lexer::next_token() {
     }
 
     // Symbolic operators (multiple chars)
-    static std::vector<reserved> symops = {
+    static const std::vector<reserved> symops = {
         {"->", token_kind::DASHGREATER},  {"+.", token_kind::PLUSDOT},
         {"-.", token_kind::MINUSDOT},     {"*.", token_kind::STARDOT},
         {"/.", token_kind::SLASHDOT},     {"**", token_kind::DBLSTAR},
@@ -132,7 +155,7 @@ token Lexer::next_token() {
     }
 
     // Separators and single char operators
-    static std::vector<reserved> single_char = {
+    static const std::vector<reserved> single_char = {
         {"=", token_kind::EQ},       {"|", token_kind::BAR},
         {"+", token_kind::PLUS},     {"-", token_kind::MINUS},
         {"*", token_kind::STAR},     {"/", token_kind::SLASH},
@@ -157,7 +180,7 @@ token Lexer::next_token() {
     ans.end = this->pos;
     return ans;
 }
-bool Lexer::match_prefix_word_with(std::string s) {
+auto Lexer::match_prefix_word_with(std::string s) -> bool {
     std::string::iterator it_temp = this->it;
     std::string::iterator s_temp = s.begin();
 
@@ -180,7 +203,7 @@ bool Lexer::match_prefix_word_with(std::string s) {
     this->it = it_temp;
     return true;
 }
-void Lexer::match_whitespace() {
+auto Lexer::match_whitespace() -> void {
     std::string::iterator it_temp = this->it;
 
     while (it_temp != this->text.end() && std::isspace(*it_temp)) {
@@ -200,7 +223,7 @@ void Lexer::match_whitespace() {
     this->it = it_temp;
     return;
 }
-bool Lexer::match_id() {
+auto Lexer::match_id() -> bool {
     // Make a cope of the iterator
     std::string::iterator it_temp = this->it;
 
@@ -222,7 +245,7 @@ bool Lexer::match_id() {
     this->it = it_temp;
     return true;
 }
-bool Lexer::match_Id() {
+auto Lexer::match_Id() -> bool {
     // Copy text iterator
     std::string::iterator it_temp = this->it;
 
@@ -244,7 +267,7 @@ bool Lexer::match_Id() {
     this->it = it_temp;
     return true;
 }
-bool Lexer::match_single_line_comment() {
+auto Lexer::match_single_line_comment() -> bool {
     // Copy text iterator
     std::string::iterator it_temp = this->it;
 
@@ -267,7 +290,7 @@ bool Lexer::match_single_line_comment() {
     this->it = it_temp;
     return true;
 }
-bool Lexer::match_multi_line_comment() {
+auto Lexer::match_multi_line_comment() -> bool {
     std::string::iterator it_temp = this->it;
     int balance = 0;
 
@@ -311,7 +334,7 @@ bool Lexer::match_multi_line_comment() {
     this->it = it_temp;
     return true;
 }
-bool Lexer::match_end() {
+auto Lexer::match_end() -> bool {
     if (this->it == this->text.end()) {
         this->cur_s = "$";
         return true;
@@ -319,13 +342,13 @@ bool Lexer::match_end() {
 
     return false;
 }
-void Lexer::match_unmatched() {
+auto Lexer::match_unmatched() -> void {
     //! This is where I can make it error tolerant by matching whatever until
     //! next whitespace for instance
     this->cur_s = std::string(this->it, this->text.end());
     this->it = this->text.end();
 }
-bool Lexer::match_literal_float() {
+auto Lexer::match_literal_float() -> bool {
     std::string::iterator it_temp = this->it;
 
     // Consume at least one digit for the integer part
@@ -390,7 +413,7 @@ bool Lexer::match_literal_float() {
     this->it = it_temp;
     return true;
 }
-bool Lexer::match_literal_int() {
+auto Lexer::match_literal_int() -> bool {
     std::string::iterator it_temp = this->it;
 
     // Consume at least one digit of the integer
@@ -416,7 +439,7 @@ bool Lexer::match_literal_int() {
     this->it = it_temp;
     return true;
 }
-bool Lexer::match_literal_char() {
+auto Lexer::match_literal_char() -> bool {
     std::string::iterator it_temp = this->it;
 
     // Check starting single quote
@@ -478,7 +501,7 @@ bool Lexer::match_literal_char() {
     this->it = it_temp;
     return true;
 }
-bool Lexer::match_literal_string() {
+auto Lexer::match_literal_string() -> bool {
     std::string::iterator it_temp = it;
 
     // Check doublequotes
@@ -517,12 +540,18 @@ bool Lexer::match_literal_string() {
     this->it = it_temp;
     return true;
 }
-void Lexer::print_tokens() {
-    for (auto &t : this->tokens) {
-        std::cout << token_kind_string[t.t] << "(" << t.value << ")"
-                  << " (" << t.start.line << ", " << t.start.column << "),"
-                  << " (" << t.end.line << ", " << t.end.column << ")"
-                  << std::endl;
+auto Lexer::print_token(token t) -> void {
+    fmt::print("{}({})({}, {}),({}, {})\n", token_kind_string[t.t], t.value,
+               t.start.line, t.start.column, t.end.line, t.end.column);
+}
+auto Lexer::flush_print_tokens() -> void {
+    token cur_token;
+    while (true) {
+        cur_token = get_next_token();
+        print_token(cur_token);
+        if (cur_token.t == token_kind::STOP) {
+            break;
+        }
     }
 }
 
@@ -531,16 +560,19 @@ void Lexer::print_tokens() {
 
 int main() {
     std::string filename = "test.lla";
-    std::ifstream file(filename);
+    Lexer lexer(filename);
+    // lexer.lex();
+    // lexer.print_tokens();
+    lexer.print_token(lexer.get_next_token());
+    lexer.print_token(lexer.lookahead());
+    lexer.print_token(lexer.lookahead());
+    lexer.print_token(lexer.lookahead());
 
-    // Weird way to read file in one string, should be fast
-    file.seekg(0, std::ios::end);
-    size_t size = file.tellg();
-    std::string text(size, ' ');
-    file.seekg(0);
-    file.read(&text[0], size);
-
-    Lexer lexer(text);
-    lexer.lex();
-    lexer.print_tokens();
+    lexer.print_token(lexer.get_next_token());
+    lexer.print_token(lexer.get_next_token());
+    // lexer.print_token(lexer.get_next_token());
+    // lexer.print_token(lexer.get_next_token());
+    // lexer.print_token(lexer.get_next_token());
+    lexer.fast_forward_to_lookahead();
+    lexer.print_token(lexer.get_next_token());
 }
