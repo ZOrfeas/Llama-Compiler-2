@@ -1,20 +1,19 @@
-#pragma once
+#ifndef PARSING_COMMON_HPP
+#define PARSING_COMMON_HPP
 
-#include <string>
-#include <vector>
+#include <array>
 #include <fstream>
 #include <iostream>
-#include <map>
+#include <string>
 
 #define TAB_SIZE 8
 
 struct position {
-    int line; 
-    int column;
+    unsigned long line;
+    unsigned long column;
 };
 
-enum token_kind 
-{
+enum class token_kind {
     COMMENT,
     UNMATCHED,
     STOP,
@@ -92,87 +91,44 @@ enum token_kind
     EXCLAM
 };
 
-struct token 
-{
+struct token {
     token_kind t;
     std::string value;
     position start, end;
 };
 
-// Create map with token kinds and their string representations
-std::map<token_kind, std::string> token_kind_string =
-{
-    {COMMENT, "COMMENT"},
-    {UNMATCHED, "UNMATCHED"},
-    {STOP, "STOP"},
-    {AND, "AND"},
-    {ARRAY, "ARRAY"},
-    {BEGIN, "BEGIN"},
-    {BOOL, "BOOL"},
-    {CHAR, "CHAR"},
-    {DELETE, "DELETE"},
-    {DIM, "DIM"},
-    {DO, "DO"},
-    {DONE, "DONE"},
-    {DOWNTO, "DOWNTO"},
-    {ELSE, "ELSE"},
-    {END, "END"},
-    {FALSE, "FALSE"},
-    {FLOAT, "FLOAT"},
-    {FOR, "FOR"},
-    {IF, "IF"},
-    {IN, "IN"},
-    {INT, "INT"},
-    {LET, "LET"},
-    {MATCH, "MATCH"},
-    {MOD, "MOD"},
-    {MUTABLE, "MUTABLE"},
-    {NEW, "NEW"},
-    {NOT, "NOT"},
-    {OF, "OF"},
-    {REC, "REC"},
-    {REF, "REF"},
-    {THEN, "THEN"},
-    {TO, "TO"},
-    {TRUE, "TRUE"},
-    {TYPE, "TYPE"},
-    {UNIT, "UNIT"},
-    {WHILE, "WHILE"},
-    {WITH, "WITH"},
-    {idlower, "idlower"},
-    {idupper, "idupper"},
-    {intconst, "intconst"},
-    {floatconst, "floatconst"},
-    {charconst, "charconst"},
-    {stringliteral, "stringliteral"},
-    {DASHGREATER, "DASHGREATER"},
-    {PLUSDOT, "PLUSDOT"},
-    {MINUSDOT, "MINUSDOT"},
-    {STARDOT, "STARDOT"},
-    {SLASHDOT, "SLASHDOT"},
-    {DBLSTAR, "DBLSTAR"},
-    {DBLAMPERSAND, "DBLAMPERS"}, 
-    {DBLBAR, "DBLBAR"},
-    {LTGT, "LTGT"},
-    {LEQ, "LEQ"},
-    {GEQ, "GEQ"},
-    {DBLEQ, "DBLEQ"},
-    {EXCLAMEQ, "EXCLAMEQ"},
-    {COLONEQ, "COLONEQ"},
-    {SEMICOLON, "SEMICOLON"},
-    {EQ, "EQ"},
-    {GT, "GT"},
-    {LT, "LT"},
-    {PLUS, "PLUS"},
-    {MINUS, "MINUS"},
-    {STAR, "STAR"},
-    {SLASH, "SLASH"},
-    {COLON, "COLON"},
-    {COMMA, "COMMA"},
-    {LBRACKET, "LBRACKET"},
-    {RBRACKET, "RBRACKET"},
-    {LPAREN, "LPAREN"},
-    {RPAREN, "RPAREN"},
-    {BAR, "BAR"},
-    {EXCLAM, "EXCLAM"}
-};
+// inlined functions with static variables
+// usually use the same storage for all instances after linking
+inline auto token_kind_string(token_kind t) -> std::string {
+    static const std::array token_strings = {
+        "COMMENT",      "UNMATCHED", "STOP",
+        "AND",          "ARRAY",     "BEGIN",
+        "BOOL",         "CHAR",      "DELETE",
+        "DIM",          "DO",        "DONE",
+        "DOWNTO",       "ELSE",      "END",
+        "FALSE",        "FLOAT",     "FOR",
+        "IF",           "IN",        "INT",
+        "LET",          "MATCH",     "MOD",
+        "MUTABLE",      "NEW",       "NOT",
+        "OF",           "REC",       "REF",
+        "THEN",         "TO",        "TRUE",
+        "TYPE",         "UNIT",      "WHILE",
+        "WITH",
+
+        "idlower",      "idupper",   "intconst",
+        "floatconst",   "charconst", "stringliteral",
+
+        "DASHGREATER",  "PLUSDOT",   "MINUSDOT",
+        "STARDOT",      "SLASHDOT",  "DBLSTAR",
+        "DBLAMPERSAND", "DBLBAR",    "LTGT",
+        "LEQ",          "GEQ",       "DBLEQ",
+        "EXCLAMEQ",     "COLONEQ",   "SEMICOLON",
+        "EQ",           "GT",        "LT",
+        "PLUS",         "MINUS",     "STAR",
+        "SLASH",        "COLON",     "COMMA",
+        "LBRACKET",     "RBRACKET",  "LPAREN",
+        "RPAREN",       "BAR",       "EXCLAM"};
+    return token_strings[static_cast<int>(t)];
+}
+
+#endif // PARSING_COMMON_HPP
