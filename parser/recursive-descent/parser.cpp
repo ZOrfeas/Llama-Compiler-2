@@ -28,16 +28,130 @@ void Parser::consume_token() {
 bool Parser::parse_program() {
     while (true)
     {
-        if (!parse_type())
+        if (peek_token().t == token_kind::STOP) {
+            break;
+        }
+
+        if (!parse_typedef())
         {
             return false;
         }
     }
+
+    return true;
+}
+bool Parser::parse_letdef() {
+    // let
+    if (peek_token().t != token_kind::LET) {
+        return false;
+    }
+    consume_token();
+    
+    // [rec]
+    if (peek_token().t == token_kind::REC) {
+        consume_token();
+    }
+    
+    // def
+    if (!parse_def) {
+        return false;
+    }
+
+    // (and def)*
+    while (true) {
+        if (peek_token().t == token_kind::AND) {
+            break;
+        }
+        consume_token();
+
+        if (!parse_def()) {
+            return false;
+        }
+    }
+    return true;
+}
+bool Parser::parse_typedef() {
+    // type
+    if (peek_token().t != token_kind::TYPE) {
+        return false;
+    }
+    consume_token();
+
+    // tdef
+    if (!parse_tdef()) {
+        return false;
+    }
+    
+    // (and tdef)*
+    while (true) {
+        if (peek_token().t != token_kind::AND) {
+            break;
+        }
+
+        consume_token();
+        if (!parse_tdef()) {
+            return false;
+        }
+    }
+
+    return true;
+}
+bool Parser::parse_tdef() {
+    // id
+    if (peek_token().t != token_kind::idlower) {
+        return false;
+    }
+    consume_token();
+
+    // =
+    if (peek_token().t != token_kind::EQ) {
+        return false;
+    }
+    consume_token();
+
+    // constr
+    if (!parse_constr()) {
+        return false;
+    }
+
+    // (| constr)*
+    while (true) {
+        if (peek_token().t != token_kind::BAR) {
+            break;
+        }
+        consume_token();
+        
+        if (!parse_constr()) {
+            return false;
+        }
+    }
+    return true;
+}
+bool Parser::parse_constr() {
+    // id
+    if (peek_token().t != token_kind::idupper) {
+        return false;
+    }
+    consume_token();
+
+    // of (optional)
+    if (peek_token().t != token_kind::OF) {
+        return true;
+    }
+    consume_token();
+    
+    // type
+    if (!parse_type()) {
+        return false;
+    }
+
+    // type*
+    while(parse_type()) {}
+
+    return true;
 }
 bool Parser::parse_type() {
-    token curr = peek_consume_token();
-    
-    switch (curr.t) {
+    switch (peek_token().t) {
         case token_kind::UNIT:
         case token_kind::INT:
         case token_kind::FLOAT:
@@ -47,23 +161,29 @@ bool Parser::parse_type() {
         case token_kind::FALSE:
         case token_kind::idlower:
         {
+            consume_token();
+            
             // Stop the fallthrough of the single token matches and go to the helper
             if(!parse_type_helper()) {
                 return false;
             }
-
+            
             return true;
         }
         case token_kind::LPAREN:
         {
+            consume_token();
+
+            // type
             if(!parse_type()) {
                 return false;
             }
 
-            token next = peek_consume_token();
-            if (next.t != token_kind::RPAREN) {
+            // )
+            if (peek_token().t != token_kind::RPAREN) {
                 return false;
             }
+            consume_token();
 
             if(!parse_type_helper()) {
                 return false;
@@ -73,47 +193,52 @@ bool Parser::parse_type() {
         }
         case token_kind::ARRAY:
         {
-            curr = peek_consume_token();
-            switch (curr.t) {
+            consume_token();
+
+            switch (peek_token().t) {
                 case token_kind::LBRACKET: 
                 {
-                    curr = peek_consume_token();
-                    if (curr.t != token_kind::STAR)
-                    {
+                    consume_token();
+                    
+                    // *
+                    if (peek_token().t != token_kind::STAR) {
                         return false;
                     }
+                    consume_token();
 
                     // Check "," "*" pairs
                     while (true)
                     {
-                        curr = peek_consume_token();
-                        if (curr.t != token_kind::COMMA)
-                        {
+                        if (peek_token().t != token_kind::COMMA) {
                             // No more COMMA STAR pairs
                             break;
                         }
-                        curr = peek_consume_token();
-                        if (curr.t != token_kind::STAR)
-                        {
+                        consume_token();
+                        
+                        if (peek_token().t != token_kind::STAR) {
                             // COMMA without STAR following it
                             return false;
                         }
+                        consume_token();
                     }
 
-                    // Token has already been consumed
-                    if (curr.t != token_kind::RBRACKET)
-                    {
+                    // ]
+                    if (peek_token().t != token_kind::RBRACKET) {
+                        return false;
+                    }
+                    consume_token();
+
+                    // of
+                    if (peek_token().t != token_kind::OF) {
                         return false;
                     }
 
-                    curr = peek_consume_token();
-                    if (curr.t != token_kind::OF)
-                    {
-                        return false;
-                    }
+                    //? Consumption will happen after fallthrough
                 }
                 case token_kind::OF:
                 {
+                    consume_token();
+
                     // Fallthrough helps because OF is mandatory 
                     if(!parse_type()) {
                         return false;
@@ -137,8 +262,8 @@ bool Parser::parse_type() {
     }
 }
 bool Parser::parse_type_helper() {
-    //! Must not consume token because empty sequence is valid
-
+    // Exists only to eliminate left recursion
+    
     switch (peek_token().t) {
         case token_kind::DASHGREATER:
         {
@@ -168,11 +293,12 @@ bool Parser::parse_type_helper() {
     }
 }
 
+//? Each rule must peek for first token to make sure we are inside the rule
 //!NOTE: Maintain positions of matched rules (basically passed to ast)
 
 int main() 
 {
-    std::string filename = "../test_parser.lla";
+    std::string filename = "../tests/typedef.lla";
     std::ifstream file(filename);
     if(!file) {
         std::cout << "File not found" << std::endl;
