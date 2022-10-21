@@ -1,8 +1,7 @@
-
 #include <CLI/CLI.hpp>
 #include <string>
 
-namespace cli {
+namespace lla::cli {
     class Args {
     private:
         auto setup_frontend() -> void;
@@ -17,4 +16,4 @@ namespace cli {
         int result;
         Args(int argc, char **argv);
     };
-} // namespace cli
+} // namespace lla::cli

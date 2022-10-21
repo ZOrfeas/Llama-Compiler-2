@@ -1,9 +1,0 @@
-type color = Red | Blue
-
-let a =  7; 55.7; '\n'; '\xff' ; "he\nllo"
-
--- shit
-
-(*
-hello (**)
-*)

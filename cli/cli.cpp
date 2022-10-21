@@ -1,6 +1,6 @@
 #include "./cli.hpp"
 
-using namespace cli;
+using namespace lla::cli;
 
 constexpr auto comp_step_grp_name = "Compilation-steps";
 constexpr auto print_opts_grp_name = "Print-options";
