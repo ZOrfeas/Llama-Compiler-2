@@ -1,6 +1,10 @@
 #include "lexer.hpp"
 #include "fmt/format.h"
 
+// TODO: Re-read everything at least once to remove any instances where we
+//          'dereference' iterators after incrementing, without bounds-checking
+//          It's undefined behaviour
+
 auto Lexer::read_file_to_string(std::string_view filename)
     -> std::vector<char> {
     //* NOTE: binary mode is supposed to help tellg report file size reliably,
