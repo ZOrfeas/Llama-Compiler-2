@@ -5,9 +5,11 @@ using namespace lla::cli;
 constexpr auto comp_step_grp_name = "Compilation-steps";
 constexpr auto print_opts_grp_name = "Print-options";
 
-Args::Args(int argc, char **argv)
-    : the_app("Compiler for the Llama language", "llamac"), only_parse(nullptr),
-      only_sem(nullptr), only_ir(nullptr), only_asm(nullptr), result(0) {
+Args::Args(int argc, char **argv, std::string_view version)
+    : the_app("Compiler for the Llama language version " + std::string(version),
+              "llamac"),
+      only_parse(nullptr), only_sem(nullptr), only_ir(nullptr),
+      only_asm(nullptr), result(0) {
     the_app.get_formatter()->column_width(60);
     the_app.set_help_all_flag("--help-all", "More detailed help");
 
@@ -37,6 +39,7 @@ auto Args::setup_frontend() -> void {
     the_app.group(comp_step_grp_name)->require_option(-1);
 
     setup_print_options_flags(frontend);
+    the_app.group(print_opts_grp_name)->require_option(0);
 }
 
 auto Args::setup_print_options_flags(CLI::App *frontend) -> void {

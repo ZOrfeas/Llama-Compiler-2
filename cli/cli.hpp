@@ -17,7 +17,7 @@ namespace lla::cli {
         std::string source_file, ast_outfile, types_outfile, ir_outfile,
             asm_outfile;
         int result;
-        Args(int argc, char **argv);
+        Args(int argc, char **argv, std::string_view version = "0.0.0");
     };
 } // namespace lla::cli
 
