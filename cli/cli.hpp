@@ -1,3 +1,6 @@
+#ifndef LLA_CLI_HPP
+#define LLA_CLI_HPP
+
 #include <CLI/CLI.hpp>
 #include <string>
 
@@ -17,3 +20,5 @@ namespace lla::cli {
         Args(int argc, char **argv);
     };
 } // namespace lla::cli
+
+#endif // LLA_CLI_HPP

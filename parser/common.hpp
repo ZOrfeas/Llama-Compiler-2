@@ -1,6 +1,10 @@
+#ifndef PARSE_COMMON_HPP
+#define PARSE_COMMON_HPP
 
-#include <cstdint>
+#include "fmt/core.h"
 #include <compare>
+#include <cstdint>
+#include <exception>
 #include <string>
 #include <string_view>
 
@@ -11,34 +15,98 @@ namespace lla {
     struct source_position {
         lineno_t lineno;
         colno_t colno;
-        auto operator<=>(const source_position&) const = default;
-        [[nodiscard]] auto to_sting() const -> std::string {
-            return "(" + std::to_string(lineno) + "," + std::to_string(colno) + ")";
-        }
+        std::string filename;
     };
 
-    struct parse_error {
+    struct parse_error : public std::exception {
         source_position pos;
         std::string msg;
         bool internal = false;
+        [[nodiscard]] auto what() const noexcept -> const char * override {
+            return msg.c_str();
+        }
     };
 
     enum class lexeme_t : std::uint8_t {
-        COMMENT, UNMATCHED, STOP, AND, ARRAY, BEGIN, BOOL,
-        CHAR, DELETE, DIM, DO, DONE, DOWNTO, ELSE, END,
-        FALSE, FLOAT, FOR, IF, IN, INT, LET, MATCH, MOD,
-        MUTABLE, NEW, NOT, OF, REC, REF,THEN,TO,TRUE, TYPE,
-        UNIT, WHILE, WITH, 
-        
-        idlower, idupper, intconst, floatconst, charconst, stringliteral,
+        COMMENT,
+        UNMATCHED,
+        STOP,
+        AND,
+        ARRAY,
+        BEGIN,
+        BOOL,
+        CHAR,
+        DELETE,
+        DIM,
+        DO,
+        DONE,
+        DOWNTO,
+        ELSE,
+        END,
+        FALSE,
+        FLOAT,
+        FOR,
+        IF,
+        IN,
+        INT,
+        LET,
+        MATCH,
+        MOD,
+        MUTABLE,
+        NEW,
+        NOT,
+        OF,
+        REC,
+        REF,
+        THEN,
+        TO,
+        TRUE,
+        TYPE,
+        UNIT,
+        WHILE,
+        WITH,
 
-        DASHGREATER, PLUSDOT, MINUSDOT, STARDOT, SLASHDOT, DBLSTAR,
-        DBLAMPERSAND, DBLBAR, LTGT, LEQ, GEQ, DBLEQ, EXCLAMEQ,
-        COLONEQ, SEMICOLON, EQ, GT, LT, PLUS, MINUS, STAR,
-        SLASH, COLON, COMMA, LBRACKET, RBRACKET, LPAREN, RPAREN,
-        BAR, EXCLAM
+        idlower,
+        idupper,
+        intconst,
+        floatconst,
+        charconst,
+        stringliteral,
+
+        DASHGREATER,
+        PLUSDOT,
+        MINUSDOT,
+        STARDOT,
+        SLASHDOT,
+        DBLSTAR,
+        DBLAMPERSAND,
+        DBLBAR,
+        LTGT,
+        LEQ,
+        GEQ,
+        DBLEQ,
+        EXCLAMEQ,
+        COLONEQ,
+        SEMICOLON,
+        EQ,
+        GT,
+        LT,
+        PLUS,
+        MINUS,
+        STAR,
+        SLASH,
+        COLON,
+        COMMA,
+        LBRACKET,
+        RBRACKET,
+        LPAREN,
+        RPAREN,
+        BAR,
+        EXCLAM
     };
-    template<typename T> requires std::is_same_v<T, std::string>
+
+    template <typename T>
+        requires std::is_same_v<T, std::string>
     auto as(lexeme_t l) -> std::string {
         static const std::array token_strings = {
             "COMMENT",      "UNMATCHED", "STOP",
@@ -76,8 +144,10 @@ namespace lla {
         source_position src_start, src_end;
         std::string_view value; // non-owning view to the source code location
         [[nodiscard]] auto to_string() const -> std::string {
-            return "(" + as<std::string>(lexeme_type) +
-                   ": " + std::string(value) + ")";
+            return "(" + as<std::string>(lexeme_type) + ": " +
+                   std::string(value) + ")";
         }
     };
 } // namespace lla
+
+#endif // PARSE_COMMON_HPP
