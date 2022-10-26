@@ -2,7 +2,9 @@
 #define PARSE_LEXER_HPP
 
 #include "common.hpp"
+#include <iterator>
 #include <string_view>
+#include <sys/_types/_ucontext.h>
 #include <unordered_set>
 #include <vector>
 
@@ -23,33 +25,52 @@ namespace lla {
         [[nodiscard]] auto get_tokens() const -> std::vector<token> &;
 
     private:
+    public:
         class Source {
         private:
             struct Source_file;
 
         public:
             Source(std::string_view);
-            class Reader {
+            class const_iterator {
             public:
+                using iterator_category = std::bidirectional_iterator_tag;
+                using difference_type = std::ptrdiff_t; // not certainly correct
+                using value_type = char;
+                using pointer = char *;
+                using reference = char &;
+
                 [[nodiscard]] auto get_cur_filename() const -> std::string_view;
                 [[nodiscard]] auto is_end() const -> bool;
                 [[nodiscard]] auto is_start() const -> bool;
                 auto operator*() -> char;
-                auto operator++() -> char;
-                auto operator++(int) -> char;
-                auto operator--() -> char;
-                auto operator--(int) -> char;
+                auto operator++() -> const_iterator &;
+                auto operator++(int) -> const_iterator;
+                auto operator--() -> const_iterator &;
+                auto operator--(int) -> const_iterator;
+                friend auto operator==(const_iterator const &a,
+                                       const_iterator const &b) -> bool {
+                    return a.cur_file_it == b.cur_file_it && a.it == b.it;
+                };
+                friend auto operator!=(const_iterator const &a,
+                                       const_iterator const &b) -> bool {
+                    return !(a == b);
+                };
 
             private:
                 friend Source;
-                Reader(Source const &);
+                const_iterator(Source const &);
+                const_iterator(const_iterator const &) = default;
+
                 const Source &src;
                 std::vector<Source_file>::const_iterator cur_file_it;
                 std::vector<char>::const_iterator it;
                 auto advance_it() -> void;
                 auto rewind_it() -> void;
             };
-            [[nodiscard]] auto create_reader() const -> Reader;
+            [[nodiscard]] auto create_reader() const -> const_iterator;
+            [[nodiscard]] auto begin() const -> const_iterator;
+            [[nodiscard]] auto end() const -> const_iterator;
 
         private:
             struct Source_file {
