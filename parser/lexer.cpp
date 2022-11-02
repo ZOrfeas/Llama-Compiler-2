@@ -237,7 +237,7 @@ auto Lexer::match_reserved_word() -> std::optional<token> {
         lexeme_t::CHAR,  lexeme_t::DELETE,  lexeme_t::DIM,   lexeme_t::DO,
         lexeme_t::DONE,  lexeme_t::DOWNTO,  lexeme_t::ELSE,  lexeme_t::END,
         lexeme_t::FALSE, lexeme_t::FLOAT,   lexeme_t::FOR,   lexeme_t::IF,
-        lexeme_t::IN,    lexeme_t::INT,     lexeme_t::LET,   lexeme_t::MATCH,
+        lexeme_t::INT,   lexeme_t::IN,      lexeme_t::LET,   lexeme_t::MATCH,
         lexeme_t::MOD,   lexeme_t::MUTABLE, lexeme_t::NEW,   lexeme_t::NOT,
         lexeme_t::OF,    lexeme_t::REC,     lexeme_t::REF,   lexeme_t::THEN,
         lexeme_t::TO,    lexeme_t::TRUE,    lexeme_t::TYPE,  lexeme_t::UNIT,
@@ -266,9 +266,17 @@ auto Lexer::match_float_literal() -> std::optional<token> {
     if (is_eof(this->state.src_it) || !std::isdigit(*this->state.src_it)) {
         return std::nullopt;
     }
+    const auto digit_or_error = [this](Source::const_iterator it,
+                                       std::string_view err_msg) -> void {
+        if (it == this->src.end() || !std::isdigit(*it)) {
+            auto err_pos = this->state.cur_pos;
+            err_pos.colno += std::distance(this->state.src_it, it);
+            throw parse_error{err_pos, err_msg};
+        }
+    };
     auto tmp_src_it = this->state.src_it;
     consume_digits(tmp_src_it);
-    if (tmp_src_it != this->src.end() || *tmp_src_it != '.') {
+    if (tmp_src_it == this->src.end() || *tmp_src_it != '.') {
         return std::nullopt;
     }
     digit_or_error(++tmp_src_it, "expected digit after decimal point");
@@ -327,7 +335,7 @@ auto Lexer::match_char_literal() -> std::optional<token> {
         throw parse_error{this->state.cur_pos, "invalid character literal"};
     };
     if (chars_to_eof >= 3 && *(tmp_src_it + 2) == '\'' &&
-        is_common(*(tmp_src_it + 1))) {
+        *(tmp_src_it + 1) != '\\' && is_common(*(tmp_src_it + 1))) {
         return finalize_token(lexeme_t::charconst, tmp_src_it + 3,
                               [](source_position pos) {
                                   pos.colno += 3;
@@ -485,15 +493,6 @@ auto Lexer::match_with_str(std::string_view to_match, lexeme_t tok_type)
 
 auto Lexer::is_eof(Source::const_iterator it) -> bool {
     return it == this->src.end();
-}
-// TODO: this can be a lambda and not a member function
-auto Lexer::digit_or_error(Source::const_iterator it, std::string_view err_msg)
-    -> void {
-    if (it == this->src.end() || !std::isdigit(*it)) {
-        auto err_pos = this->state.cur_pos;
-        err_pos.colno += std::distance(this->state.src_it, it);
-        throw parse_error{err_pos, err_msg};
-    }
 }
 auto Lexer::consume_digits(Source::const_iterator &it) -> void {
     while (!is_eof(++it) && std::isdigit(*it)) {

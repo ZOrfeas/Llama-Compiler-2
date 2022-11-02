@@ -95,11 +95,6 @@ namespace lla {
          */
         auto is_eof(Source::const_iterator) -> bool;
         /**
-         * @brief tests if iterator points to valid digit or throws error with
-         * given message
-         */
-        auto digit_or_error(Source::const_iterator, std::string_view) -> void;
-        /**
          * @brief Given iterator is advanced up until after the first non digit
          * character
          */
