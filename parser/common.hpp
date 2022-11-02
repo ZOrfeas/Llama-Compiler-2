@@ -29,7 +29,10 @@ namespace lla {
     struct parse_error : public std::exception {
         parse_error(source_position pos, std::string_view msg,
                     bool internal = false)
-            : pos(std::move(pos)), msg(std::string(msg)), internal(internal) {}
+            : pos(std::move(pos)),
+              msg(fmt::format("{}{} at {}", internal ? "INTERNAL " : "", msg,
+                              pos.to_string())),
+              internal(internal) {}
         source_position pos;
         std::string msg;
         bool internal = false;

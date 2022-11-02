@@ -110,7 +110,7 @@ auto Lexer::pretty_print_tokens() const -> void {
             fmt::print("EOF at {}\n", token.src_start.to_string());
             continue;
         }
-        fmt::print("{0:<{3}} | at {1:<{4}} -> {2:<{4}}\n", token.to_string(),
+        fmt::print("{0:>{3}} | at {1:<{4}} -> {2:<{4}}\n", token.to_string(),
                    token.src_start.to_string(), token.src_end.to_string(),
                    max_tok_width, max_src_file_width);
     }
