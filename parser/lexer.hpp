@@ -2,10 +2,8 @@
 #define PARSE_LEXER_HPP
 
 #include "common.hpp"
-#include <iterator>
+#include <iostream>
 #include <string_view>
-#include <sys/_types/_ucontext.h>
-#include <unordered_set>
 #include <vector>
 
 // error-handling notes:
@@ -15,87 +13,97 @@
 //   error or throw it higher up the stack.
 
 namespace lla {
+    class Source {
+    public:
+        using const_iterator = std::vector<char>::const_iterator;
+
+        Source(std::string_view);
+        auto preprocess() -> void;
+        [[nodiscard]] auto begin() const -> const_iterator;
+        [[nodiscard]] auto end() const -> const_iterator;
+        [[nodiscard]] auto get_filename(const_iterator) const
+            -> std::string_view;
+        [[nodiscard]] auto it_to_src_pos(const_iterator) const
+            -> source_position;
+
+    private:
+        bool is_preprocessed;
+        std::vector<char> text;
+        std::vector<std::vector<char>::size_type> src_file_indexes;
+        std::vector<std::string> filenames;
+    };
 
     class Lexer {
     public:
-        Lexer(std::string_view); // this should run our barebones "preprocessor"
-                                 // and load all source files into memory
-        auto lex()
-            -> int; // this should fill the token vector and handle errors
-        [[nodiscard]] auto get_tokens() const -> std::vector<token> &;
+        Lexer(Source &,
+              bool = true); // this should run our barebones "preprocessor"
+                            // and load all source files into memory
+        auto lex() -> void;
+        [[nodiscard]] auto get_tokens() const -> std::vector<token> const &;
+        auto pretty_print_tokens() const -> void;
 
     private:
-    public:
-        class Source {
-        private:
-            struct Source_file;
-
-        public:
-            Source(std::string_view);
-            class const_iterator {
-            public:
-                using iterator_category = std::bidirectional_iterator_tag;
-                using difference_type = std::ptrdiff_t; // not certainly correct
-                using value_type = char;
-                using pointer = char *;
-                using reference = char &;
-
-                [[nodiscard]] auto get_cur_filename() const -> std::string_view;
-                [[nodiscard]] auto is_end() const -> bool;
-                [[nodiscard]] auto is_start() const -> bool;
-                auto operator*() -> char;
-                auto operator++() -> const_iterator &;
-                auto operator++(int) -> const_iterator;
-                auto operator--() -> const_iterator &;
-                auto operator--(int) -> const_iterator;
-                friend auto operator==(const_iterator const &a,
-                                       const_iterator const &b) -> bool {
-                    return a.cur_file_it == b.cur_file_it && a.it == b.it;
-                };
-                friend auto operator!=(const_iterator const &a,
-                                       const_iterator const &b) -> bool {
-                    return !(a == b);
-                };
-
-            private:
-                friend Source;
-                const_iterator(Source const &);
-                const_iterator(const_iterator const &) = default;
-
-                const Source &src;
-                std::vector<Source_file>::const_iterator cur_file_it;
-                std::vector<char>::const_iterator it;
-                auto advance_it() -> void;
-                auto rewind_it() -> void;
-            };
-            [[nodiscard]] auto create_reader() const -> const_iterator;
-            [[nodiscard]] auto begin() const -> const_iterator;
-            [[nodiscard]] auto end() const -> const_iterator;
-
-        private:
-            struct Source_file {
-                Source_file(std::string_view);
-                std::string filename;
-                std::vector<char> text;
-                [[nodiscard]] auto cbegin() const
-                    -> std::vector<char>::const_iterator;
-                [[nodiscard]] auto cend() const
-                    -> std::vector<char>::const_iterator;
-                //! Note: Maybe you want const iterators as well, maybe not?
-            };
-
-            std::unordered_set<std::string_view> filenames; // for import-cycles
-            std::vector<Source_file> text; // to be iterated over
-
-            auto preprocess(Source_file) -> std::vector<Source_file>;
-        };
-
-        Source src;
+        Source &src;
+        bool crash_on_error;
         std::vector<token> tokens; // each token object is only a
                                    // string_view so no duplication happens
+        //! NOTE: I'll keep track of active filename by keeping the indexes and
+        //! checking if we passed any after every token read
         std::vector<parse_error> errors;
+        struct {
+            source_position cur_pos;
+            Source::const_iterator src_it;
+        } state;
+        auto match_token() -> token;
 
-        auto read_one_token() -> token;
+        auto eat_whitespace() -> void;
+        auto match_eof() -> std::optional<token>;
+        auto match_single_line_comment() -> std::optional<token>;
+        auto match_multi_line_comment() -> std::optional<token>;
+        auto match_reserved_word() -> std::optional<token>;
+        auto match_lowercase_id() -> std::optional<token>;
+        auto match_uppercase_id() -> std::optional<token>;
+        auto match_float_literal() -> std::optional<token>;
+        auto match_int_literal() -> std::optional<token>;
+        auto match_char_literal() -> std::optional<token>;
+        auto match_string_literal() -> std::optional<token>;
+        auto match_multi_char_symop() -> std::optional<token>;
+        auto match_single_char_sep_or_symop() -> std::optional<token>;
+        auto match_unmatched() -> std::optional<token>;
+
+        auto match_any_id(lexeme_t) -> std::optional<token>;
+        auto match_with_str(std::string_view, lexeme_t) -> std::optional<token>;
+
+        template <src_pos_advancer F>
+        inline auto finalize_token(lexeme_t tok_type,
+                                   Source::const_iterator tok_val_end_it, F f)
+            -> token {
+            source_position next_pos = f(this->state.cur_pos);
+            token tok{tok_type,
+                      this->state.cur_pos,
+                      next_pos,
+                      {this->state.src_it, tok_val_end_it}};
+            this->state.cur_pos = next_pos;
+            this->state.src_it = tok_val_end_it;
+            return tok;
+        }
+
+        // helper/util funcs
+
+        /**
+         * @brief checks if given iterator points to eof
+         */
+        auto is_eof(Source::const_iterator) -> bool;
+        /**
+         * @brief tests if iterator points to valid digit or throws error with
+         * given message
+         */
+        auto digit_or_error(Source::const_iterator, std::string_view) -> void;
+        /**
+         * @brief Given iterator is advanced up until after the first non digit
+         * character
+         */
+        auto consume_digits(Source::const_iterator &) -> void;
     };
 } // namespace lla
 

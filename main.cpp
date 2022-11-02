@@ -2,6 +2,8 @@
 #include "config.hpp"
 #include "parser/lexer.hpp"
 
+#include <iostream>
+
 #define STR_HELPER(x) #x
 #define STR(x) STR_HELPER(x)
 
@@ -14,9 +16,16 @@ auto main(int argc, char **argv) -> int {
         return args.result;
     }
 
-    lla::Lexer lexer(args.source_file);
-    const auto src = lexer.src;
-    for (auto c : src)
-        std::cout << c;
+    auto src = lla::Source(args.source_file);
+    // std::cout << "Read source file is:"
+    //           << "\n```\n";
+    // for (const auto c : src) {
+    //     std::cout << c;
+    // }
+    // std::cout << "\n```\n";
+
+    auto lexer = lla::Lexer(src);
+    lexer.lex();
+    lexer.pretty_print_tokens();
     return 0;
 }
