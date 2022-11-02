@@ -17,13 +17,6 @@ auto main(int argc, char **argv) -> int {
     }
 
     auto src = lla::Source(args.source_file);
-    // std::cout << "Read source file is:"
-    //           << "\n```\n";
-    // for (const auto c : src) {
-    //     std::cout << c;
-    // }
-    // std::cout << "\n```\n";
-
     auto lexer = lla::Lexer(src);
     lexer.lex();
     lexer.pretty_print_tokens();

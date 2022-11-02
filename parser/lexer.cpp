@@ -91,19 +91,20 @@ auto Lexer::get_tokens() const -> const std::vector<token> & {
 auto Lexer::pretty_print_tokens() const -> void {
     // TODO: Improve by accepting different destination streams
     // TODO: Improve by counting max column widths
-    fmt::print(stdout, "Found {} tokens\n", this->tokens.size());
     const auto find_max_width = [this]<typename F>(F getter) {
-        const auto predicate = [getter](const auto &a, const auto &b) {
-            return getter(a) < getter(b);
-        };
-        const auto max_it = std::max_element(this->tokens.begin(),
-                                             this->tokens.end(), predicate);
-        return max_it->to_string().size();
+        const auto max_it =
+            std::max_element(this->tokens.begin(), this->tokens.end(),
+                             [getter](const auto &a, const auto &b) {
+                                 return getter(a) < getter(b);
+                             });
+        return getter(*max_it);
     };
     const auto max_tok_width =
-        find_max_width([](const token &t) { return t.to_string().size(); });
+        find_max_width(+[](const token &t) { return t.to_string().size(); });
     const auto max_src_file_width = find_max_width(
-        [](const token &t) { return t.src_start.to_string().size(); });
+        +[](const token &t) { return t.src_start.to_string().size(); });
+
+    fmt::print(stdout, "Found {} tokens\n", this->tokens.size());
     for (const auto &token : this->tokens) {
         if (token.tok_type == lexeme_t::end_of_file) {
             fmt::print("EOF at {}\n", token.src_start.to_string());

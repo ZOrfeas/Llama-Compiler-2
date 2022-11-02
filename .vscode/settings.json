@@ -1,7 +1,6 @@
 {
+    "editor.formatOnSave": true,
     "clangd.arguments": [
         "--compile-commands-dir=${workspaceFolder}/build"
-    ],
-    "editor.formatOnSave": true
-
+    ]
 }
