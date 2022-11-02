@@ -90,15 +90,28 @@ auto Lexer::get_tokens() const -> const std::vector<token> & {
 }
 auto Lexer::pretty_print_tokens() const -> void {
     // TODO: Improve by accepting different destination streams
-    // TODO: Improve by counting max colimn widths
+    // TODO: Improve by counting max column widths
     fmt::print(stdout, "Found {} tokens\n", this->tokens.size());
+    const auto find_max_width = [this]<typename F>(F getter) {
+        const auto predicate = [getter](const auto &a, const auto &b) {
+            return getter(a) < getter(b);
+        };
+        const auto max_it = std::max_element(this->tokens.begin(),
+                                             this->tokens.end(), predicate);
+        return max_it->to_string().size();
+    };
+    const auto max_tok_width =
+        find_max_width([](const token &t) { return t.to_string().size(); });
+    const auto max_src_file_width = find_max_width(
+        [](const token &t) { return t.src_start.to_string().size(); });
     for (const auto &token : this->tokens) {
         if (token.tok_type == lexeme_t::end_of_file) {
             fmt::print("EOF at {}\n", token.src_start.to_string());
             continue;
         }
-        fmt::print("{:<30} | at {:<20} -> {:<20}\n", token.to_string(),
-                   token.src_start.to_string(), token.src_end.to_string());
+        fmt::print("{0:<{3}} | at {1:<{4}} -> {2:<{4}}\n", token.to_string(),
+                   token.src_start.to_string(), token.src_end.to_string(),
+                   max_tok_width, max_src_file_width);
     }
 }
 
@@ -189,12 +202,15 @@ auto Lexer::match_multi_line_comment() -> std::optional<token> {
                 ++nesting;
                 tmp_src_it += 2;
                 tmp_cur_pos.colno += 2;
+                continue;
             } else if (*tmp_src_it == '*' && *(tmp_src_it + 1) == ')') {
                 --nesting;
                 tmp_src_it += 2;
                 tmp_cur_pos.colno += 2;
+                continue;
             }
-        } else if (*tmp_src_it == '\n') {
+        }
+        if (*tmp_src_it == '\n') {
             // TODO: test on windows newlines
             ++tmp_src_it;
             ++tmp_cur_pos.lineno;
@@ -226,7 +242,7 @@ auto Lexer::match_reserved_word() -> std::optional<token> {
         lexeme_t::TO,    lexeme_t::TRUE,    lexeme_t::TYPE,  lexeme_t::UNIT,
         lexeme_t::WHILE, lexeme_t::WITH};
     for (const auto lexeme : lexemes) {
-        if (auto tok = match_with_str(as<std::string>(lexeme), lexeme)) {
+        if (auto tok = match_with_str(as<std::string_view>(lexeme), lexeme)) {
             return tok;
         }
     }
@@ -395,7 +411,7 @@ auto Lexer::match_multi_char_symop() -> std::optional<token> {
         lexeme_t::LEQ,          lexeme_t::GEQ,      lexeme_t::DBLEQ,
         lexeme_t::EXCLAMEQ,     lexeme_t::COLONEQ};
     for (const auto lexeme : lexemes) {
-        if (auto tok = match_with_str(as<std::string>(lexeme), lexeme)) {
+        if (auto tok = match_with_str(as<std::string_view>(lexeme), lexeme)) {
             return tok;
         }
     }
@@ -410,7 +426,7 @@ auto Lexer::match_single_char_sep_or_symop() -> std::optional<token> {
         lexeme_t::LBRACKET, lexeme_t::RBRACKET,  lexeme_t::COMMA,
         lexeme_t::COLON};
     for (const auto lexeme : lexemes) {
-        if (auto tok = match_with_str(as<std::string>(lexeme), lexeme)) {
+        if (auto tok = match_with_str(as<std::string_view>(lexeme), lexeme)) {
             return tok;
         }
     }

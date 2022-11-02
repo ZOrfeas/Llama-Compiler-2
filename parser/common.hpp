@@ -1,6 +1,7 @@
 #ifndef PARSE_COMMON_HPP
 #define PARSE_COMMON_HPP
 
+#include "fmt/core.h"
 #include <concepts>
 #include <cstdint>
 #include <exception>
@@ -17,8 +18,7 @@ namespace lla {
         colno_t colno;   // 1-indexed
         std::string_view filename;
         [[nodiscard]] auto to_string() const -> std::string {
-            return std::string(filename) + ":(" + std::to_string(lineno) + "," +
-                   std::to_string(colno) + ")";
+            return fmt::format("{}:({},{})", filename, lineno, colno);
         }
     };
     template <typename T>
@@ -117,9 +117,9 @@ namespace lla {
     };
 
     template <typename T>
-        requires std::is_same_v<T, std::string>
-    inline static constexpr auto as(lexeme_t l) -> std::string {
-        constexpr std::array token_strings = {
+        requires std::is_same_v<T, std::string_view>
+    inline static auto as(lexeme_t l) -> std::string_view {
+        static std::array token_strings = {
             "comment",    "unmatched", "EOF",
             "and",        "array",     "begin",
             "BOOL",       "char",      "delete",
@@ -149,14 +149,19 @@ namespace lla {
             ")",          "|",         "!"};
         return token_strings[static_cast<int>(l)];
     }
+    template <typename T>
+        requires std::is_same_v<T, std::string>
+    inline static auto as(lexeme_t l) -> std::string {
+        return std::string(as<std::string_view>(l));
+    }
 
     struct token {
         lexeme_t tok_type;
         source_position src_start, src_end;
         std::string_view value; // non-owning view to the source code location
         [[nodiscard]] auto to_string() const -> std::string {
-            return "(" + as<std::string>(tok_type) + ": `" +
-                   std::string(value) + "`)";
+            return fmt::format("({}: `{}`)", as<std::string_view>(tok_type),
+                               value);
         }
     };
 } // namespace lla
