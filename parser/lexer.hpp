@@ -2,6 +2,7 @@
 #define PARSE_LEXER_HPP
 
 #include "common.hpp"
+#include "source.hpp"
 #include <iostream>
 #include <string_view>
 #include <vector>
@@ -13,31 +14,9 @@
 //   error or throw it higher up the stack.
 
 namespace lla {
-    class Source {
-    public:
-        using const_iterator = std::vector<char>::const_iterator;
-
-        Source(std::string_view);
-        auto preprocess() -> void;
-        [[nodiscard]] auto begin() const -> const_iterator;
-        [[nodiscard]] auto end() const -> const_iterator;
-        [[nodiscard]] auto get_filename(const_iterator) const
-            -> std::string_view;
-        [[nodiscard]] auto it_to_src_pos(const_iterator) const
-            -> source_position;
-
-    private:
-        bool is_preprocessed;
-        std::vector<char> text;
-        std::vector<std::vector<char>::size_type> src_file_indexes;
-        std::vector<std::string> filenames;
-    };
-
     class Lexer {
     public:
-        Lexer(Source &,
-              bool = true); // this should run our barebones "preprocessor"
-                            // and load all source files into memory
+        Lexer(Source &, bool = true);
         auto lex() -> void;
         [[nodiscard]] auto get_tokens() const -> std::vector<token> const &;
         auto pretty_print_tokens() const -> void;
@@ -90,9 +69,6 @@ namespace lla {
 
         // helper/util funcs
 
-        /**
-         * @brief checks if given iterator points to eof
-         */
         auto is_eof(Source::const_iterator) -> bool;
         /**
          * @brief Given iterator is advanced up until after the first non digit

@@ -159,12 +159,11 @@ namespace lla {
     }
 
     struct token {
-        lexeme_t tok_type;
+        lexeme_t type;
         source_position src_start, src_end;
         std::string_view value; // non-owning view to the source code location
         [[nodiscard]] auto to_string() const -> std::string {
-            return fmt::format("({}: `{}`)", as<std::string_view>(tok_type),
-                               value);
+            return fmt::format("({}: `{}`)", as<std::string_view>(type), value);
         }
     };
 } // namespace lla

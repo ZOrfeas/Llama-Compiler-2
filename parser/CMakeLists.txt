@@ -1,6 +1,6 @@
 include(FetchContent)
 
-add_library(lla-parser lexer.cpp parser.cpp)
+add_library(lla-parser lexer.cpp parser.cpp source.cpp)
 FetchContent_Declare(
     fmt
     GIT_REPOSITORY https://github.com/fmtlib/fmt

@@ -2,66 +2,14 @@
 #include "common.hpp"
 #include <algorithm>
 #include <cctype>
-#include <fstream>
-#include <iterator>
 #include <optional>
 
 #include "fmt/core.h"
 using namespace lla;
-// // // // // // // //
-static auto file_to_char_vec(std::string_view filename) -> std::vector<char> {
-    // std::ios::ate places the file pointer at the end of the file
-    std::ifstream file(filename, std::ios::binary | std::ios::ate);
 
-    // Weird way to read file in one string, should be fast
-    auto size = file.tellg();
-    std::vector<char> text(size);
-    file.seekg(0);
-    file.read(text.data(), size);
-    return text;
-}
-Source::Source(std::string_view filename)
-    : is_preprocessed(false), text(file_to_char_vec(filename)),
-      src_file_indexes({0}), filenames({std::string(filename)}) {}
-auto Source::preprocess() -> void {
-    if (this->is_preprocessed) {
-        return;
-    }
-    // TODO: Implemnt preprocessor
-
-    this->is_preprocessed = true;
-}
-auto Source::begin() const -> const_iterator { return this->text.begin(); }
-auto Source::end() const -> const_iterator { return this->text.end(); }
-auto Source::get_filename(const_iterator it) const -> std::string_view {
-    // TODO: Implement
-    return this->filenames[0];
-}
-auto Source::it_to_src_pos(const_iterator it) const -> source_position {
-    source_position pos{1, 1, this->filenames[0]};
-    auto src_it = this->text.begin();
-    for (; src_it != this->text.end() && src_it != it; ++src_it) {
-        if (*src_it == '\n') {
-            ++pos.lineno;
-            pos.colno = 1;
-        } else {
-            ++pos.colno;
-        }
-    }
-    if (src_it == this->text.end() && it != this->text.end()) {
-        throw parse_error{
-            pos, "tried to get source position of out of bounds iterator",
-            true};
-    }
-    pos.filename = this->get_filename(it);
-    return pos;
-}
-
-// // // // // // // //
 Lexer::Lexer(Source &src, bool crash_on_error)
     : src(src), crash_on_error(crash_on_error), tokens({}), errors({}) {}
 auto Lexer::lex() -> void {
-    this->src.preprocess();
     this->state.src_it = this->src.begin();
     // TODO: Implement filename tracking
     this->state.cur_pos =
@@ -72,7 +20,7 @@ auto Lexer::lex() -> void {
         try {
             auto token = this->match_token();
             this->tokens.push_back(token);
-            if (token.tok_type == lexeme_t::end_of_file) {
+            if (token.type == lexeme_t::end_of_file) {
                 break;
             }
         } catch (parse_error &e) {
@@ -80,6 +28,7 @@ auto Lexer::lex() -> void {
                 throw e;
             } else {
                 // TODO: Implement error recovery :)
+                // match_unmatched could be invoked and handle it
                 this->errors.push_back(e);
             }
         }
@@ -90,7 +39,6 @@ auto Lexer::get_tokens() const -> const std::vector<token> & {
 }
 auto Lexer::pretty_print_tokens() const -> void {
     // TODO: Improve by accepting different destination streams
-    // TODO: Improve by counting max column widths
     const auto find_max_width = [this]<typename F>(F getter) {
         const auto max_it =
             std::max_element(this->tokens.begin(), this->tokens.end(),
@@ -100,13 +48,13 @@ auto Lexer::pretty_print_tokens() const -> void {
         return getter(*max_it);
     };
     const auto max_tok_width =
-        find_max_width(+[](const token &t) { return t.to_string().size(); });
+        find_max_width([](const token &t) { return t.to_string().size(); });
     const auto max_src_file_width = find_max_width(
-        +[](const token &t) { return t.src_start.to_string().size(); });
+        [](const token &t) { return t.src_start.to_string().size(); });
 
-    fmt::print(stdout, "Found {} tokens\n", this->tokens.size());
+    fmt::print("Found {} tokens\n", this->tokens.size());
     for (const auto &token : this->tokens) {
-        if (token.tok_type == lexeme_t::end_of_file) {
+        if (token.type == lexeme_t::end_of_file) {
             fmt::print("EOF at {}\n", token.src_start.to_string());
             continue;
         }
@@ -117,7 +65,7 @@ auto Lexer::pretty_print_tokens() const -> void {
 }
 
 auto Lexer::match_token() -> token {
-    // TODO: Think if first is_eof check of each matcher can be removed
+    //* NOTE: is_eof(this->state.src_it) is checked twice every time.
 
     // order of matchers is the order in which they are run
     static const std::array match_funcs{&Lexer::match_eof,
@@ -262,7 +210,6 @@ auto Lexer::match_uppercase_id() -> std::optional<token> {
     return match_any_id(lexeme_t::idupper);
 }
 auto Lexer::match_float_literal() -> std::optional<token> {
-    // TODO: think of a way to avoid code duplication
     if (is_eof(this->state.src_it) || !std::isdigit(*this->state.src_it)) {
         return std::nullopt;
     }
