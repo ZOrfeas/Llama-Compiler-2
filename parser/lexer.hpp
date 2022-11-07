@@ -4,6 +4,7 @@
 #include "common.hpp"
 #include "source.hpp"
 #include <iostream>
+#include <optional>
 #include <string_view>
 #include <vector>
 
@@ -17,11 +18,19 @@ namespace lla {
     class Lexer {
     public:
         Lexer(Source &, bool = true);
-        auto lex() -> void;
+        Lexer(Source &&, bool = true);
+        Lexer(std::string_view, bool = true);
+        auto lex() -> Lexer const &;
+
         [[nodiscard]] auto get_tokens() const -> std::vector<token> const &;
+        [[nodiscard]] auto get_errors() const
+            -> std::vector<parse_error> const &;
+        [[nodiscard]] auto extract_tokens_and_errors()
+            && -> std::pair<std::vector<token>, std::vector<parse_error>>;
         auto pretty_print_tokens() const -> void;
 
     private:
+        std::optional<Source> owned_src;
         Source &src;
         bool crash_on_error;
         std::vector<token> tokens; // each token object is only a

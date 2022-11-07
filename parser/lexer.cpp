@@ -9,7 +9,14 @@ using namespace lla;
 
 Lexer::Lexer(Source &src, bool crash_on_error)
     : src(src), crash_on_error(crash_on_error), tokens({}), errors({}) {}
-auto Lexer::lex() -> void {
+Lexer::Lexer(Source &&src, bool crash_on_error)
+    : owned_src(std::move(src)), src(*owned_src),
+      crash_on_error(crash_on_error), tokens({}), errors({}) {}
+Lexer::Lexer(std::string_view filename, bool crash_on_error)
+    : owned_src(std::move(Source(filename))), src(*owned_src),
+      crash_on_error(crash_on_error), tokens({}), errors({}) {}
+
+auto Lexer::lex() -> Lexer const & {
     this->state.src_it = this->src.begin();
     // TODO: Implement filename tracking
     this->state.cur_pos =
@@ -33,9 +40,17 @@ auto Lexer::lex() -> void {
             }
         }
     }
+    return *this;
 }
 auto Lexer::get_tokens() const -> const std::vector<token> & {
     return this->tokens;
+}
+auto Lexer::get_errors() const -> const std::vector<parse_error> & {
+    return this->errors;
+}
+auto Lexer::extract_tokens_and_errors()
+    && -> std::pair<std::vector<token>, std::vector<parse_error>> {
+    return {std::move(this->tokens), std::move(this->errors)};
 }
 auto Lexer::pretty_print_tokens() const -> void {
     // TODO: Improve by accepting different destination streams
