@@ -14,7 +14,7 @@
 //   depending on Lexer paramereters, the Lexer can try to recover and store the
 //   error or throw it higher up the stack.
 
-namespace lla {
+namespace lla::parse {
     class Lexer {
     public:
         Lexer(Source &, bool = true);
@@ -85,6 +85,6 @@ namespace lla {
          */
         auto consume_digits(Source::const_iterator &) -> void;
     };
-} // namespace lla
+} // namespace lla::parse
 
 #endif // PARSE_LEXER_HPP

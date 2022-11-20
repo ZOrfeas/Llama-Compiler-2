@@ -5,7 +5,7 @@
 #include <optional>
 
 #include "fmt/core.h"
-using namespace lla;
+using namespace lla::parse;
 
 Lexer::Lexer(Source &src, bool crash_on_error)
     : src(src), crash_on_error(crash_on_error), tokens({}), errors({}) {}

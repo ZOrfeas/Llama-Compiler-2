@@ -9,7 +9,7 @@
 #include <string_view>
 #include <utility>
 
-namespace lla {
+namespace lla::parse {
     using lineno_t = std::uint32_t;
     using colno_t = std::uint32_t;
 
@@ -33,9 +33,9 @@ namespace lla {
               msg(fmt::format("{}{} at {}", internal ? "INTERNAL " : "", msg,
                               pos.to_string())),
               internal(internal) {}
-        source_position pos;
-        std::string msg;
-        bool internal = false;
+        const source_position pos;
+        const std::string msg;
+        const bool internal;
         [[nodiscard]] auto what() const noexcept -> const char * override {
             return msg.c_str();
         }
@@ -166,6 +166,6 @@ namespace lla {
             return fmt::format("({}: `{}`)", as<std::string_view>(type), value);
         }
     };
-} // namespace lla
+} // namespace lla::parse
 
 #endif // PARSE_COMMON_HPP
