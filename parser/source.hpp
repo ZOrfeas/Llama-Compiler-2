@@ -23,31 +23,29 @@ namespace lla::parse {
 
     private:
         struct file_info {
-            file_info(std::string name) : name(std::move(name)) {}
-            std::string name;
             std::vector<char>::size_type size{};
             std::vector<colno_t> line_lengths{};
             auto operator==(const file_info &other) const -> bool {
-                return this == &other || this->name == other.name;
+                return this == &other;
             }
         };
         struct f_bound {
-            const_iterator idx;
-            std::vector<file_info>::size_type f_info_idx{};
+            std::vector<char>::size_type idx;
+            std::string_view f_name;
         };
 
         // owning container for file_info structs
-        std::vector<file_info> f_infos;
+        std::vector<std::string_view> f_name_dag;
         // used to detect include cycles
-        std::unordered_map<std::string, std::vector<file_info>::size_type>
-            f_name_map;
+        std::unordered_map<std::string, file_info> filemap;
         std::vector<f_bound> f_bounds;
 
         std::vector<char> text;
 
+        auto f_name_to_f_info(std::string_view) -> file_info &;
         //! NOTE: Replace directive lines with empty ones to not mess up
         //! source_position elsewhere
-        auto preprocess(std::vector<file_info>::size_type) -> void;
+        auto preprocess(std::string_view) -> void;
         auto handle_directive(const source_position &, std::string_view)
             -> void;
         auto handle_include(std::string_view) -> std::optional<std::string>;
