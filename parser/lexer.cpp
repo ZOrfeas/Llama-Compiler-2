@@ -18,7 +18,10 @@ Lexer::Lexer(std::string_view filename, bool crash_on_error)
 
 auto Lexer::lex() -> Lexer const & {
     this->state.src_it = this->src.begin();
-    // TODO: Implement filename tracking
+    // TODO: Implement filename tracking.
+    // TODO:   This means after every token, ask the Source if we passed any
+    // TODO:      file borders, reset lineno/colno and update filename in
+    // TODO:        cur_pos
     this->state.cur_pos =
         source_position{1, 1, this->src.get_filename(this->state.src_it)};
     // TODO: create two loop funcs to pass through the if (crash_on_error) only
