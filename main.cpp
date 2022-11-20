@@ -17,8 +17,8 @@ auto main(int argc, char **argv) -> int {
         return args.result;
     }
 
-    // auto src = lla::Source(args.source_file);
+    lla::parse::Source(args.source_file).print_text();
     // auto lexer = lla::Lexer(args.source_file);
-    lla::parse::Lexer(args.source_file).lex().pretty_print_tokens();
+    // lla::parse::Lexer(args.source_file).lex().pretty_print_tokens();
     return 0;
 }

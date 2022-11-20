@@ -29,15 +29,21 @@ static auto file_to_char_vec(std::string_view filename) -> std::vector<char> {
     return text;
 }
 Source::Source(std::string_view filename)
-    : f_infos({{std::string(filename)}}), f_name_map({}), text({}) {
-    auto &f_info = f_infos.back();
-    auto [it, success] = f_name_map.insert({f_info.name, f_info});
+    : f_infos({}), f_name_map({}), text({}), f_bounds({}) {
+    this->f_infos.emplace_back(std::string(filename));
+    auto [it, success] = this->f_name_map.insert(
+        {std::string(filename), this->f_infos.size() - 1});
     if (!success) {
         throw parse_error{source_position{0, 0, ""},
                           "failed to insert initial file", true};
     }
-
-    preprocess(f_info.name, f_info);
+    preprocess(it->second);
+}
+auto Source::print_text() const -> void {
+    fmt::print("Source text:\n");
+    for (auto c : this->text) {
+        fmt::print("{}", c);
+    }
 }
 auto Source::begin() const -> const_iterator { return this->text.begin(); }
 auto Source::end() const -> const_iterator { return this->text.end(); }
@@ -77,7 +83,7 @@ static auto find_line_end(char_forward_iterator auto it,
     return it;
 }
 
-auto Source::preprocess(std::string_view f_name, file_info &f_info) -> void {
+auto Source::preprocess(std::vector<file_info>::size_type f_info_idx) -> void {
     // Possible implementation notes:
     // 1. insert into this->text (or a vec passed by ref.) up until an include
     //      directive is found.
@@ -89,13 +95,21 @@ auto Source::preprocess(std::string_view f_name, file_info &f_info) -> void {
 
     //! NOTE: Enforce includes to only be at the beginning of a file to make
     //! dependencies into a D.A.G.
-    auto cur_text = file_to_char_vec(f_name);
+    auto cur_text = file_to_char_vec(this->f_infos[f_info_idx].name);
     const_iterator prev_it{cur_text.begin()}, it{cur_text.begin()},
         copy_it{cur_text.begin()};
 
-    const auto save_line_length = [&](auto len) {
-        f_info.line_lengths.push_back(len);
-        f_info.size += len;
+    const auto save_line_length = [this, f_info_idx](auto len) {
+        this->f_infos[f_info_idx].line_lengths.push_back(len);
+        this->f_infos[f_info_idx].size += len;
+    };
+    const auto append_to_text = [this, f_info_idx](auto from, auto to) {
+        this->text.insert(this->text.end(), from, to);
+        if (!this->f_bounds.empty() &&
+            this->f_infos[this->f_bounds.back().f_info_idx] !=
+                this->f_infos[f_info_idx]) {
+            this->f_bounds.push_back({from, f_info_idx});
+        }
     };
 
     while (it != cur_text.end()) {
@@ -103,13 +117,14 @@ auto Source::preprocess(std::string_view f_name, file_info &f_info) -> void {
             // '#' found after newline, this is a directive line
 
             // copy up to the character before the directive.
-            this->text.insert(text.end(), copy_it, it);
+            append_to_text(copy_it, it);
             copy_it = find_line_end(it, cur_text.end());
 
             // TODO: Try-catch here to allow recovery from errors
             handle_directive(
-                {static_cast<lineno_t>(f_info.line_lengths.size() + 1), 1,
-                 f_info.name},
+                {static_cast<lineno_t>(
+                     this->f_infos[f_info_idx].line_lengths.size() + 1),
+                 1, this->f_infos[f_info_idx].name},
                 {it + 1, copy_it});
 
             it = copy_it + 1; // this will be '\n' or text.end()
@@ -124,9 +139,9 @@ auto Source::preprocess(std::string_view f_name, file_info &f_info) -> void {
         }
     }
     save_line_length(std::distance(prev_it, it)); // last line-length
-    this->text.insert(text.end(), copy_it, it);
+    append_to_text(copy_it, it);
 
-    f_infos.emplace_back(f_info);
+    // f_infos.emplace_back(f_info);
 }
 
 static auto match_str_with_str(std::string_view str, std::string_view match) {
@@ -165,12 +180,17 @@ auto Source::handle_include(std::string_view dir_body)
     if (*f_name_start != '"' || *(std::prev(f_name_end)) != '"') {
         return "include filename not enclosed in double quotes";
     }
-
     std::string_view f_name{std::next(f_name_start), std::prev(f_name_end)};
     if (!std::filesystem::exists(f_name)) {
         return fmt::format("file \"{}\" not found", f_name);
     }
-    // fmt::print("include: {}\n", f_name);
+    this->f_infos.emplace_back(std::string(f_name));
+    auto [it, success] = this->f_name_map.insert(
+        {std::string(f_name), this->f_infos.size() - 1});
+    if (!success) {
+        return fmt::format("file \"{}\" already included", f_name);
+    }
+    preprocess(it->second);
 
     return std::nullopt;
 }
