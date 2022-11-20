@@ -19,7 +19,7 @@ namespace lla::parse {
             -> std::string_view;
         [[nodiscard]] auto it_to_src_pos(const_iterator) const
             -> source_position;
-        auto print_text() const -> void;
+        auto print_text(const std::string &) const -> void;
 
     private:
         struct file_info {

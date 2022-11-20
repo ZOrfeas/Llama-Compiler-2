@@ -1,6 +1,9 @@
 include(FetchContent)
 
 add_library(lla-cli cli.cpp)
+target_include_directories(lla-cli INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+add_library(LLAMAC::CLI ALIAS lla-cli)
+
 FetchContent_Declare(
     cli11
     GIT_REPOSITORY https://github.com/CLIUtils/CLI11

@@ -1,6 +1,8 @@
 #include "source.hpp"
 #include "common.hpp"
 #include "fmt/core.h"
+#include "fmt/format.h"
+#include "utils.hpp"
 #include <__iterator/concepts.h>
 #include <algorithm>
 #include <filesystem>
@@ -39,11 +41,10 @@ Source::Source(std::string_view filename)
     this->f_name_dag.emplace_back(it->first);
     preprocess(it->first);
 }
-auto Source::print_text() const -> void {
-    fmt::print("Source text:\n");
-    for (auto c : this->text) {
-        fmt::print("{}", c);
-    }
+auto Source::print_text(const std::string &outfilename) const -> void {
+    const auto file = utils::make_file(outfilename);
+    fmt::print(file.get(), "{}", fmt::join(this->text, ""));
+    fmt::print(file.get(), "\n");
 }
 auto Source::begin() const -> const_iterator { return this->text.begin(); }
 auto Source::end() const -> const_iterator { return this->text.end(); }

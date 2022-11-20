@@ -27,7 +27,7 @@ namespace lla::parse {
             -> std::vector<parse_error> const &;
         [[nodiscard]] auto extract_tokens_and_errors()
             && -> std::pair<std::vector<token>, std::vector<parse_error>>;
-        auto pretty_print_tokens() const -> void;
+        auto pretty_print_tokens(const std::string &) const -> void;
 
     private:
         std::optional<Source> owned_src;

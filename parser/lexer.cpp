@@ -5,6 +5,7 @@
 #include <optional>
 
 #include "fmt/core.h"
+#include "utils.hpp"
 using namespace lla::parse;
 
 Lexer::Lexer(Source &src, bool crash_on_error)
@@ -55,7 +56,7 @@ auto Lexer::extract_tokens_and_errors()
     && -> std::pair<std::vector<token>, std::vector<parse_error>> {
     return {std::move(this->tokens), std::move(this->errors)};
 }
-auto Lexer::pretty_print_tokens() const -> void {
+auto Lexer::pretty_print_tokens(const std::string &outfilename) const -> void {
     // TODO: Improve by accepting different destination streams
     const auto find_max_width = [this]<typename F>(F getter) {
         const auto max_it =
@@ -69,16 +70,18 @@ auto Lexer::pretty_print_tokens() const -> void {
         find_max_width([](const token &t) { return t.to_string().size(); });
     const auto max_src_file_width = find_max_width(
         [](const token &t) { return t.src_start.to_string().size(); });
+    const auto file = utils::make_file(outfilename);
 
-    fmt::print("Found {} tokens\n", this->tokens.size());
     for (const auto &token : this->tokens) {
         if (token.type == lexeme_t::end_of_file) {
-            fmt::print("EOF at {}\n", token.src_start.to_string());
+            fmt::print(file.get(), "EOF at {} with {} tokens\n",
+                       token.src_start.to_string(), this->tokens.size());
             continue;
         }
-        fmt::print("{0:>{3}} | at {1:<{4}} -> {2:<{4}}\n", token.to_string(),
-                   token.src_start.to_string(), token.src_end.to_string(),
-                   max_tok_width, max_src_file_width);
+        fmt::print(file.get(), "{0:-<{3}} | at {1:<{4}} -> {2:<{4}}\n",
+                   token.to_string(), token.src_start.to_string(),
+                   token.src_end.to_string(), max_tok_width,
+                   max_src_file_width);
     }
 }
 

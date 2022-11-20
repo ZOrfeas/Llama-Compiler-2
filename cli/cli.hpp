@@ -2,6 +2,7 @@
 #define LLA_CLI_HPP
 
 #include <CLI/CLI.hpp>
+#include <optional>
 #include <string>
 
 namespace lla::cli {
@@ -13,9 +14,11 @@ namespace lla::cli {
 
     public:
         CLI::App the_app;
-        CLI::Option *only_parse, *only_sem, *only_ir, *only_asm;
-        std::string source_file, ast_outfile, types_outfile, ir_outfile,
-            asm_outfile;
+        CLI::Option *only_preprocess, *only_lex, *only_parse, *only_sem,
+            *only_ir, *only_asm;
+        std::string source_file;
+        std::optional<std::string> preprocessed_outfile, tokens_outfile,
+            ast_outfile, types_outfile, ir_outfile, asm_outfile;
         int result;
         Args(int argc, char **argv, std::string_view version = "0.0.0");
     };
