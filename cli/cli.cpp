@@ -6,7 +6,7 @@ constexpr auto comp_step_grp_name = "Compilation-steps";
 constexpr auto print_opts_grp_name = "Print-options";
 
 Args::Args(int argc, char **argv, std::string_view version)
-    : the_app("Compiler for the Llama language version " + std::string(version),
+    : the_app("Compiler for the Llama language v" + std::string(version),
               "llamac"),
       only_parse(nullptr), only_sem(nullptr), only_ir(nullptr),
       only_asm(nullptr), result(0) {
