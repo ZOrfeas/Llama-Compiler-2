@@ -52,9 +52,6 @@ auto Source::get_filename(const_iterator it) const -> std::string_view {
     // TODO: Implement
     return this->f_name_dag.back();
 }
-auto Source::it_to_src_pos(const_iterator it) const -> source_position {
-    // TODO: Implement
-}
 auto Source::f_name_to_f_info(std::string_view f_name) -> file_info & {
     if (auto it = this->filemap.find(std::string(f_name));
         it != this->filemap.end()) {
@@ -107,6 +104,7 @@ auto Source::preprocess(std::string_view f_name) -> void {
     auto cur_text = file_to_char_vec(f_name);
     const_iterator prev_it{cur_text.begin()}, it{cur_text.begin()},
         copy_it{cur_text.begin()};
+    std::vector<colno_t>::size_type lines_at_copy_it{0};
 
     auto &f_info = f_name_to_f_info(f_name);
     const auto save_line_length = [this, &f_info](auto len) {
@@ -161,17 +159,14 @@ static auto match_str_with_str(std::string_view str, std::string_view match) {
 }
 auto Source::handle_directive(const source_position &dir_pos,
                               std::string_view dir_line) -> void {
-    struct dir_t {
-        std::string_view name;
-        std::optional<std::string> (Source::*handler)(std::string_view);
-    };
+    using std::string_view_literals::operator""sv;
     static const std::array directives = {
-        dir_t{"include", &Source::handle_include}};
+        std::pair{"include"sv, &Source::handle_include}};
 
     for (auto &pair : directives) {
-        if (match_str_with_str(dir_line, pair.name)) {
+        if (match_str_with_str(dir_line, pair.first)) {
             if (auto err_msg =
-                    (this->*pair.handler)(dir_line.substr(pair.name.size()))) {
+                    (this->*pair.second)(dir_line.substr(pair.first.size()))) {
                 throw parse_error{dir_pos, *err_msg};
             }
             return;

@@ -411,10 +411,11 @@ auto Lexer::match_single_char_sep_or_symop() -> std::optional<token> {
 }
 auto Lexer::match_unmatched() -> std::optional<token> {
     // TODO: implement some kind of error tolerance e.g. eat up until whitespace
-    return finalize_token(lexeme_t::UNMATCHED, this->src.end(),
-                          [this](source_position pos) {
-                              return this->src.it_to_src_pos(this->src.end());
-                          });
+    return finalize_token(
+        lexeme_t::UNMATCHED, this->src.end(), [this](source_position pos) {
+            return source_position{0, 0,
+                                   this->src.get_filename(this->src.end())};
+        });
 }
 
 auto Lexer::match_any_id(lexeme_t tok_type) -> std::optional<token> {
