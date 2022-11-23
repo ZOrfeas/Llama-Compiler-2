@@ -110,14 +110,27 @@ auto Source::preprocess(std::string_view f_name) -> void {
         f_lines.emplace_back(from_diff, to_diff);
     };
     const auto save_text = [&]() {
+        const auto char_cnt = std::distance(copy_it, it);
         this->text.insert(this->text.end(), copy_it, it);
+
         copy_backlog_cnt = 0;
+        const auto prev_copy_it = copy_it;
         copy_it = find_line_end(it, cur_text.end());
 
-        if (copy_it == it) return;
-        if (f_order.empty() || f_order.back().data() != f_name.data()) {
-            f_order.push_back(f_name);
+        if (prev_copy_it == it) return;
+        const auto to_diff =
+            std::distance(this->text.cbegin(), this->text.cend());
+        const auto from_diff = std::distance(
+            this->text.cbegin(), std::prev(this->text.cend(), char_cnt));
+
+        if (!f_order.empty() && f_order.back().first.data() == f_name.data()) {
+            f_order.back().second.second = to_diff;
+            return;
         }
+        if (!f_order.empty()) {
+            f_order.back().second.second = from_diff;
+        }
+        f_order.emplace_back(f_name, idx_pair_t{from_diff, to_diff});
     };
 
     while (it != cur_text.end()) {
