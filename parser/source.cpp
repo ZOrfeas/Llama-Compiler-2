@@ -38,12 +38,6 @@ Source::Source(std::string_view filename, bool crash_on_error)
                           "failed to insert initial file", true};
     }
     this->preprocess(it->first);
-    for (auto &pair : this->filemap) {
-        fmt::print("\n------\nfile: {}\n", pair.first);
-        for (auto &line : pair.second) {
-            fmt::print("{}", this->f_line_to_str(line));
-        }
-    }
 }
 auto Source::print_text(const std::string &outfilename) const -> void {
     const auto file = utils::make_file(outfilename);
@@ -56,12 +50,13 @@ auto Source::get_filename(const_iterator it) const -> std::string_view {
     // TODO: Implement
     return this->filemap.begin()->first;
 }
-auto Source::f_line_to_str(const f_line_t &f_line) const -> std::string_view {
+auto Source::idx_pair_to_str(const idx_pair_t &f_line) const
+    -> std::string_view {
     return {std::next(this->text.begin(), f_line.first),
             std::next(this->text.begin(), f_line.second)};
 }
 auto Source::f_name_to_f_info(std::string_view f_name)
-    -> std::vector<f_line_t> & {
+    -> std::vector<idx_pair_t> & {
     if (auto it = this->filemap.find(std::string(f_name));
         it != this->filemap.end()) {
         return it->second;

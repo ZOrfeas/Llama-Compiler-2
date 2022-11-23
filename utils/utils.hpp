@@ -6,6 +6,6 @@ namespace lla::utils {
     auto make_file(const std::string &)
         -> std::unique_ptr<std::FILE, int (*)(std::FILE *)>;
 
-}
+} // namespace lla::utils
 
 #endif // LLA_UTILS_HPP

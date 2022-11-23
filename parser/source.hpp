@@ -20,17 +20,21 @@ namespace lla::parse {
         auto print_text(const std::string &) const -> void;
 
     private:
-        using f_line_t = std::pair<std::vector<char>::difference_type,
-                                   std::vector<char>::difference_type>;
-        [[nodiscard]] auto f_line_to_str(const f_line_t &) const
+        using idx_pair_t = std::pair<std::vector<char>::difference_type,
+                                     std::vector<char>::difference_type>;
+        [[nodiscard]] auto idx_pair_to_str(const idx_pair_t &) const
             -> std::string_view;
 
-        std::unordered_map<std::string, std::vector<f_line_t>> filemap;
-        std::vector<std::string_view> f_order;
+        // TODO: Consider a BST to allow fast lookup from iterator to filename
+        // TODO:    and lineno. Maybe a simple iterator on f_order and the chunk
+        // TODO:    sizes will be enough though
+
+        std::unordered_map<std::string, std::vector<idx_pair_t>> filemap;
+        std::vector<std::pair<std::string_view, idx_pair_t>> f_order;
         std::vector<char> text;
         bool crash_on_error;
 
-        auto f_name_to_f_info(std::string_view) -> std::vector<f_line_t> &;
+        auto f_name_to_f_info(std::string_view) -> std::vector<idx_pair_t> &;
 
         auto preprocess(std::string_view) -> void;
         auto handle_directive(const source_position &, std::string_view)

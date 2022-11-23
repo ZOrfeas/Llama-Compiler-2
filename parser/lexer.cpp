@@ -25,8 +25,6 @@ auto Lexer::lex() -> Lexer const & {
     // TODO:        cur_pos
     this->state.cur_pos =
         source_position{1, 1, this->src.get_filename(this->state.src_it)};
-    // TODO: create two loop funcs to pass through the if (crash_on_error) only
-    // once
     while (true) {
         try {
             auto token = this->match_token();
