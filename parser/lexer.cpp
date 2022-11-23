@@ -14,7 +14,7 @@ Lexer::Lexer(Source &&src, bool crash_on_error)
     : owned_src(std::move(src)), src(*owned_src),
       crash_on_error(crash_on_error), tokens({}), errors({}) {}
 Lexer::Lexer(std::string_view filename, bool crash_on_error)
-    : owned_src(std::move(Source(filename))), src(*owned_src),
+    : owned_src(std::move(Source(filename, crash_on_error))), src(*owned_src),
       crash_on_error(crash_on_error), tokens({}), errors({}) {}
 
 auto Lexer::lex() -> Lexer const & {
@@ -36,7 +36,7 @@ auto Lexer::lex() -> Lexer const & {
             }
         } catch (parse_error &e) {
             if (crash_on_error) {
-                throw e;
+                throw;
             } else {
                 // TODO: Implement error recovery :)
                 // match_unmatched could be invoked and handle it
@@ -236,7 +236,7 @@ auto Lexer::match_float_literal() -> std::optional<token> {
     }
     const auto digit_or_error = [this](Source::const_iterator it,
                                        std::string_view err_msg) -> void {
-        if (it == this->src.end() || !std::isdigit(*it)) {
+        if (is_eof(it) || !std::isdigit(*it)) {
             auto err_pos = this->state.cur_pos;
             err_pos.colno += std::distance(this->state.src_it, it);
             throw parse_error{err_pos, err_msg};
@@ -427,8 +427,6 @@ auto Lexer::match_any_id(lexeme_t tok_type) -> std::optional<token> {
     if (tmp_src_it == this->state.src_it) { // means it found no alnums
         return std::nullopt;
     }
-    // fmt::print("std::distance(this->src.begin(), tmp_src_it) = {}\n",
-    //            std::distance(this->src.begin(), tmp_src_it));
     return finalize_token(
         tok_type, tmp_src_it, [this, tmp_src_it](source_position pos) {
             pos.colno += std::distance(this->state.src_it, tmp_src_it);

@@ -12,7 +12,7 @@ namespace lla::parse {
     public:
         using const_iterator = std::vector<char>::const_iterator;
 
-        Source(std::string_view);
+        Source(std::string_view, bool = true);
         [[nodiscard]] auto begin() const -> const_iterator;
         [[nodiscard]] auto end() const -> const_iterator;
         [[nodiscard]] auto get_filename(const_iterator) const
@@ -20,26 +20,19 @@ namespace lla::parse {
         auto print_text(const std::string &) const -> void;
 
     private:
-        struct file_info {
-            std::vector<char>::size_type size{};
-            std::vector<colno_t> line_lengths{};
-        };
-        struct f_bound {
-            std::string_view f_name;
-            std::vector<char>::size_type idx;
-            // std::vector<colno_t>::size_type line_cnt;
-        };
+        using f_line_t = std::pair<std::vector<char>::difference_type,
+                                   std::vector<char>::difference_type>;
+        [[nodiscard]] auto f_line_to_str(const f_line_t &) const
+            -> std::string_view;
 
-        std::vector<std::string_view> f_name_dag;
-        std::unordered_map<std::string, file_info> filemap;
-        std::vector<f_bound> f_bounds;
-
+        std::unordered_map<std::string, std::vector<f_line_t>> filemap;
+        std::vector<std::string_view> f_order;
         std::vector<char> text;
+        bool crash_on_error;
 
-        auto f_name_to_f_info(std::string_view) -> file_info &;
+        auto f_name_to_f_info(std::string_view) -> std::vector<f_line_t> &;
 
         auto preprocess(std::string_view) -> void;
-
         auto handle_directive(const source_position &, std::string_view)
             -> void;
         auto handle_include(std::string_view) -> std::optional<std::string>;

@@ -30,16 +30,20 @@ static auto file_to_char_vec(std::string_view filename) -> std::vector<char> {
     file.read(text.data(), size);
     return text;
 }
-Source::Source(std::string_view filename)
-    : f_name_dag({}), filemap({}), text({}), f_bounds({}) {
-    // this->f_infos.emplace_back(std::string(filename));
+Source::Source(std::string_view filename, bool crash_on_error)
+    : filemap({}), f_order({}), text({}), crash_on_error(crash_on_error) {
     auto [it, success] = this->filemap.insert({std::string(filename), {}});
     if (!success) {
         throw parse_error{source_position{0, 0, ""},
                           "failed to insert initial file", true};
     }
-    this->f_name_dag.emplace_back(it->first);
-    preprocess(it->first);
+    this->preprocess(it->first);
+    for (auto &pair : this->filemap) {
+        fmt::print("\n------\nfile: {}\n", pair.first);
+        for (auto &line : pair.second) {
+            fmt::print("{}", this->f_line_to_str(line));
+        }
+    }
 }
 auto Source::print_text(const std::string &outfilename) const -> void {
     const auto file = utils::make_file(outfilename);
@@ -50,9 +54,14 @@ auto Source::begin() const -> const_iterator { return this->text.begin(); }
 auto Source::end() const -> const_iterator { return this->text.end(); }
 auto Source::get_filename(const_iterator it) const -> std::string_view {
     // TODO: Implement
-    return this->f_name_dag.back();
+    return this->filemap.begin()->first;
 }
-auto Source::f_name_to_f_info(std::string_view f_name) -> file_info & {
+auto Source::f_line_to_str(const f_line_t &f_line) const -> std::string_view {
+    return {std::next(this->text.begin(), f_line.first),
+            std::next(this->text.begin(), f_line.second)};
+}
+auto Source::f_name_to_f_info(std::string_view f_name)
+    -> std::vector<f_line_t> & {
     if (auto it = this->filemap.find(std::string(f_name));
         it != this->filemap.end()) {
         return it->second;
@@ -90,36 +99,29 @@ static auto find_line_end(char_forward_iterator auto it,
 }
 
 auto Source::preprocess(std::string_view f_name) -> void {
-    // Possible implementation notes:
-    // 1. insert into this->text (or a vec passed by ref.) up until an include
-    //      directive is found.
-    // 2. check if include is valid -- if not, throw
-    // 3. repeat from step 1.
-    // that way everything is inserted past the end and expensive extra copying
-    //      is avoided
-    //? REMINDER: Do not count the size of directive lines into f_info.size
-
-    //! NOTE: Enforce includes to only be at the beginning of a file to make
-    //! dependencies into a D.A.G.
     auto cur_text = file_to_char_vec(f_name);
     const_iterator prev_it{cur_text.begin()}, it{cur_text.begin()},
         copy_it{cur_text.begin()};
-    std::vector<colno_t>::size_type lines_at_copy_it{0};
+    const_iterator::difference_type copy_backlog_cnt{0};
+    auto &f_lines = this->f_name_to_f_info(f_name);
 
-    auto &f_info = f_name_to_f_info(f_name);
-    const auto save_line_length = [this, &f_info](auto len) {
-        f_info.line_lengths.push_back(len);
-        f_info.size += len;
+    const auto save_line_length = [&]() {
+        if (prev_it == cur_text.end()) return;
+
+        const auto char_cnt = std::distance(prev_it, it);
+        const auto from_diff = std::distance(
+            this->text.begin(), std::next(this->text.end(), copy_backlog_cnt));
+        const auto to_diff = from_diff + char_cnt;
+        f_lines.emplace_back(from_diff, to_diff);
     };
-    const auto append_to_text = [this, &f_info, f_name](auto from, auto to) {
-        auto char_cnt = std::distance(from, to);
-        if (char_cnt == 0) { // insert does not need this, but the rest does
-            return;
-        }
-        this->text.insert(this->text.end(), from, to);
-        if (this->f_bounds.empty() ||
-            f_name_to_f_info(this->f_bounds.back().f_name) != f_info) {
-            this->f_bounds.push_back({this->text.size() - char_cnt, f_name});
+    const auto save_text = [&]() {
+        this->text.insert(this->text.end(), copy_it, it);
+        copy_backlog_cnt = 0;
+        copy_it = find_line_end(it, cur_text.end());
+
+        if (copy_it == it) return;
+        if (f_order.empty() || f_order.back().data() != f_name.data()) {
+            f_order.push_back(f_name);
         }
     };
 
@@ -128,30 +130,33 @@ auto Source::preprocess(std::string_view f_name) -> void {
             // '#' found after newline, this is a directive line
 
             // copy up to the character before the directive.
-            append_to_text(copy_it, it);
-            copy_it = find_line_end(it, cur_text.end());
+            save_text();
 
-            // TODO: Try-catch here to allow recovery from errors
-            handle_directive(
-                {static_cast<lineno_t>(f_info.line_lengths.size() + 1), 1,
-                 f_name},
-                {it + 1, copy_it});
+            const source_position dir_pos{
+                static_cast<lineno_t>(f_lines.size() + 1), 1, f_name};
+            const std::string_view dir_str{it, copy_it};
+            try {
+                handle_directive(dir_pos, {it, copy_it});
+            } catch (const parse_error &e) {
+                if (this->crash_on_error) {
+                    throw;
+                }
+                fmt::print(stderr, "{} at {}", e.what(), dir_pos.to_string());
+            }
 
-            it = copy_it + 1; // this will be '\n' or text.end()
+            it = copy_it; // this will be '\n' or text.end()
             prev_it = it;
-            save_line_length(0);
-        } else if (*it == '\n') {
-            // save line-length
-            save_line_length(std::distance(prev_it, it));
-            prev_it = ++it;
+        } else if (*it == '\n') { // save line-length
+            ++it;
+            save_line_length();
+            copy_backlog_cnt += std::distance(prev_it, it);
+            prev_it = it;
         } else {
             ++it;
         }
     }
-    save_line_length(std::distance(prev_it, it)); // last line-length
-    append_to_text(copy_it, it);
-
-    // f_infos.emplace_back(f_info);
+    save_line_length(); // last line-length
+    save_text();
 }
 
 static auto match_str_with_str(std::string_view str, std::string_view match) {
@@ -161,7 +166,7 @@ auto Source::handle_directive(const source_position &dir_pos,
                               std::string_view dir_line) -> void {
     using std::string_view_literals::operator""sv;
     static const std::array directives = {
-        std::pair{"include"sv, &Source::handle_include}};
+        std::pair{"#include"sv, &Source::handle_include}};
 
     for (auto &pair : directives) {
         if (match_str_with_str(dir_line, pair.first)) {
@@ -181,11 +186,11 @@ auto Source::handle_include(std::string_view dir_body)
     if (f_name_start == f_name_end) {
         return "empty include filename";
     }
-    if (find_non_whitespace(f_name_end, dir_body.end()) != dir_body.end()) {
-        return "trailing characters after include filename";
-    }
     if (*f_name_start != '"' || *(std::prev(f_name_end)) != '"') {
         return "include filename not enclosed in double quotes";
+    }
+    if (find_non_whitespace(f_name_end, dir_body.end()) != dir_body.end()) {
+        return "trailing characters after include filename";
     }
     std::string_view f_name{std::next(f_name_start), std::prev(f_name_end)};
     if (!std::filesystem::exists(f_name)) {
@@ -195,8 +200,7 @@ auto Source::handle_include(std::string_view dir_body)
     if (!success) {
         return fmt::format("file \"{}\" already included", f_name);
     }
-    this->f_name_dag.emplace_back(it->first);
-    preprocess(it->first);
+    this->preprocess(it->first);
 
     return std::nullopt;
 }
