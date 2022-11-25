@@ -1,7 +1,5 @@
 #include "cli/cli.hpp"
 #include "config.hpp"
-#include "parser/lexer.hpp"
-
 #include <iostream>
 
 #define STR_HELPER(x) #x
@@ -12,12 +10,12 @@ static constexpr auto version =
         LLAMAC_VERSION_PATCH) "(" STR(LLAMAC_BUILD_TYPE) ")";
 
 auto handle_args(const lla::cli::Args &args) -> void {
-    auto src = lla::parse::Source(args.source_file);
-    if (args.preprocessed_outfile) src.print_text(*args.preprocessed_outfile);
+    // TODO: Read input
+    // TODO: Preprocess
+    // TODO: Output preprocessed text
     if (*args.only_preprocess) return;
-    auto lexer = lla::parse::Lexer(src);
-    lexer.lex();
-    if (args.tokens_outfile) lexer.pretty_print_tokens(*args.tokens_outfile);
+    // TODO: Tokenize text (lex)
+    // TODO: Print tokens
     if (*args.only_lex) return;
     // TODO: parsing
     // TODO: ast-printing
