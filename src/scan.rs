@@ -1,48 +1,44 @@
+use core::fmt;
 use std::fs::File;
 use std::io::{self, BufRead, BufReader};
 use std::iter::Peekable;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::str::SplitWhitespace;
+// !Consider Scanners that can read from stdin.
 
+/// Simple file scanner that can read line by line and preprocess files.
 pub struct Scanner {
     buffers: Vec<Buffer>,
     preprocess: bool,
 }
 impl Scanner {
-    pub fn new() -> Self {
-        Scanner {
-            buffers: Vec::new(),
+    pub fn new<S: AsRef<Path>>(path: S) -> Result<Self, ScanErr> {
+        Ok(Scanner {
+            buffers: vec![Buffer::new(PathBuf::from(path.as_ref()))?],
             preprocess: false,
-        }
+        })
     }
     pub fn preprocess(mut self) -> Self {
         self.preprocess = true;
         self
     }
-    pub fn add_file<S: AsRef<str>>(mut self, path: S) -> Result<Self, ScanErr> {
-        self.push_file(PathBuf::from(path.as_ref()))?;
-        Ok(self)
-    }
 
-    pub fn get_cur_lineno(&self) -> Option<usize> {
-        self.buffers.last().map(|b| b.lineno)
-    }
-    pub fn get_cur_filename(&self) -> Option<&str> {
-        self.buffers
-            .last()
-            .and_then(|b| b.path.as_path().as_os_str().to_str())
-    }
-    pub fn read_line(&mut self) -> Result<Option<String>, ScanErr> {
+    fn read_line(&mut self) -> Result<Option<LineType>, ScanErr> {
         let mut line = String::new();
         while let Some(buf) = self.buffers.last_mut() {
             if let 0 = buf.read_line(&mut line)? {
                 self.buffers.pop();
+                if let Some(buf) = self.buffers.last().map(|b| &b.path) {
+                    return Ok(Some(LineType::change_file(buf)));
+                }
                 continue;
             }
-            match (self.preprocess, line.to_directive()?) {
+            match (self.preprocess, to_directive(&line)?) {
                 (true, Some(directive)) => {
                     buf.set_ows_empty();
-                    self.handle_directive(directive)?;
+                    if let Some(line) = self.handle_directive(directive)? {
+                        return Ok(Some(line));
+                    };
                 }
                 _ => return Ok(Some(buf.finalize_line(line))),
             }
@@ -51,14 +47,45 @@ impl Scanner {
         Ok(None)
     }
 
-    fn handle_directive(&mut self, directive: Directive) -> Result<(), ScanErr> {
+    fn handle_directive(&mut self, directive: Directive) -> Result<Option<LineType>, ScanErr> {
         match directive {
-            Directive::Include(path) => self.push_file(path),
+            Directive::Include(path) => {
+                self.push_file(path.clone())?;
+                return Ok(Some(LineType::change_file(&path)));
+            }
         }
     }
     fn push_file(&mut self, path: PathBuf) -> Result<(), ScanErr> {
         self.buffers.push(Buffer::new(path)?);
         Ok(())
+    }
+}
+impl Iterator for Scanner {
+    type Item = LineType;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.read_line().unwrap()
+    }
+}
+#[derive(Debug)]
+pub enum LineType {
+    ChangeFile(PathBuf),
+    Line { text: String, lineno: usize },
+}
+impl LineType {
+    pub fn line(text: String, lineno: usize) -> Self {
+        LineType::Line { text, lineno }
+    }
+    pub fn change_file(path: &PathBuf) -> Self {
+        LineType::ChangeFile(path.to_owned())
+    }
+}
+impl fmt::Display for LineType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            // LineType::ChangeFile(path) => write!(f, "{}", path.display()),
+            LineType::Line { text, lineno: _ } => write!(f, "{}", text),
+            _ => Ok(()),
+        }
     }
 }
 struct Buffer {
@@ -89,9 +116,9 @@ impl Buffer {
     fn set_ows_empty(&mut self) {
         self.ows_empty = true;
     }
-    fn finalize_line(&mut self, line: String) -> String {
+    fn finalize_line(&mut self, line: String) -> LineType {
         self.lineno += 1;
-        line
+        LineType::line(line, self.lineno)
     }
 }
 
@@ -100,38 +127,27 @@ enum Directive {
     Include(PathBuf),
 }
 
-trait Line {
-    fn to_directive(&self) -> Result<Option<Directive>, ScanErr>;
-    fn decide_directive(
-        &self,
-        first: &str,
-        rest: Peekable<SplitWhitespace>,
-    ) -> Result<Directive, ScanErr>;
-}
-impl Line for String {
-    fn to_directive(&self) -> Result<Option<Directive>, ScanErr> {
-        let mut words = self.split_whitespace().peekable();
-        match words.next() {
-            Some(word) if !word.starts_with("#") => Ok(None),
-            Some(directive) => Ok(Some(self.decide_directive(directive, words)?)),
-            None => Ok(None),
-        }
+fn to_directive(s: &String) -> Result<Option<Directive>, ScanErr> {
+    let mut words = s.split_whitespace().peekable();
+    match words.next() {
+        Some(word) if !word.starts_with("#") => Ok(None),
+        Some(directive) => Ok(Some(decide_directive(directive, words)?)),
+        None => Ok(None),
     }
-    fn decide_directive(
-        &self,
-        first: &str,
-        mut rest: Peekable<SplitWhitespace>,
-    ) -> Result<Directive, ScanErr> {
-        match first {
-            "#include" => match rest.next() {
-                Some(filename) if rest.peek().is_none() => Ok(Directive::Include(PathBuf::from(
-                    filename[1..filename.len() - 1].to_string(),
-                ))),
-                Some(_) => Err(ScanErr::IncludeTrailingArgs),
-                None => Err(ScanErr::IncludeEmpty),
-            },
-            _ => Err(ScanErr::UnknownDirective(first.to_string())),
-        }
+}
+fn decide_directive(
+    first: &str,
+    mut rest: Peekable<SplitWhitespace>,
+) -> Result<Directive, ScanErr> {
+    match first {
+        "#include" => match rest.next() {
+            Some(filename) if rest.peek().is_none() => Ok(Directive::Include(PathBuf::from(
+                filename[1..filename.len() - 1].to_string(),
+            ))),
+            Some(_) => Err(ScanErr::IncludeTrailingArgs),
+            None => Err(ScanErr::IncludeEmpty),
+        },
+        _ => Err(ScanErr::UnknownDirective(first.to_string())),
     }
 }
 
