@@ -1,7 +1,4 @@
-use std::{
-    collections::{vec_deque::Drain, VecDeque},
-    iter::{FusedIterator, Map},
-};
+use std::{collections::VecDeque, iter::FusedIterator};
 
 pub struct LongPeekable<I: Iterator> {
     iter: I,
@@ -32,12 +29,7 @@ impl<I: Iterator> LongPeekable<I> {
     pub fn peek_amount(&mut self, amount: usize) -> &[Option<I::Item>] {
         self.peek_range(0, amount)
     }
-    pub fn drain_all_peeked(
-        &mut self,
-    ) -> Map<
-        Drain<Option<<I as Iterator>::Item>>,
-        impl FnMut(Option<<I as Iterator>::Item>) -> <I as Iterator>::Item,
-    > {
+    pub fn drain_all_peeked(&mut self) -> impl Iterator<Item = I::Item> + '_ {
         self.queue.drain(..).map(|x| x.unwrap())
     }
 

@@ -1,6 +1,5 @@
 use cli::PrintWriterHelpers;
-use scan::LineType;
-use std::io::{BufWriter, Write};
+use std::io::Write;
 
 mod cli;
 mod lex;
@@ -8,42 +7,52 @@ mod longpeekable;
 mod scan;
 
 fn main() -> Result<(), CompilerError> {
-    handle_args(cli::Cli::parse())?;
-    Ok(())
+    handle_args(cli::Cli::parse())
 }
 
 fn handle_args(args: cli::Cli) -> Result<(), CompilerError> {
-    let (text_iter, print_preprocessed) = args.handle_preprocessor()?;
-    match (args.stop_after, print_preprocessed) {
-        (cli::StopAfter::Preprocessing, true) => return Ok(text_iter.for_each(drop)),
-        (cli::StopAfter::Preprocessing, false) => return Ok(()),
-        _ => (),
-    }
+    let _ = scan::Scanner::new(&args.filename)?
+        .preprocess()
+        .maybe_add_writer(args.print.get_preprocessor_writer()?)
+        .handle_stopping(args.stop_after == cli::StopAfter::Preprocessing)
+        .is_some();
 
     Ok(())
 }
-trait CliHelpers {
-    fn handle_preprocessor(
-        &self,
-    ) -> Result<(Box<dyn Iterator<Item = LineType>>, bool), CompilerError>;
-}
-impl CliHelpers for cli::Cli {
-    fn handle_preprocessor(
-        &self,
-    ) -> Result<(Box<dyn Iterator<Item = LineType>>, bool), CompilerError> {
-        type ReturnType = Result<(Box<dyn Iterator<Item = LineType>>, bool), CompilerError>;
-        let make_scanner =
-            || -> Result<_, CompilerError> { Ok(scan::Scanner::new(&self.filename)?.preprocess()) };
-        let make_writer = |mut writer: BufWriter<Box<dyn Write>>| {
-            move |line: LineType| {
-                let _ = write!(writer, "{}", line);
-                line
+struct MaybeWriter<I: Iterator + 'static>(Box<dyn Iterator<Item = I::Item>>, bool);
+impl<I: Iterator + 'static> MaybeWriter<I> {
+    fn handle_stopping(self, stop: bool) -> Option<Box<dyn Iterator<Item = I::Item>>> {
+        if stop {
+            if self.1 {
+                self.0.for_each(drop);
             }
-        };
-        self.print.get_preprocessor_writer()?.map_or_else(
-            || -> ReturnType { Ok((Box::new(make_scanner()?), false)) },
-            |writer| Ok(((Box::new(make_scanner()?.map(make_writer(writer)))), true)),
-        )
+            None
+        } else {
+            Some(self.0)
+        }
+    }
+}
+trait MaybeAddWriterExt<I: Iterator + 'static>
+where
+    I::Item: std::fmt::Display,
+{
+    fn maybe_add_writer(self, writer: Option<impl Write + 'static>) -> MaybeWriter<I>;
+}
+impl<I: Iterator + 'static> MaybeAddWriterExt<I> for I
+where
+    I::Item: std::fmt::Display,
+{
+    fn maybe_add_writer(self, writer: Option<impl Write + 'static>) -> MaybeWriter<I> {
+        match writer {
+            Some(mut writer) => MaybeWriter(
+                Box::new(self.map(move |item| {
+                    let _ = write!(writer, "{}", item);
+                    item
+                })),
+                true,
+            ),
+            None => MaybeWriter(Box::new(self), false),
+        }
     }
 }
 
