@@ -1,6 +1,8 @@
 use std::{fs::File, io::BufWriter, io::Write, path::PathBuf};
 
 use clap::{ArgGroup, Args, Parser, Subcommand, ValueEnum};
+use colored::Colorize;
+use log::{error, warn};
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -15,6 +17,9 @@ pub(crate) struct Cli {
     /// Specify binary output filename
     #[arg(long, short, value_name = "file", default_value = "a.out")]
     pub out: String,
+
+    #[arg(long, short, default_value_t = false)]
+    pub verbose: bool,
 
     #[command(subcommand)]
     pub print: Option<Printer>,
@@ -75,11 +80,12 @@ impl Cli {
     /// Warns on some errors, exits on unrecoverable ones.
     fn validate(self) -> Self {
         if !self.filename.exists() {
-            eprintln!("File not found: {}", self.filename.display());
+            let filename_str = self.filename.display().to_string().underline();
+            error!("File {} not found", filename_str);
             std::process::exit(1);
         }
         if self.stop_after != StopAfter::IrGen && self.out != "a.out" {
-            eprintln!("Warning: no executable produced when --stop-after is not 'ir-gen'");
+            warn!("no executable produced when --stop-after is not 'ir-gen'");
         }
         if let Some(Printer::Print(PrintCalls {
             preprocessed: _,
@@ -94,19 +100,19 @@ impl Cli {
             //     eprintln!("Warning: will stop before preprocessing, 'print --preprocessed' ignored");
             // }
             if self.stop_after < StopAfter::Lexing && tokens.is_some() {
-                eprintln!("Warning: will stop before producing tokens, print --tokens ignored");
+                warn!("Warning: will stop before producing tokens, print --tokens ignored");
             }
             if self.stop_after < StopAfter::Parsing && ast.is_some() {
-                eprintln!("Warning: will stop before producing AST, print --ast ignored");
+                warn!("Warning: will stop before producing AST, print --ast ignored");
             }
             if self.stop_after < StopAfter::Sem && types.is_some() {
-                eprintln!("Warning: will stop before semantic analysis, print --types ignored");
+                warn!("Warning: will stop before semantic analysis, print --types ignored");
             }
             if self.stop_after < StopAfter::IrGen && ir.is_some() {
-                eprintln!("Warning: will stop before producing IR, print --ir ignored");
+                warn!("Warning: will stop before producing IR, print --ir ignored");
             }
             if self.stop_after < StopAfter::IrGen && asm.is_some() {
-                eprintln!("Warning: will stop before producing IR, print --asm ignored");
+                warn!("Warning: will stop before producing IR, print --asm ignored");
             }
         }
         self
@@ -114,69 +120,54 @@ impl Cli {
 }
 
 pub trait PrintWriterHelpers {
-    fn get_preprocessor_writer(&self) -> Result<Option<BufWriter<Box<dyn Write>>>, CliErr>;
-    fn get_token_writer(&self) -> Result<Option<BufWriter<Box<dyn Write>>>, CliErr>;
-    fn get_ast_writer(&self) -> Result<Option<BufWriter<Box<dyn Write>>>, CliErr>;
-    fn get_types_writer(&self) -> Result<Option<BufWriter<Box<dyn Write>>>, CliErr>;
-    fn get_ir_writer(&self) -> Result<Option<BufWriter<Box<dyn Write>>>, CliErr>;
-    fn get_asm_writer(&self) -> Result<Option<BufWriter<Box<dyn Write>>>, CliErr>;
+    fn get_preprocessor_writer(&self) -> CliResult<Option<Box<dyn Write>>>;
+    fn get_token_writer(&self) -> CliResult<Option<Box<dyn Write>>>;
+    fn get_ast_writer(&self) -> CliResult<Option<Box<dyn Write>>>;
+    fn get_types_writer(&self) -> CliResult<Option<Box<dyn Write>>>;
+    fn get_ir_writer(&self) -> CliResult<Option<Box<dyn Write>>>;
+    fn get_asm_writer(&self) -> CliResult<Option<Box<dyn Write>>>;
+    fn get_any_writer(
+        &self,
+        mapper: impl FnOnce(&Printer) -> CliResult<Option<Box<dyn Write>>>,
+    ) -> CliResult<Option<Box<dyn Write>>>;
 }
 impl PrintWriterHelpers for Option<Printer> {
-    fn get_preprocessor_writer(&self) -> Result<Option<BufWriter<Box<dyn Write>>>, CliErr> {
-        Ok(self
-            .as_ref()
-            .map(|p| PrintCalls::out_target_helper(&p.to_print_calls().preprocessed))
-            .transpose()?
-            .flatten())
+    fn get_preprocessor_writer(&self) -> CliResult<Option<Box<dyn Write>>> {
+        self.get_any_writer(|p| PrintCalls::out_target_helper(&p.to_print_calls().preprocessed))
     }
-    fn get_token_writer(&self) -> Result<Option<BufWriter<Box<dyn Write>>>, CliErr> {
-        Ok(self
-            .as_ref()
-            .map(|p| PrintCalls::out_target_helper(&p.to_print_calls().tokens))
-            .transpose()?
-            .flatten())
+    fn get_token_writer(&self) -> CliResult<Option<Box<dyn Write>>> {
+        self.get_any_writer(|p| PrintCalls::out_target_helper(&p.to_print_calls().tokens))
     }
-    fn get_ast_writer(&self) -> Result<Option<BufWriter<Box<dyn Write>>>, CliErr> {
-        Ok(self
-            .as_ref()
-            .map(|p| PrintCalls::out_target_helper(&p.to_print_calls().ast))
-            .transpose()?
-            .flatten())
+    fn get_ast_writer(&self) -> CliResult<Option<Box<dyn Write>>> {
+        self.get_any_writer(|p| PrintCalls::out_target_helper(&p.to_print_calls().ast))
     }
-    fn get_types_writer(&self) -> Result<Option<BufWriter<Box<dyn Write>>>, CliErr> {
-        Ok(self
-            .as_ref()
-            .map(|p| PrintCalls::out_target_helper(&p.to_print_calls().types))
-            .transpose()?
-            .flatten())
+    fn get_types_writer(&self) -> CliResult<Option<Box<dyn Write>>> {
+        self.get_any_writer(|p| PrintCalls::out_target_helper(&p.to_print_calls().types))
     }
-    fn get_ir_writer(&self) -> Result<Option<BufWriter<Box<dyn Write>>>, CliErr> {
-        Ok(self
-            .as_ref()
-            .map(|p| PrintCalls::out_target_helper(&p.to_print_calls().ir))
-            .transpose()?
-            .flatten())
+    fn get_ir_writer(&self) -> CliResult<Option<Box<dyn Write>>> {
+        self.get_any_writer(|p| PrintCalls::out_target_helper(&p.to_print_calls().ir))
     }
-    fn get_asm_writer(&self) -> Result<Option<BufWriter<Box<dyn Write>>>, CliErr> {
-        Ok(self
-            .as_ref()
-            .map(|p| PrintCalls::out_target_helper(&p.to_print_calls().asm))
-            .transpose()?
-            .flatten())
+    fn get_asm_writer(&self) -> CliResult<Option<Box<dyn Write>>> {
+        self.get_any_writer(|p| PrintCalls::out_target_helper(&p.to_print_calls().asm))
+    }
+    fn get_any_writer(
+        &self,
+        mapper: impl FnOnce(&Printer) -> CliResult<Option<Box<dyn Write>>>,
+    ) -> CliResult<Option<Box<dyn Write>>> {
+        Ok(self.as_ref().map(mapper).transpose()?.flatten())
     }
 }
 impl PrintCalls {
-    fn out_target_helper(
-        p: &Option<Option<PathBuf>>,
-    ) -> Result<Option<BufWriter<Box<dyn Write>>>, CliErr> {
+    fn out_target_helper(p: &Option<Option<PathBuf>>) -> CliResult<Option<Box<dyn Write>>> {
         Ok(match p {
             None => None,
-            Some(None) => Some(BufWriter::new(Box::new(std::io::stdout()))),
-            Some(Some(path)) => Some(BufWriter::new(Box::new(File::create(&path)?))),
+            Some(None) => Some(Box::new(BufWriter::new(std::io::stdout()))),
+            Some(Some(path)) => Some(Box::new(BufWriter::new(File::create(&path)?))),
         })
     }
 }
 
+type CliResult<T> = Result<T, CliErr>;
 #[derive(Debug)]
 pub enum CliErr {
     IO(std::io::Error),
