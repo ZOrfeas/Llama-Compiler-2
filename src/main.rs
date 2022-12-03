@@ -9,7 +9,7 @@ use cli::StopAfter;
 use colored::Colorize;
 use env_logger::Env;
 use log::info;
-use scan::LineType;
+use scan::Line;
 use std::io::Write;
 use writer_iter::WriterIter;
 
@@ -32,7 +32,7 @@ fn run_compiler(args: &cli::Cli) -> CompilerResult<()> {
     // TODO: Implement codegen/binary-gen
     Ok(())
 }
-fn make_scanner(args: &cli::Cli) -> CompilerResult<Box<dyn Iterator<Item = LineType>>> {
+fn make_scanner(args: &cli::Cli) -> CompilerResult<Box<dyn Iterator<Item = Line>>> {
     // let mut err = Ok(());
     scan::Scanner::new(&args.filename)?
         .preprocess()

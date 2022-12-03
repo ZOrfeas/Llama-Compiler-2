@@ -1,4 +1,4 @@
-use std::{fs::File, io::BufWriter, io::Write, path::PathBuf};
+use std::{fs::File, io::BufWriter, io::Write, path::Path};
 
 use clap::{ArgGroup, Args, Parser, Subcommand, ValueEnum};
 use colored::Colorize;
@@ -8,7 +8,7 @@ use log::{error, warn};
 #[command(author, version, about, long_about = None)]
 pub(crate) struct Cli {
     /// Path to source file
-    pub filename: PathBuf,
+    pub filename: String,
 
     /// Run and stop after specified step
     #[arg(long, short, value_enum, value_name = "step", default_value_t = StopAfter::IrGen)]
@@ -39,22 +39,22 @@ pub enum Printer {
 ))]
 pub struct PrintCalls {
     #[arg(long, value_name = "file")]
-    preprocessed: Option<Option<PathBuf>>,
+    preprocessed: Option<Option<String>>,
 
     #[arg(long, value_name = "file")]
-    tokens: Option<Option<PathBuf>>,
+    tokens: Option<Option<String>>,
 
     #[arg(long, value_name = "file")]
-    ast: Option<Option<PathBuf>>,
+    ast: Option<Option<String>>,
 
     #[arg(long, value_name = "file")]
-    types: Option<Option<PathBuf>>,
+    types: Option<Option<String>>,
 
     #[arg(long, value_name = "file")]
-    ir: Option<Option<PathBuf>>,
+    ir: Option<Option<String>>,
 
     #[arg(long, value_name = "file")]
-    asm: Option<Option<PathBuf>>,
+    asm: Option<Option<String>>,
 }
 impl Printer {
     pub fn to_print_calls(&self) -> &PrintCalls {
@@ -79,8 +79,8 @@ impl Cli {
     }
     /// Warns on some errors, exits on unrecoverable ones.
     fn validate(self) -> Self {
-        if !self.filename.exists() {
-            let filename_str = self.filename.display().to_string().underline();
+        if !Path::new(&self.filename).exists() {
+            let filename_str = self.filename.underline();
             error!("File {} not found", filename_str);
             std::process::exit(1);
         }
@@ -158,7 +158,7 @@ impl PrintWriterHelpers for Option<Printer> {
     }
 }
 impl PrintCalls {
-    fn out_target_helper(p: &Option<Option<PathBuf>>) -> CliResult<Option<Box<dyn Write>>> {
+    fn out_target_helper(p: &Option<Option<String>>) -> CliResult<Option<Box<dyn Write>>> {
         Ok(match p {
             None => None,
             Some(None) => Some(Box::new(BufWriter::new(std::io::stdout()))),

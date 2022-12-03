@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 pub struct Token {
     pub kind: TokenKind,
     pub original: Vec<u8>,
@@ -6,6 +8,16 @@ pub struct Token {
 pub struct Position {
     pub line: usize,
     pub column: usize,
+    pub filename: Option<Rc<String>>,
+}
+impl Position {
+    pub fn new(line: usize, column: usize, filename: Option<Rc<String>>) -> Self {
+        Self {
+            line,
+            column,
+            filename,
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, PartialOrd)]

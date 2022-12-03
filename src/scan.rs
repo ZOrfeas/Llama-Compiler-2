@@ -1,30 +1,28 @@
 use core::fmt;
-use std::collections::HashSet;
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::{self, BufRead, BufReader};
 use std::iter::Peekable;
-use std::path::{Path, PathBuf};
+use std::rc::Rc;
 use std::str::SplitWhitespace;
 
 use log::error;
 // !Consider Scanners that can read from stdin.
-
 /// Simple file scanner that can read line by line and preprocess files.
 pub struct Scanner {
     buffers: Vec<Buffer>,
     preprocess: bool,
-    included_files: HashSet<PathBuf>,
-    // error: Option<ScanErr>,
+    included_files: HashMap<Rc<String>, Option<Rc<String>>>,
 }
 impl Scanner {
-    pub fn new<S: AsRef<Path>>(path: S) -> ScanResult<Self> {
+    pub fn new(filename: &str) -> ScanResult<Self> {
+        let filename = Rc::new(filename.to_string());
         let mut scanner = Scanner {
-            buffers: vec![Buffer::new(PathBuf::from(path.as_ref()))?],
+            buffers: vec![Buffer::new(Rc::clone(&filename))?],
             preprocess: false,
-            included_files: HashSet::new(),
-            // error: None,
+            included_files: HashMap::new(), // error: None,
         };
-        scanner.included_files.insert(PathBuf::from(path.as_ref()));
+        scanner.included_files.insert(Rc::clone(&filename), None);
         Ok(scanner)
     }
     // TODO: Consider removing ability to *not* preprocess.
@@ -33,13 +31,13 @@ impl Scanner {
         self
     }
 
-    fn read_line(&mut self) -> ScanResult<Option<LineType>> {
+    fn read_line(&mut self) -> ScanResult<Option<Line>> {
         let mut line = String::new();
         while let Some(buf) = self.buffers.last_mut() {
             if let 0 = buf.read_line(&mut line)? {
                 self.buffers.pop();
-                if let Some(buf) = self.buffers.last().map(|b| &b.path) {
-                    return Ok(Some(LineType::change_file(buf)));
+                if let Some(filename) = self.buffers.last().map(|b| &b.filename) {
+                    return Ok(Some(Line::change_file(Rc::clone(filename))));
                 }
                 continue;
             }
@@ -56,33 +54,32 @@ impl Scanner {
         }
         Ok(None)
     }
-    fn handle_directive(&mut self, directive: Directive) -> ScanResult<Option<LineType>> {
+    fn handle_directive(&mut self, directive: Directive) -> ScanResult<Option<Line>> {
         match directive {
             Directive::Include(path) => {
-                self.push_file(path.clone())?;
-                return Ok(Some(LineType::change_file(&path)));
+                let path = Rc::new(path);
+                self.push_file(Rc::clone(&path))?;
+                return Ok(Some(Line::change_file(Rc::clone(&path))));
             }
         }
     }
-    fn push_file(&mut self, path: PathBuf) -> ScanResult<()> {
-        if self.included_files.contains(&path) {
-            let included_file = path.to_string_lossy().to_string();
+    fn push_file(&mut self, to_include: Rc<String>) -> ScanResult<()> {
+        if self.included_files.contains_key(&to_include) {
             let current_buf = self.get_current_buf();
-            let in_file = current_buf.path.to_string_lossy().to_string();
-            let at_line = current_buf.lineno;
             return Err(ScanErr::IncludeCycle {
-                included_file,
-                in_file,
-                at_line,
-                previously_included_in: self.get_current_buf().included_from.clone(),
+                included_file: to_include.to_string(),
+                in_file: current_buf.filename.to_string(),
+                at_line: current_buf.lineno,
+                prev_included_at: self.included_files[&to_include]
+                    .as_ref()
+                    .map(|s| s.to_string()),
             });
         }
-        self.included_files.insert(path.clone());
-
-        self.buffers.push(Buffer::with_included_from(
-            path,
-            self.get_current_buf().get_filename_to_string(),
-        )?);
+        self.included_files.insert(
+            Rc::clone(&to_include),
+            Some(Rc::clone(&self.get_current_buf().filename)),
+        );
+        self.buffers.push(Buffer::new(Rc::clone(&to_include))?);
         Ok(())
     }
     fn get_current_buf(&self) -> &Buffer {
@@ -92,7 +89,7 @@ impl Scanner {
     }
 }
 impl Iterator for Scanner {
-    type Item = LineType;
+    type Item = Line;
     fn next(&mut self) -> Option<Self::Item> {
         match self.read_line() {
             Ok(any) => any,
@@ -104,23 +101,23 @@ impl Iterator for Scanner {
     }
 }
 #[derive(Debug)]
-pub enum LineType {
-    ChangeFile(PathBuf),
+pub enum Line {
+    ChangeFile(Rc<String>),
     Line { text: Vec<u8>, lineno: usize },
 }
-impl LineType {
+impl Line {
     pub fn line(text: Vec<u8>, lineno: usize) -> Self {
-        LineType::Line { text, lineno }
+        Line::Line { text, lineno }
     }
-    pub fn change_file(path: &PathBuf) -> Self {
-        LineType::ChangeFile(path.to_owned())
+    pub fn change_file(path: Rc<String>) -> Self {
+        Line::ChangeFile(path)
     }
 }
-impl fmt::Display for LineType {
+impl fmt::Display for Line {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            // LineType::ChangeFile(path) => write!(f, "{}", path.display()),
-            LineType::Line { text, lineno: _ } => {
+            // Line::ChangeFile(path) => write!(f, "{}", path),
+            Line::Line { text, lineno: _ } => {
                 write!(f, "{}", unsafe { std::str::from_utf8_unchecked(text) })
             }
             _ => Ok(()),
@@ -130,25 +127,19 @@ impl fmt::Display for LineType {
 #[derive(Debug)]
 struct Buffer {
     inner: BufReader<File>,
-    path: PathBuf,
+    filename: Rc<String>,
     lineno: usize,
     ows_empty: bool,
-    included_from: Option<String>,
 }
 impl Buffer {
-    fn new(path: PathBuf) -> ScanResult<Self> {
+    fn new(filename: Rc<String>) -> ScanResult<Self> {
+        let file = File::open(filename.as_ref())?;
         Ok(Self {
-            inner: BufReader::new(File::open(path.as_path())?),
-            path,
+            inner: BufReader::new(file),
+            filename,
             lineno: 0,
             ows_empty: false,
-            included_from: None,
         })
-    }
-    fn with_included_from(path: PathBuf, included_from: String) -> ScanResult<Self> {
-        let mut buf = Self::new(path)?;
-        buf.included_from = Some(included_from);
-        Ok(buf)
     }
     fn read_line(&mut self, buf: &mut String) -> io::Result<usize> {
         if self.ows_empty {
@@ -163,18 +154,15 @@ impl Buffer {
     fn set_ows_empty(&mut self) {
         self.ows_empty = true;
     }
-    fn finalize_line(&mut self, line: String) -> LineType {
+    fn finalize_line(&mut self, line: String) -> Line {
         self.lineno += 1;
-        LineType::line(line.into_bytes(), self.lineno)
-    }
-    fn get_filename_to_string(&self) -> String {
-        self.path.to_string_lossy().to_string()
+        Line::line(line.into_bytes(), self.lineno)
     }
 }
 
 #[derive(Debug)]
 enum Directive {
-    Include(PathBuf),
+    Include(String),
 }
 
 fn to_directive(s: &String) -> ScanResult<Option<Directive>> {
@@ -188,9 +176,9 @@ fn to_directive(s: &String) -> ScanResult<Option<Directive>> {
 fn decide_directive(first: &str, mut rest: Peekable<SplitWhitespace>) -> ScanResult<Directive> {
     match first {
         "#include" => match rest.next() {
-            Some(filename) if rest.peek().is_none() => Ok(Directive::Include(PathBuf::from(
+            Some(filename) if rest.peek().is_none() => Ok(Directive::Include(
                 filename[1..filename.len() - 1].to_string(),
-            ))),
+            )),
             Some(_) => Err(ScanErr::IncludeTrailingArgs),
             None => Err(ScanErr::IncludeEmpty),
         },
@@ -210,7 +198,7 @@ pub enum ScanErr {
         included_file: String,
         in_file: String,
         at_line: usize,
-        previously_included_in: Option<String>,
+        prev_included_at: Option<String>,
     },
 }
 impl std::fmt::Display for ScanErr {
@@ -220,21 +208,20 @@ impl std::fmt::Display for ScanErr {
                 included_file,
                 in_file,
                 at_line,
-                previously_included_in,
+                prev_included_at,
             } => {
-                let previously_included_in = if let Some(prev) = previously_included_in {
+                let prev_included_at = if let Some(prev) = prev_included_at {
                     format!("(previously included in {})", prev)
                 } else {
                     "(it's possibly also the source file given to the compiler)".to_string()
                 };
-
                 write!(
                     f,
                     "Include cycle detected: {} included again in {} at line {} {}",
                     included_file,
                     in_file,
                     at_line + 1,
-                    previously_included_in
+                    prev_included_at
                 )
             }
             ScanErr::IncludeEmpty => write!(f, "Include directive without filename"),
