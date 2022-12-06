@@ -1,17 +1,30 @@
 use std::rc::Rc;
 
+#[derive(Debug)]
 pub struct Token {
     pub kind: TokenKind,
     pub original: Vec<u8>,
-    pub pos: Position,
+    pub from: Position,
+    pub to: Position,
 }
+impl Token {
+    pub fn new(kind: TokenKind, original: Vec<u8>, from: Position, to: Position) -> Self {
+        Token {
+            kind,
+            original,
+            from,
+            to,
+        }
+    }
+}
+#[derive(Debug, Clone)]
 pub struct Position {
     pub line: usize,
     pub column: usize,
-    pub filename: Option<Rc<String>>,
+    pub filename: Rc<String>,
 }
 impl Position {
-    pub fn new(line: usize, column: usize, filename: Option<Rc<String>>) -> Self {
+    pub fn new(line: usize, column: usize, filename: Rc<String>) -> Self {
         Self {
             line,
             column,
@@ -20,46 +33,19 @@ impl Position {
     }
 }
 
-#[derive(Debug, PartialEq, PartialOrd)]
+#[rustfmt::skip]
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub enum TokenKind {
-    EOF,
-    UNMATCHED,
-    COMMENT,
+    EOF, UNMATCHED, COMMENT,
 
     // Keywords
-    And,
-    Array,
-    Begin,
-    Bool,
-    Char,
-    Delete,
-    Dim,
-    Do,
-    Done,
-    Downto,
-    Else,
-    End,
-    False,
-    Float,
-    For,
-    If,
-    In,
-    Int,
-    Let,
-    Match,
-    Mod,
-    Mutable,
-    Not,
-    Of,
-    Rec,
-    Ref,
-    Then,
-    To,
-    True,
-    Type,
-    Unit,
-    While,
-    With,
+    And, Array, Begin, Bool, Char,
+    Delete, Dim, Do, Done, Downto,
+    Else, End, False, Float, For,
+    If, In, Int, Let, Match, Mod,
+    Mutable, New, Not, Of, Rec, Ref,
+    Then, To, True, Type, Unit,
+    While, With,
 
     /// Identifiers
     IdUpper(String),
@@ -67,41 +53,17 @@ pub enum TokenKind {
 
     /// Literals
     IntLiteral(i32),
-    FloatLiteral(f32),
+    FloatLiteral(f64),
     CharLiteral(u8),
     StringLiteral(String),
 
     /// Symbols
-    Arrow,
-    PlusDot,
-    MinusDot,
-    StarDot,
-    SlashDot,
-    DblStar,
-    DlbAmpersand,
-    DblBar,
-    LtGt,
-    LEq,
-    GEq,
-    DblEq,
-    ExclamEq,
-    ColonEq,
-    Semicolon,
-    Eq,
-    Gt,
-    Lt,
-    Plus,
-    Minus,
-    Star,
-    Slash,
-    Colon,
-    Comma,
-    LBracket,
-    RBracket,
-    LParen,
-    RParen,
-    Bar,
-    Exclam,
+    Arrow, PlusDot, MinusDot, StarDot, SlashDot,
+    DblStar, DlbAmpersand, DblBar, LtGt, LEq,
+    GEq, DblEq, ExclamEq, ColonEq, Semicolon,
+    Eq, Gt, Lt, Plus, Minus, Star, Slash,
+    Colon, Comma, LBracket, RBracket, LParen, RParen,
+    Bar, Exclam,
 }
 
 impl std::fmt::Display for TokenKind {

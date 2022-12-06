@@ -19,7 +19,14 @@
                     "kind": "bin"
                 }
             },
-            "args": [],
+            "args": [
+                "./tests/input.lla",
+                "--stop-after",
+                "preprocessing",
+                "-v",
+                "print",
+                "--preprocessed",
+            ],
             "cwd": "${workspaceFolder}"
         },
         {
