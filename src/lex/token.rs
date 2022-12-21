@@ -17,6 +17,11 @@ impl Token {
         }
     }
 }
+impl std::fmt::Display for Token {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "`{}` from {} to {}\n", self.kind, self.from, self.to)
+    }
+}
 #[derive(Debug, Clone)]
 pub struct Position {
     pub line: usize,
@@ -30,6 +35,11 @@ impl Position {
             column,
             filename,
         }
+    }
+}
+impl std::fmt::Display for Position {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "({},{} in {})", self.line, self.column, self.filename)
     }
 }
 
@@ -47,21 +57,23 @@ pub enum TokenKind {
     Then, To, True, Type, Unit,
     While, With,
 
-    /// Identifiers
+    // Identifiers
     IdUpper(String),
     IdLower(String),
 
-    /// Literals
+    // Literals
     IntLiteral(i32),
     FloatLiteral(f64),
     CharLiteral(u8),
     StringLiteral(String),
 
-    /// Symbols
+    // Multi-char symbols
     Arrow, PlusDot, MinusDot, StarDot, SlashDot,
-    DblStar, DlbAmpersand, DblBar, LtGt, LEq,
-    GEq, DblEq, ExclamEq, ColonEq, Semicolon,
-    Eq, Gt, Lt, Plus, Minus, Star, Slash,
+    DblStar, DblAmpersand, DblBar, LtGt, LEq,
+    GEq, DblEq, ExclamEq, ColonEq,
+    
+    // Single-char symbols
+    Semicolon, Eq, Gt, Lt, Plus, Minus, Star, Slash,
     Colon, Comma, LBracket, RBracket, LParen, RParen,
     Bar, Exclam,
 }
@@ -78,7 +90,7 @@ impl std::fmt::Display for TokenKind {
             Self::StarDot => write!(f, "*."),
             Self::SlashDot => write!(f, "/."),
             Self::DblStar => write!(f, "**"),
-            Self::DlbAmpersand => write!(f, "&&"),
+            Self::DblAmpersand => write!(f, "&&"),
             Self::DblBar => write!(f, "||"),
             Self::LtGt => write!(f, "<>"),
             Self::LEq => write!(f, "<="),

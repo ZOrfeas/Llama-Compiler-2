@@ -13,6 +13,8 @@ pub struct Scanner {
     buffers: Vec<Buffer>,
     preprocess: bool,
     included_files: HashMap<Rc<String>, Option<Rc<String>>>,
+
+    first_call: bool,
 }
 impl Scanner {
     pub fn new(filename: &str) -> ScanResult<Self> {
@@ -21,6 +23,7 @@ impl Scanner {
             buffers: vec![Buffer::new(Rc::clone(&filename))?],
             preprocess: false,
             included_files: HashMap::new(), // error: None,
+            first_call: true,
         };
         scanner.included_files.insert(Rc::clone(&filename), None);
         Ok(scanner)
@@ -32,6 +35,17 @@ impl Scanner {
     }
 
     fn read_line(&mut self) -> ScanResult<Option<Line>> {
+        if self.first_call {
+            // Possibly a bit hacky, since it incurs a cost on every call.
+            self.first_call = false;
+            return Ok(Some(Line::change_file(Rc::clone(
+                &self
+                    .buffers
+                    .last()
+                    .expect("should have exactly one buffer")
+                    .filename,
+            ))));
+        }
         let mut line = String::new();
         while let Some(buf) = self.buffers.last_mut() {
             if let 0 = buf.read_line(&mut line)? {

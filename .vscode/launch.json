@@ -8,6 +8,9 @@
             "type": "lldb",
             "request": "launch",
             "name": "Debug executable 'llamac'",
+            "env": {
+                "RUST_LOG": "debug"
+            },
             "cargo": {
                 "args": [
                     "build",
@@ -21,11 +24,7 @@
             },
             "args": [
                 "./tests/input.lla",
-                "--stop-after",
-                "preprocessing",
-                "-v",
-                "print",
-                "--preprocessed",
+                "-s", "preprocessing", "-v", "print", "--tokens",
             ],
             "cwd": "${workspaceFolder}"
         },

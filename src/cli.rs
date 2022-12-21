@@ -18,6 +18,7 @@ pub(crate) struct Cli {
     #[arg(long, short, value_name = "file", default_value = "a.out")]
     pub out: String,
 
+    // TODO: Use this, or remove it.
     #[arg(long, short, default_value_t = false)]
     pub verbose: bool,
 

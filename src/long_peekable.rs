@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables)]
 use std::{collections::VecDeque, iter::FusedIterator};
 
 pub struct LongPeekable<I: Iterator> {
@@ -39,7 +40,10 @@ impl<I: Iterator> LongPeekable<I> {
     }
     /// Returns a drain iterator of all the currently stored peeked values.
     pub fn drain_all_peeked(&mut self) -> impl Iterator<Item = I::Item> + '_ {
-        self.queue.drain(..).map(|x| x.unwrap())
+        self.queue
+            .drain(..)
+            .take_while(|x| x.is_some())
+            .map(|x| x.expect("take_while should have filtered out None values"))
     }
     /// Returns the count of currently stored peeked values.
     ///
@@ -194,7 +198,7 @@ mod tests {
     }
     #[test]
     fn drain_all_peeked() {
-        let mut iter = (0..10).long_peekable();
+        let mut iter = (0..6).long_peekable();
         assert_eq!(iter.peek_amount(3), &[Some(0), Some(1), Some(2)]);
         assert_eq!(iter.queue.len(), 3);
         assert_eq!(iter.drain_all_peeked().collect::<Vec<i32>>(), [0, 1, 2]);
@@ -204,10 +208,12 @@ mod tests {
         assert_eq!(iter.drain_all_peeked().collect::<Vec<i32>>(), [3, 4, 5]);
         assert_eq!(iter.queue.len(), 0);
         assert_eq!(iter.drain_all_peeked().collect::<Vec<i32>>(), &[]);
+        assert_eq!(iter.peek(), None);
+        assert_eq!(iter.drain_all_peeked().collect::<Vec<i32>>(), &[]);
     }
     #[test]
     fn count_peeked() {
-        let mut iter = (0..10).long_peekable();
+        let mut iter = (0..5).long_peekable();
         assert_eq!(iter.count_peeked(), 0);
         assert_eq!(iter.peek(), Some(&0));
         assert_eq!(iter.count_peeked(), 1);

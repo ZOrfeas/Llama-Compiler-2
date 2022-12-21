@@ -8,7 +8,6 @@ where
 {
     iter: I,
     writer: W,
-    newline_end: bool,
 }
 
 impl<I, W, Iter> Iterator for WriterIterator<I, W, Iter>
@@ -23,17 +22,9 @@ where
             Some(inner) => {
                 let s = format!("{}", inner);
                 let _ = write!(self.writer, "{}", s);
-                if !s.ends_with("\n") {
-                    self.newline_end = true;
-                }
                 Some(inner)
             }
-            None => {
-                if self.newline_end {
-                    let _ = write!(self.writer, "\n");
-                }
-                None
-            }
+            None => None,
         }
     }
 }
@@ -43,12 +34,7 @@ where
     Item: std::fmt::Display,
 {
     fn writer_iter<W: Write>(self, writer: W) -> WriterIterator<Self, W, Item> {
-        WriterIterator {
-            iter: self,
-            writer,
-            newline_end: false,
-        }
+        WriterIterator { iter: self, writer }
     }
 }
-
 impl<Item: std::fmt::Display, I: Iterator<Item = Item>> WriterIter<I::Item> for I {}
