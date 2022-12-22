@@ -59,12 +59,7 @@ impl<I: Iterator> LongPeekable<I> {
     }
 
     fn fill_queue(&mut self, required_elements: usize) {
-        let stored_elements = self.queue.len();
-        if stored_elements <= required_elements {
-            for _ in stored_elements..required_elements {
-                self.push_next_to_queue();
-            }
-        }
+        (self.queue.len()..required_elements).for_each(|_| self.push_next_to_queue());
     }
     fn push_next_to_queue(&mut self) {
         match self.queue.back() {

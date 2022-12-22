@@ -1,8 +1,6 @@
 pub mod token;
 
-use std::{
-    rc::Rc,
-};
+use std::rc::Rc;
 
 use log::error;
 
@@ -32,7 +30,7 @@ impl<S: Iterator<Item = scan::Line>> Lexer<S> {
 
             cursor: 0,
             cur_lineno: 0,
-            cur_filename: Rc::new(String::new()), 
+            cur_filename: Rc::new(String::new()),
             cur_line: None,
             comment_nesting: 0,
 
@@ -40,18 +38,14 @@ impl<S: Iterator<Item = scan::Line>> Lexer<S> {
         }
     }
     fn get_cur_line(&self, caller_msg: &'static str) -> &Vec<u8> {
-        self.cur_line
-            .as_ref()
-            .expect(caller_msg)
+        self.cur_line.as_ref().expect(caller_msg)
     }
 
     fn next_token(&mut self) -> LexResult<Option<Token>> {
         if self.is_done {
+            // !Note: This can be avoided if we use None to indicate EOF throughout.
             return Ok(None);
         };
-        if self.cur_line.is_none() {
-            self.next_line();
-        }
         let matchers = [
             Self::match_eof,
             Self::match_multi_line_comment,
@@ -71,11 +65,6 @@ impl<S: Iterator<Item = scan::Line>> Lexer<S> {
             if let Some(token) = matcher(self)? {
                 match &token.kind {
                     TokenKind::EOF => self.is_done = true,
-                    TokenKind::IdLower(id) => if let Some(reserved) = Self::reserved_word_from_id(id) {
-                        return Ok(Some(Token::new(
-                            reserved, token.original, token.from, token.to
-                        )))
-                    }
                     _ => {}
                 }
                 return Ok(Some(token));
@@ -84,6 +73,9 @@ impl<S: Iterator<Item = scan::Line>> Lexer<S> {
         unreachable!("unmatched cases handled above, this should be unreachable")
     }
     fn eat_whitespace(&mut self) {
+        if self.cur_line.is_none() {
+            self.next_line();
+        }
         while let Some(line) = self.cur_line.as_ref() {
             if self.cursor >= line.len() {
                 self.next_line();
@@ -178,22 +170,21 @@ impl<S: Iterator<Item = scan::Line>> Lexer<S> {
         }
     }
     #[rustfmt::skip]
-    fn reserved_word_from_id(id: &String) -> Option<TokenKind> {
-        const LEXEMES: [TokenKind; 34] = [
-            TokenKind::And, TokenKind::Array, TokenKind::Begin, TokenKind::Bool,
-            TokenKind::Char, TokenKind::Delete, TokenKind::Dim, TokenKind::Do,
-            TokenKind::Done, TokenKind::Downto, TokenKind::Else, TokenKind::End,
-            TokenKind::False, TokenKind::Float, TokenKind::For, TokenKind::If,
-            TokenKind::Int, TokenKind::In, TokenKind::Let, TokenKind::Match,
-            TokenKind::Mod, TokenKind::Mutable, TokenKind::New, TokenKind::Not,
-            TokenKind::Of, TokenKind::Rec, TokenKind::Ref, TokenKind::Then,
-            TokenKind::To, TokenKind::True, TokenKind::Type, TokenKind::Unit,
-            TokenKind::While, TokenKind::With,
-        ];
-        LEXEMES.iter().find(|lexeme| lexeme.to_string() == *id).cloned()
+    fn maybe_reserved_id(tok: Token) -> Token {
+        let id = match &tok.kind {
+            TokenKind::IdLower(id) => id,
+            // TokenKind::IdUpper(id) => id,
+            _ => return tok,
+        };
+        if let Some(reserved) = token::KEYWORDS.iter().find(|lexeme| lexeme.to_string() == *id).cloned() {
+            return Token::new(reserved, tok.original, tok.from, tok.to);
+        }
+        tok
     }
     fn match_lowercase_identifier(&mut self) -> LexResult<Option<Token>> {
-        self.match_any_identifier(|c| c.is_ascii_lowercase(), TokenKind::IdLower)
+        Ok(self
+            .match_any_identifier(|c| c.is_ascii_lowercase(), TokenKind::IdLower)?
+            .map(Self::maybe_reserved_id))
     }
     fn match_uppercase_identifier(&mut self) -> LexResult<Option<Token>> {
         self.match_any_identifier(|c| c.is_ascii_uppercase(), TokenKind::IdUpper)
@@ -345,54 +336,42 @@ impl<S: Iterator<Item = scan::Line>> Lexer<S> {
     }
     #[rustfmt::skip]
     fn match_multi_char_symop(&mut self) -> LexResult<Option<Token>> {
-        const LEXEMES: [TokenKind; 14] = [
-            TokenKind::Arrow, TokenKind::PlusDot, TokenKind::MinusDot, 
-            TokenKind::StarDot, TokenKind::SlashDot, TokenKind::DblStar,
-            TokenKind::DblAmpersand, TokenKind::DblBar, TokenKind::LtGt,
-            TokenKind::LEq, TokenKind::GEq, TokenKind::DblEq, TokenKind::ExclamEq,
-            TokenKind::ColonEq,
-        ];
-        self.match_lexemes(&LEXEMES)
+        self.match_lexemes(&token::MULTI_CHAR_SYMBOLS)
     }
     #[rustfmt::skip]
     fn match_single_char_symop_or_sep(&mut self) -> LexResult<Option<Token>> {
-        const LEXEMES: [TokenKind; 16]= [
-            TokenKind::Semicolon, TokenKind::Eq, TokenKind::Gt, TokenKind::Lt,
-            TokenKind::Plus, TokenKind::Minus, TokenKind::Star, TokenKind::Slash,
-            TokenKind::Colon, TokenKind::Comma, TokenKind::LBracket, TokenKind::RBracket,
-            TokenKind::LParen, TokenKind::RParen, TokenKind::Bar, TokenKind::Exclam,
-        ];
-        self.match_lexemes(&LEXEMES)
+        self.match_lexemes(&token::SINGLE_CHAR_SYMBOLS)
     }
     fn match_unmatched(&mut self) -> LexResult<Option<Token>> {
         let mut original: Vec<u8> = Vec::new();
         let from = self.make_position(self.cursor);
         let to = loop {
             let line = self.get_cur_line("match_unmatched");
-            match line[self.cursor..].iter().enumerate().find(|(_, c)| {
-                c.is_ascii_whitespace()
-            }) {
+            match line[self.cursor..]
+                .iter()
+                .enumerate()
+                .find(|(_, c)| c.is_ascii_whitespace())
+            {
                 Some((i, _)) => {
                     original.extend_from_slice(&line[self.cursor..self.cursor + i]);
                     self.cursor += i;
                     break self.make_position(self.cursor);
-                },
+                }
                 None => {
                     original.extend_from_slice(&line[self.cursor..]);
                     let line_len = line.len(); // needed to mutably borrow self below
                     self.next_line();
                     if self.cur_line.is_none() {
-                        break Position::new(self.cur_lineno, line_len, Rc::clone(&self.cur_filename));
+                        break Position::new(
+                            self.cur_lineno,
+                            line_len,
+                            Rc::clone(&self.cur_filename),
+                        );
                     }
                 }
             }
         };
-        Ok(Some(Token::new(
-            TokenKind::UNMATCHED,
-            original,
-            from,
-            to,
-        )))
+        Ok(Some(Token::new(TokenKind::UNMATCHED, original, from, to)))
     }
     fn next_line(&mut self) {
         match self.scanner.next() {
@@ -431,7 +410,9 @@ impl<S: Iterator<Item = scan::Line>> Lexer<S> {
             let identifier = line[self.cursor..=self.cursor + i].to_vec();
             self.cursor += i + 1;
             let retval = Token::new(
-                make_token_kind(String::from_utf8(identifier.clone()).expect("should be alphanumeric")),
+                make_token_kind(
+                    String::from_utf8(identifier.clone()).expect("should be alphanumeric"),
+                ),
                 identifier,
                 from,
                 self.make_position(self.cursor),
@@ -452,12 +433,11 @@ impl<S: Iterator<Item = scan::Line>> Lexer<S> {
                     lexeme.clone(),
                     lexeme_str.as_bytes().to_vec(),
                     from,
-                    self.make_position(self.cursor ),
+                    self.make_position(self.cursor),
                 )));
             }
         }
         Ok(None)
-
     }
     fn count_digits(&self, line: &[u8], start: usize) -> usize {
         line[start..]
@@ -512,7 +492,10 @@ impl<S: Iterator<Item = scan::Line>> Lexer<S> {
         if !((c1 as char).is_ascii_hexdigit() && (c2 as char).is_ascii_hexdigit()) {
             return None;
         }
-        String::from_utf8(vec![c1, c2]).expect("should be ascii hexdigits").parse().ok()
+        String::from_utf8(vec![c1, c2])
+            .expect("should be ascii hexdigits")
+            .parse()
+            .ok()
     }
 
     fn make_position(&self, cursor: usize) -> Position {
@@ -560,13 +543,12 @@ impl std::fmt::Display for LexErr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::UnterminatedComment(pos) => write!(f, "unterminated comment at {}", pos),
-            Self::InvalidCharLiteral(pos, msg) |
-            Self::InvalidStringLiteral(pos, msg) => {
+            Self::InvalidCharLiteral(pos, msg) | Self::InvalidStringLiteral(pos, msg) => {
                 write!(f, "{} at {}", msg, pos)
             }
-            Self::ParseFloatError(pos, msg) |
-            Self::ParseIntError(pos, msg) |
-            Self::FromUtf8Error(pos, msg) => {
+            Self::ParseFloatError(pos, msg)
+            | Self::ParseIntError(pos, msg)
+            | Self::FromUtf8Error(pos, msg) => {
                 write!(f, "{} at {}", msg, pos)
             }
         }

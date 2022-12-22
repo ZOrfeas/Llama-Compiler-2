@@ -26,42 +26,29 @@ fn main() -> CompilerResult<()> {
     res
 }
 fn run_compiler(args: &cli::Cli) -> CompilerResult<()> {
-    let scanner = make_scanner(args)?;
-    // TODO: Implement lexer
-    let _lexer = make_lexer(args, scanner)?;
+    // let scanner = make_scanner(args)?;
+    // let _lexer = make_lexer(args, scanner)?;
+    let _ = scan::Scanner::new(&args.filename)?
+        .preprocess()
+        .make_step(
+            args,
+            args.print.get_preprocessor_writer()?,
+            StopAfter::Preprocessing,
+            "Stopping... (--stop-after preprocessing)",
+        )?
+        .into_lexer(true)
+        .make_step(
+            args,
+            args.print.get_token_writer()?,
+            StopAfter::Lexing,
+            "Stopping... (--stop-after lexing)",
+        )?;
     // TODO: Implement parser
     // TODO: Implement sem
     // TODO: Implement irgen
     // TODO: Implement codegen/binary-gen
     Ok(())
 }
-fn make_lexer(
-    args: &cli::Cli,
-    scanner: impl Iterator<Item = Line> + 'static,
-) -> CompilerResult<Box<dyn Iterator<Item = Token>>> {
-    scanner
-        .into_lexer(true)
-        .maybe_stop(
-            args.print.get_token_writer()?,
-            args.stop_after <= StopAfter::Lexing,
-        )
-        .ok_or(CompilerError::EarlyExit(
-            "Stopping... (--stop-after lexing)",
-        ))
-}
-fn make_scanner(args: &cli::Cli) -> CompilerResult<Box<dyn Iterator<Item = Line>>> {
-    // let mut err = Ok(());
-    scan::Scanner::new(&args.filename)?
-        .preprocess()
-        .maybe_stop(
-            args.print.get_preprocessor_writer()?,
-            args.stop_after == StopAfter::Preprocessing,
-        )
-        .ok_or(CompilerError::EarlyExit(
-            "Stopping... (--stop-after preprocessing)",
-        ))
-}
-
 trait MaybeStop<Item: std::fmt::Display + 'static>: WriterIter<Item> + 'static {
     fn maybe_stop(
         self,
@@ -78,6 +65,16 @@ trait MaybeStop<Item: std::fmt::Display + 'static>: WriterIter<Item> + 'static {
             iter.for_each(drop);
             None
         }
+    }
+    fn make_step(
+        self,
+        args: &cli::Cli,
+        writer: Option<Box<dyn Write>>,
+        step: StopAfter,
+        msg: &'static str,
+    ) -> CompilerResult<Box<dyn Iterator<Item = Self::Item>>> {
+        self.maybe_stop(writer, args.stop_after == step)
+            .ok_or(CompilerError::EarlyExit(msg))
     }
 }
 impl<Item: std::fmt::Display + 'static, I: Iterator<Item = Item> + 'static> MaybeStop<Item> for I {}

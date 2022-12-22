@@ -77,6 +77,33 @@ pub enum TokenKind {
     Colon, Comma, LBracket, RBracket, LParen, RParen,
     Bar, Exclam,
 }
+#[rustfmt::skip]
+pub const KEYWORDS: [TokenKind; 34] = [
+    TokenKind::And, TokenKind::Array, TokenKind::Begin, TokenKind::Bool,
+    TokenKind::Char, TokenKind::Delete, TokenKind::Dim, TokenKind::Do,
+    TokenKind::Done, TokenKind::Downto, TokenKind::Else, TokenKind::End,
+    TokenKind::False, TokenKind::Float, TokenKind::For, TokenKind::If,
+    TokenKind::Int, TokenKind::In, TokenKind::Let, TokenKind::Match,
+    TokenKind::Mod, TokenKind::Mutable, TokenKind::New, TokenKind::Not,
+    TokenKind::Of, TokenKind::Rec, TokenKind::Ref, TokenKind::Then,
+    TokenKind::To, TokenKind::True, TokenKind::Type, TokenKind::Unit,
+    TokenKind::While, TokenKind::With,
+];
+#[rustfmt::skip]
+pub const MULTI_CHAR_SYMBOLS: [TokenKind; 14] = [
+    TokenKind::Arrow, TokenKind::PlusDot, TokenKind::MinusDot, 
+    TokenKind::StarDot, TokenKind::SlashDot, TokenKind::DblStar,
+    TokenKind::DblAmpersand, TokenKind::DblBar, TokenKind::LtGt,
+    TokenKind::LEq, TokenKind::GEq, TokenKind::DblEq, TokenKind::ExclamEq,
+    TokenKind::ColonEq,
+];
+#[rustfmt::skip]
+pub const SINGLE_CHAR_SYMBOLS: [TokenKind; 16]= [
+    TokenKind::Semicolon, TokenKind::Eq, TokenKind::Gt, TokenKind::Lt,
+    TokenKind::Plus, TokenKind::Minus, TokenKind::Star, TokenKind::Slash,
+    TokenKind::Colon, TokenKind::Comma, TokenKind::LBracket, TokenKind::RBracket,
+    TokenKind::LParen, TokenKind::RParen, TokenKind::Bar, TokenKind::Exclam,
+];
 
 impl std::fmt::Display for TokenKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
