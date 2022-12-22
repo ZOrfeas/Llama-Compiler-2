@@ -56,7 +56,6 @@ impl<S: Iterator<Item = scan::Line>> Lexer<S> {
             Self::match_eof,
             Self::match_multi_line_comment,
             Self::match_single_line_comment,
-            Self::match_reserved_word,
             Self::match_lowercase_identifier,
             Self::match_uppercase_identifier,
             Self::match_float_literal,
@@ -70,8 +69,14 @@ impl<S: Iterator<Item = scan::Line>> Lexer<S> {
         self.eat_whitespace();
         for matcher in matchers.iter() {
             if let Some(token) = matcher(self)? {
-                if token.kind == TokenKind::EOF {
-                    self.is_done = true;
+                match &token.kind {
+                    TokenKind::EOF => self.is_done = true,
+                    TokenKind::IdLower(id) => if let Some(reserved) = Self::reserved_word_from_id(id) {
+                        return Ok(Some(Token::new(
+                            reserved, token.original, token.from, token.to
+                        )))
+                    }
+                    _ => {}
                 }
                 return Ok(Some(token));
             }
@@ -173,19 +178,19 @@ impl<S: Iterator<Item = scan::Line>> Lexer<S> {
         }
     }
     #[rustfmt::skip]
-    fn match_reserved_word(&mut self) -> LexResult<Option<Token>> {
+    fn reserved_word_from_id(id: &String) -> Option<TokenKind> {
         const LEXEMES: [TokenKind; 34] = [
             TokenKind::And, TokenKind::Array, TokenKind::Begin, TokenKind::Bool,
             TokenKind::Char, TokenKind::Delete, TokenKind::Dim, TokenKind::Do,
             TokenKind::Done, TokenKind::Downto, TokenKind::Else, TokenKind::End,
             TokenKind::False, TokenKind::Float, TokenKind::For, TokenKind::If,
-            TokenKind::In, TokenKind::Int, TokenKind::Let, TokenKind::Match,
+            TokenKind::Int, TokenKind::In, TokenKind::Let, TokenKind::Match,
             TokenKind::Mod, TokenKind::Mutable, TokenKind::New, TokenKind::Not,
             TokenKind::Of, TokenKind::Rec, TokenKind::Ref, TokenKind::Then,
             TokenKind::To, TokenKind::True, TokenKind::Type, TokenKind::Unit,
             TokenKind::While, TokenKind::With,
         ];
-        self.match_lexemes(&LEXEMES)
+        LEXEMES.iter().find(|lexeme| lexeme.to_string() == *id).cloned()
     }
     fn match_lowercase_identifier(&mut self) -> LexResult<Option<Token>> {
         self.match_any_identifier(|c| c.is_ascii_lowercase(), TokenKind::IdLower)
