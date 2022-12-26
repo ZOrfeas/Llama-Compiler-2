@@ -1,12 +1,12 @@
 #![allow(dead_code, unused_variables)]
 use std::{collections::VecDeque, iter::FusedIterator};
 
-pub struct LongPeekable<I: Iterator> {
+pub struct LongPeekableIterator<I: Iterator> {
     iter: I,
     queue: VecDeque<Option<I::Item>>,
 }
 
-impl<I: Iterator> LongPeekable<I> {
+impl<I: Iterator> LongPeekableIterator<I> {
     pub fn new(iter: I) -> Self {
         Self {
             iter,
@@ -68,7 +68,7 @@ impl<I: Iterator> LongPeekable<I> {
         }
     }
 }
-impl<I: Iterator> Iterator for LongPeekable<I> {
+impl<I: Iterator> Iterator for LongPeekableIterator<I> {
     type Item = I::Item;
     fn next(&mut self) -> Option<Self::Item> {
         match self.queue.pop_front() {
@@ -78,15 +78,15 @@ impl<I: Iterator> Iterator for LongPeekable<I> {
     }
 }
 
-impl<I: ExactSizeIterator> ExactSizeIterator for LongPeekable<I> {}
-impl<I: FusedIterator> FusedIterator for LongPeekable<I> {}
+impl<I: ExactSizeIterator> ExactSizeIterator for LongPeekableIterator<I> {}
+impl<I: FusedIterator> FusedIterator for LongPeekableIterator<I> {}
 
 pub trait LongPeek: Iterator + Sized {
-    fn long_peekable(self) -> LongPeekable<Self>;
+    fn long_peekable(self) -> LongPeekableIterator<Self>;
 }
 impl<I: Iterator> LongPeek for I {
-    fn long_peekable(self) -> LongPeekable<Self> {
-        LongPeekable::new(self)
+    fn long_peekable(self) -> LongPeekableIterator<Self> {
+        LongPeekableIterator::new(self)
     }
 }
 

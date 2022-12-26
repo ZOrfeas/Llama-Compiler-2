@@ -1,6 +1,7 @@
 mod cli;
 mod lex;
 mod long_peekable;
+mod parse;
 mod scan;
 mod writer_iter;
 
@@ -8,10 +9,8 @@ use cli::PrintWriterHelpers;
 use cli::StopAfter;
 use colored::Colorize;
 use env_logger::Env;
-use lex::token::Token;
 use lex::IntoLexer;
 use log::info;
-use scan::Line;
 use std::io::Write;
 use writer_iter::WriterIter;
 

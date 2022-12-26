@@ -6,7 +6,7 @@ use log::error;
 
 use crate::scan;
 
-use self::token::{Position, Token, TokenKind};
+use self::token::{Position, Token, TokenKind, TokenValue};
 
 pub struct Lexer<S: Iterator<Item = scan::Line>> {
     scanner: S,
@@ -50,7 +50,7 @@ impl<S: Iterator<Item = scan::Line>> Lexer<S> {
             Self::match_eof,
             Self::match_multi_line_comment,
             Self::match_single_line_comment,
-            Self::match_lowercase_identifier,
+            Self::match_lowercase_identifier_or_keyword,
             Self::match_uppercase_identifier,
             Self::match_float_literal,
             Self::match_integer_literal,
@@ -169,22 +169,23 @@ impl<S: Iterator<Item = scan::Line>> Lexer<S> {
             Ok(None)
         }
     }
-    #[rustfmt::skip]
-    fn maybe_reserved_id(tok: Token) -> Token {
-        let id = match &tok.kind {
-            TokenKind::IdLower(id) => id,
-            // TokenKind::IdUpper(id) => id,
-            _ => return tok,
-        };
-        if let Some(reserved) = token::KEYWORDS.iter().find(|lexeme| lexeme.to_string() == *id).cloned() {
-            return Token::new(reserved, tok.original, tok.from, tok.to);
+    fn match_lowercase_identifier_or_keyword(&mut self) -> LexResult<Option<Token>> {
+        fn maybe_keyword(tok: Token) -> Token {
+            let id = match (&tok.kind, &tok.value) {
+                (TokenKind::IdLower, token::TokenValue::String(id)) => id,
+                _ => return tok,
+            };
+            if let Some(reserved) = token::KEYWORDS
+                .iter()
+                .find(|lexeme| lexeme.to_string() == *id)
+                .cloned()
+            {
+                return Token::new(reserved, tok.original, tok.from, tok.to);
+            }
+            tok
         }
-        tok
-    }
-    fn match_lowercase_identifier(&mut self) -> LexResult<Option<Token>> {
-        Ok(self
-            .match_any_identifier(|c| c.is_ascii_lowercase(), TokenKind::IdLower)?
-            .map(Self::maybe_reserved_id))
+        self.match_any_identifier(|c| c.is_ascii_lowercase(), TokenKind::IdLower)
+            .map(|tok_opt| tok_opt.map(maybe_keyword))
     }
     fn match_uppercase_identifier(&mut self) -> LexResult<Option<Token>> {
         self.match_any_identifier(|c| c.is_ascii_uppercase(), TokenKind::IdUpper)
@@ -209,9 +210,10 @@ impl<S: Iterator<Item = scan::Line>> Lexer<S> {
             .map_err(|e| LexErr::FromUtf8Error(from.clone(), e.to_string()))?
             .parse::<f64>()
             .map_err(|e| LexErr::ParseFloatError(from.clone(), e.to_string()))?;
-        Ok(Some(Token::new(
-            TokenKind::FloatLiteral(number),
+        Ok(Some(Token::new_with_value(
+            TokenKind::FloatLiteral,
             contents,
+            TokenValue::Float(number),
             from,
             self.make_position(self.cursor),
         )))
@@ -229,9 +231,10 @@ impl<S: Iterator<Item = scan::Line>> Lexer<S> {
             .map_err(|e| LexErr::FromUtf8Error(from.clone(), e.to_string()))?
             .parse::<i32>()
             .map_err(|e| LexErr::ParseIntError(from.clone(), e.to_string()))?;
-        Ok(Some(Token::new(
-            TokenKind::IntLiteral(number),
+        Ok(Some(Token::new_with_value(
+            TokenKind::IntLiteral,
             contents,
+            TokenValue::Int(number),
             from,
             self.make_position(self.cursor),
         )))
@@ -246,9 +249,10 @@ impl<S: Iterator<Item = scan::Line>> Lexer<S> {
             let original = line[self.cursor..=self.cursor + cnt].to_vec();
             (
                 self.cursor + cnt + 1,
-                Ok(Some(Token::new(
-                    TokenKind::CharLiteral(c),
+                Ok(Some(Token::new_with_value(
+                    TokenKind::CharLiteral,
                     original,
+                    TokenValue::Char(c),
                     from.clone(),
                     self.make_position(self.cursor),
                 ))),
@@ -321,9 +325,10 @@ impl<S: Iterator<Item = scan::Line>> Lexer<S> {
                     )
                 })?;
                 self.cursor += i + 2;
-                Ok(Some(Token::new(
-                    TokenKind::StringLiteral(contents),
+                Ok(Some(Token::new_with_value(
+                    TokenKind::StringLiteral,
                     orig_contents,
+                    TokenValue::String(contents),
                     from,
                     self.make_position(self.cursor),
                 )))
@@ -391,7 +396,7 @@ impl<S: Iterator<Item = scan::Line>> Lexer<S> {
     fn match_any_identifier(
         &mut self,
         check_first_char: fn(u8) -> bool,
-        make_token_kind: fn(String) -> TokenKind,
+        token_kind: TokenKind,
     ) -> LexResult<Option<Token>> {
         let line = self.get_cur_line("match_any_identifier");
         if check_first_char(line[self.cursor]) {
@@ -409,11 +414,10 @@ impl<S: Iterator<Item = scan::Line>> Lexer<S> {
             // let to = self.make_position(self.cursor + i);
             let identifier = line[self.cursor..=self.cursor + i].to_vec();
             self.cursor += i + 1;
-            let retval = Token::new(
-                make_token_kind(
-                    String::from_utf8(identifier.clone()).expect("should be alphanumeric"),
-                ),
-                identifier,
+            let retval = Token::new_with_value(
+                token_kind,
+                identifier.clone(),
+                TokenValue::String(String::from_utf8(identifier).expect("should be alphanumeric")),
                 from,
                 self.make_position(self.cursor),
             );

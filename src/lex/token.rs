@@ -1,9 +1,10 @@
 use std::rc::Rc;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Token {
     pub kind: TokenKind,
     pub original: Vec<u8>,
+    pub value: TokenValue,
     pub from: Position,
     pub to: Position,
 }
@@ -12,11 +13,36 @@ impl Token {
         Token {
             kind,
             original,
+            value: TokenValue::None,
+            from,
+            to,
+        }
+    }
+    pub fn new_with_value(
+        kind: TokenKind,
+        original: Vec<u8>,
+        value: TokenValue,
+        from: Position,
+        to: Position,
+    ) -> Self {
+        Token {
+            kind,
+            original,
+            value,
             from,
             to,
         }
     }
 }
+#[derive(Debug, Clone)]
+pub enum TokenValue {
+    Int(i32),
+    Float(f64),
+    Char(u8),
+    String(String),
+    None,
+}
+
 impl std::fmt::Display for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "`{}` from {} to {}\n", self.kind, self.from, self.to)
@@ -58,14 +84,14 @@ pub enum TokenKind {
     While, With,
 
     // Identifiers
-    IdUpper(String),
-    IdLower(String),
+    IdUpper,
+    IdLower,
 
     // Literals
-    IntLiteral(i32),
-    FloatLiteral(f64),
-    CharLiteral(u8),
-    StringLiteral(String),
+    IntLiteral,
+    FloatLiteral,
+    CharLiteral,
+    StringLiteral,
 
     // Multi-char symbols
     Arrow, PlusDot, MinusDot, StarDot, SlashDot,
@@ -153,11 +179,8 @@ mod test {
     fn serialize_one_of_each() {
         assert_eq!(TokenKind::EOF.to_string(), "EOF");
         assert_eq!(TokenKind::Begin.to_string(), "begin");
-        assert_eq!(TokenKind::IntLiteral(5i32).to_string(), "IntLiteral(5)");
-        assert_eq!(
-            TokenKind::StringLiteral("Kati".to_string()).to_string(),
-            "StringLiteral(\"Kati\")"
-        );
+        assert_eq!(TokenKind::IntLiteral.to_string(), "IntLiteral");
+        assert_eq!(TokenKind::StringLiteral.to_string(), "StringLiteral");
         assert_eq!(TokenKind::Arrow.to_string(), "->");
     }
 }
