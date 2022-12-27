@@ -54,7 +54,7 @@ impl<L: Iterator<Item = Token>> Parser<L> {
     fn constr(&mut self) -> ParseResult<ast::Constr> {
         let id = self.expect(TokenKind::IdUpper)?;
         let types = if self.accept(&TokenKind::Of).is_some() {
-            self.match_at_least_one_until(Self::type_primary, &TokenKind::Bar)?
+            self.match_at_least_one_until(Self::r#type, &TokenKind::Bar)?
         } else {
             Vec::new()
         };
@@ -76,7 +76,7 @@ impl<L: Iterator<Item = Token>> Parser<L> {
             (TokenKind::Float, |_, _| Ok(ast::Type::Float)),
             (TokenKind::LParen, |p, _| {
                 let t = p
-                    .match_at_least_one(Self::type_primary, &TokenKind::Comma)
+                    .match_at_least_one(Self::r#type, &TokenKind::Comma)
                     .map(ast::Type::maybe_tuple)?;
                 p.expect(TokenKind::RParen)?;
                 Ok(t)
@@ -111,10 +111,10 @@ impl<L: Iterator<Item = Token>> Parser<L> {
     // fn type_recursion_helper(&mut self) -> ParseResult<ast::Type> {
     //     // self.expect(TokenKind::Ref)?;
     // }
-    fn type_primary(&mut self) -> ParseResult<ast::Type> {
+    fn r#type(&mut self) -> ParseResult<ast::Type> {
         let t1 = self.type_precedence_helper()?;
         if self.accept(&TokenKind::Arrow).is_some() {
-            let t2 = self.type_primary()?;
+            let t2 = self.r#type()?;
             Ok(ast::Type::Func(Box::new(t1), Box::new(t2)))
         } else {
             Ok(t1)

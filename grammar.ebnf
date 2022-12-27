@@ -1,3 +1,16 @@
+####### General Grammar #######
+# original
+program ::= {letdef | typedef};
+letdef ::= "let", ["rec"], def, {"and", def};
+def ::= id, {par}, [":", type] "=", expr
+    | "mutable", id, ["[" expr, {",", expr}, "]"] [":", type]
+;
+typedef ::= "type", tdef, {"and", tdef};
+tdef ::= id, "=", constr, { "|", constr };
+constr ::= Id, ["of" {type}+];
+par ::= id | "(" id : type ")";
+
+####### Type Grammar #######
 # # original
 # type ::= "unit" | "int" | "char" | "bool" | "float"
 # | "(", type, {",", type} ")"
@@ -10,13 +23,44 @@
 # "->" is right associative
 # "ref" and "array" have higher precedence than "->"
 
-type_primary ::= type_precedence_helper, ["->", type_primary]
-;
-
+type ::= type_precedence_helper, ["->", type];
 type_precedence_helper ::= ("unit" | "int" | "char" | "bool" | "float"
-| "(", type_primary, {",", type_primary} ")"
-| "array", [ "[", "*", {",", "*"}, "]" ], "of", type_precedence_helper
-| id), [type_recursion_helper]
+    | "(", type, {",", type} ")" # supports tuples
+    | "array", [ "[", "*", {",", "*"}, "]" ], "of", type_precedence_helper
+    | id), [type_recursion_helper]
+;
+type_recursion_helper ::= "ref" | "ref" type_recursion_helper;
+
+####### Expression Grammar #######
+# original
+expr ::= int_const | float_const | char_const | string_literal | "true" | "false" | "(", ")" 
+    | "(", expr, {",", expr}, ")" # supports tuples
+    | unop expr | expr binop expr | (id | Id) {expr}
+    | id "[" expr, {",", expr}, "]"
+    | "dim", [int_const], id # possibly obsolete as a language feature if it can be modeled as a polymorphic function
+    | "new", type | delete expr | letdef "in" expr | "begin" expr "end"
+    | "if", expr, "then", expr, ["else", expr]
+    | "while", expr, "do", expr, "done"
+    | "for", id, "=", expr, ("to" | "downto") expr, "do", expr, "done"
+    | "match", expr, "with", clause, { "|", clause }, "end"
+;
+unop ::= "+" | "-" | "!" | "not"
+    | "+." | "-." # possibly not in the spirit of the language if it supports polymorphism
+;
+binop ::= "+" | "-" | "*" | "/" | "mod" | "**" | "=" | "<>" | "<" | ">"| "<=" | ">="
+    | "==" | "!=" | "&&" | "||" | ";" | ":="
+    | "+." | "-." | "*." | "/." # possibly not in the spirit of the language if it supports polymorphism
+;
+clause ::= pattern "->" expr;
+pattern ::= ["+" | "-"] int_const 
+    | ["+." | "-."] float_const # possibly not in the spirit of the language if it supports polymorphism
+    | char_const 
+    # | string_literal # we may want to support this
+    | "true" | "false" | id
+    | "(" pattern, {",", pattern}, ")" # supports tuples
+    | Id, {pattern}
 ;
 
-type_recursion_helper ::= "ref" | "ref" type_recursion_helper
+####### Terminals #######
+id ::= [a-z][a-zA-Z0-9_]*;
+Id ::= [A-Z][a-zA-Z0-9_]*;
