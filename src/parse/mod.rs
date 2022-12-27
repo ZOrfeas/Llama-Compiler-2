@@ -1,3 +1,5 @@
+use std::fmt::format;
+
 use crate::{
     lex::token::{Token, TokenKind},
     long_peekable::{LongPeek, LongPeekableIterator},
@@ -212,6 +214,22 @@ pub enum ParseErr {
 
 impl std::fmt::Display for ParseErr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        todo!()
+        match self {
+            ParseErr::UnexpectedToken(token, expected) => {
+                let expected = expected
+                    .iter()
+                    .map(|t| format!("\"{}\"", t))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                match token {
+                    Some(token) => write!(
+                        f,
+                        "{}: Unexpected token \"{}\", expected any of {{{}}}",
+                        token.from, token.kind, expected
+                    ),
+                    None => write!(f, "Unexpected end of file, expected any of {}", expected),
+                }
+            }
+        }
     }
 }
