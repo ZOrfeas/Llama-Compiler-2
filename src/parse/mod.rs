@@ -1,5 +1,3 @@
-use std::fmt::format;
-
 use crate::{
     lex::token::{Token, TokenKind},
     long_peekable::{LongPeek, LongPeekableIterator},
@@ -33,10 +31,52 @@ impl<L: Iterator<Item = Token>> Parser<L> {
         Ok(ast::Program { definitions })
     }
     fn letdef(&mut self) -> ParseResult<ast::Letdef> {
-        todo!()
+        Ok(ast::Letdef {
+            rec: self.accept(&TokenKind::Rec).is_some(),
+            defs: self.match_at_least_one(Self::def, &TokenKind::And)?,
+        })
     }
-    fn def(&mut self) -> ParseResult<()> {
-        todo!()
+    fn def(&mut self) -> ParseResult<ast::Def> {
+        self.expect_any_of(&[
+            (TokenKind::IdLower, |p, id| {
+                let id = id.extract_string_value();
+                let pars =
+                    p.match_zero_or_more_until(Self::par, &[TokenKind::Colon, TokenKind::Eq])?;
+                let type_ = if p.accept(&TokenKind::Colon).is_some() {
+                    Some(p.r#type()?)
+                } else {
+                    None
+                };
+                p.expect(TokenKind::Eq)?;
+                let expr = p.expr()?;
+                Ok(ast::Def::Function(ast::FunctionDef {
+                    id,
+                    pars,
+                    type_,
+                    expr,
+                }))
+            }),
+            (TokenKind::Mutable, |p, _| {
+                let id = p.expect(TokenKind::IdLower)?.extract_string_value();
+                let dims = if p.accept(&TokenKind::LBracket).is_some() {
+                    let dims = p.match_at_least_one(Self::expr, &TokenKind::Comma)?;
+                    p.expect(TokenKind::RBracket)?;
+                    dims
+                } else {
+                    Vec::new()
+                };
+                let type_ = if p.accept(&TokenKind::Colon).is_some() {
+                    Some(p.r#type()?)
+                } else {
+                    None
+                };
+                if dims.is_empty() {
+                    Ok(ast::Def::Variable(ast::VariableDef { id, type_ }))
+                } else {
+                    Ok(ast::Def::Array(ast::ArrayDef { id, type_, dims }))
+                }
+            }),
+        ])
     }
     fn typedef(&mut self) -> ParseResult<ast::Typedef> {
         Ok(ast::Typedef {
@@ -47,24 +87,41 @@ impl<L: Iterator<Item = Token>> Parser<L> {
         let id = self.expect(TokenKind::IdLower)?;
         self.expect(TokenKind::Eq)?;
         Ok(ast::TDef {
-            id: id.get_string_value(),
+            id: id.extract_string_value(),
             constrs: self.match_at_least_one(Self::constr, &TokenKind::Bar)?,
         })
     }
     fn constr(&mut self) -> ParseResult<ast::Constr> {
         let id = self.expect(TokenKind::IdUpper)?;
         let types = if self.accept(&TokenKind::Of).is_some() {
-            self.match_at_least_one_until(Self::r#type, &TokenKind::Bar)?
+            self.match_at_least_one_until(Self::r#type, &[TokenKind::Bar])?
         } else {
             Vec::new()
         };
         Ok(ast::Constr {
-            id: id.get_string_value(),
+            id: id.extract_string_value(),
             types,
         })
     }
-    fn par(&mut self) -> ParseResult<()> {
-        todo!()
+    fn par(&mut self) -> ParseResult<ast::Par> {
+        self.expect_any_of(&[
+            (TokenKind::IdLower, |p, id| {
+                Ok(ast::Par {
+                    id: id.get_string_value(),
+                    type_: None,
+                })
+            }),
+            (TokenKind::LParen, |p, _| {
+                let id = p.expect(TokenKind::IdLower)?.extract_string_value();
+                p.expect(TokenKind::Colon)?;
+                let type_ = p.r#type()?;
+                p.expect(TokenKind::RParen)?;
+                Ok(ast::Par {
+                    id,
+                    type_: Some(type_),
+                })
+            }),
+        ])
     }
 
     fn type_precedence_helper(&mut self) -> ParseResult<ast::Type> {
@@ -99,7 +156,7 @@ impl<L: Iterator<Item = Token>> Parser<L> {
                     .map(|t| ast::Type::Array(Box::new(t), dimensions))
             }),
             (TokenKind::IdLower, |_, t| {
-                Ok(ast::Type::Custom(t.get_string_value()))
+                Ok(ast::Type::Custom(t.extract_string_value()))
             }),
         ])?;
         // below loop handles type_recursion_helper non-terminal
@@ -108,9 +165,6 @@ impl<L: Iterator<Item = Token>> Parser<L> {
         }
         Ok(t)
     }
-    // fn type_recursion_helper(&mut self) -> ParseResult<ast::Type> {
-    //     // self.expect(TokenKind::Ref)?;
-    // }
     fn r#type(&mut self) -> ParseResult<ast::Type> {
         let t1 = self.type_precedence_helper()?;
         if self.accept(&TokenKind::Arrow).is_some() {
@@ -120,8 +174,8 @@ impl<L: Iterator<Item = Token>> Parser<L> {
             Ok(t1)
         }
     }
-    fn expr(&mut self) -> ParseResult<()> {
-        todo!()
+    fn expr(&mut self) -> ParseResult<ast::Expr> {
+        todo!("expr")
     }
 
     fn expect_any_of<T>(
@@ -183,15 +237,35 @@ impl<L: Iterator<Item = Token>> Parser<L> {
         }
         Ok(vec)
     }
+    fn match_zero_or_more_until<T>(
+        &mut self,
+        matcher: fn(&mut Self) -> ParseResult<T>,
+        separators: &[TokenKind],
+    ) -> ParseResult<Vec<T>> {
+        let mut vec: Vec<T> = Vec::new();
+        while separators
+            .iter()
+            .find(|&separator| Some(separator) == self.lexer.peek().map(|t| &t.kind))
+            .is_none()
+        {
+            vec.push(matcher(self)?);
+        }
+        Ok(vec)
+    }
     fn match_at_least_one_until<T>(
         &mut self,
         matcher: fn(&mut Self) -> ParseResult<T>,
-        separator: &TokenKind,
+        separators: &[TokenKind],
     ) -> ParseResult<Vec<T>> {
         let mut vec: Vec<T> = Vec::new();
         loop {
             vec.push(matcher(self)?);
-            if Some(separator) == self.lexer.peek().map(|t| &t.kind) {
+            let peek_kind = self.lexer.peek().map(|t| &t.kind);
+            if separators
+                .iter()
+                .find(|&separator| Some(separator) == peek_kind)
+                .is_some()
+            {
                 break;
             }
         }

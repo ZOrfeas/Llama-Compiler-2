@@ -39,6 +39,12 @@ impl Token {
             _ => panic!("TokenValue is not a string"),
         }
     }
+    pub fn extract_string_value(self) -> String {
+        match self.value {
+            TokenValue::String(s) => s,
+            _ => panic!("TokenValue is not a string"),
+        }
+    }
 }
 #[derive(Debug, Clone)]
 pub enum TokenValue {
