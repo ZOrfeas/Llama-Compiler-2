@@ -173,6 +173,13 @@ type CliResult<T> = Result<T, CliErr>;
 pub enum CliErr {
     IO(std::io::Error),
 }
+impl std::fmt::Display for CliErr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::IO(err) => write!(f, "IO error: {}", err),
+        }
+    }
+}
 impl From<std::io::Error> for CliErr {
     fn from(err: std::io::Error) -> Self {
         Self::IO(err)

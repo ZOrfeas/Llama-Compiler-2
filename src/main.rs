@@ -10,20 +10,28 @@ use cli::StopAfter;
 use colored::Colorize;
 use env_logger::Env;
 use lex::IntoLexer;
+use log::error;
 use log::info;
 use parse::IntoParser;
 use std::io::Write;
+use std::process::ExitCode;
 use writer_iter::WriterIter;
 
-fn main() -> CompilerResult<()> {
+fn main() -> ExitCode {
     init_logger();
     let args = cli::Cli::parse();
     let res = run_compiler(&args);
-    if let Err(CompilerError::EarlyExit(msg)) = res {
-        info!("{msg}");
-        return Ok(());
+    match res {
+        Ok(_) => 0.into(),
+        Err(CompilerError::EarlyExit(msg)) => {
+            info!("{}", msg);
+            0.into()
+        }
+        Err(err) => {
+            error!("{}", err);
+            1.into()
+        }
     }
-    res
 }
 fn run_compiler(args: &cli::Cli) -> CompilerResult<()> {
     // let scanner = make_scanner(args)?;
@@ -107,6 +115,16 @@ enum CompilerError {
     ParserError(parse::ParseErr),
     ScannerError(scan::ScanErr),
     CliError(cli::CliErr),
+}
+impl std::fmt::Display for CompilerError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CompilerError::EarlyExit(msg) => write!(f, "{}", msg),
+            CompilerError::ParserError(err) => write!(f, "{}", err),
+            CompilerError::ScannerError(err) => write!(f, "{}", err),
+            CompilerError::CliError(err) => write!(f, "{}", err),
+        }
+    }
 }
 impl From<parse::ParseErr> for CompilerError {
     fn from(err: parse::ParseErr) -> Self {
