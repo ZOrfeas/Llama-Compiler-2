@@ -11,6 +11,7 @@ use colored::Colorize;
 use env_logger::Env;
 use lex::IntoLexer;
 use log::info;
+use parse::IntoParser;
 use std::io::Write;
 use writer_iter::WriterIter;
 
@@ -27,7 +28,7 @@ fn main() -> CompilerResult<()> {
 fn run_compiler(args: &cli::Cli) -> CompilerResult<()> {
     // let scanner = make_scanner(args)?;
     // let _lexer = make_lexer(args, scanner)?;
-    let _ = scan::Scanner::new(&args.filename)?
+    let ast = scan::Scanner::new(&args.filename)?
         .preprocess()
         .make_step(
             args,
@@ -41,7 +42,10 @@ fn run_compiler(args: &cli::Cli) -> CompilerResult<()> {
             args.print.get_token_writer()?,
             StopAfter::Lexing,
             "Stopping... (--stop-after lexing)",
-        )?;
+        )?
+        .into_parser()
+        .program()?;
+    println!("{:#?}", ast);
     // TODO: Implement parser
     // TODO: Implement sem
     // TODO: Implement irgen
@@ -100,8 +104,14 @@ type CompilerResult<T> = Result<T, CompilerError>;
 enum CompilerError {
     EarlyExit(&'static str),
 
+    ParserError(parse::ParseErr),
     ScannerError(scan::ScanErr),
     CliError(cli::CliErr),
+}
+impl From<parse::ParseErr> for CompilerError {
+    fn from(err: parse::ParseErr) -> Self {
+        CompilerError::ParserError(err)
+    }
 }
 impl From<scan::ScanErr> for CompilerError {
     fn from(err: scan::ScanErr) -> Self {

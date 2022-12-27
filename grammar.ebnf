@@ -1,0 +1,22 @@
+# # original
+# type ::= "unit" | "int" | "char" | "bool" | "float"
+# | "(", type, {",", type} ")"
+# | type "->" type
+# | type "ref"
+# | "array", [ "[", "*", {",", "*"}, "]" ], "of", type
+# | id
+# ;
+
+# "->" is right associative
+# "ref" and "array" have higher precedence than "->"
+
+type_primary ::= type_precedence_helper, ["->", type_primary]
+;
+
+type_precedence_helper ::= ("unit" | "int" | "char" | "bool" | "float"
+| "(", type_primary, {",", type_primary} ")"
+| "array", [ "[", "*", {",", "*"}, "]" ], "of", type_precedence_helper
+| id), [type_recursion_helper]
+;
+
+type_recursion_helper ::= "ref" | "ref" type_recursion_helper

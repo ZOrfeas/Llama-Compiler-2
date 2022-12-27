@@ -33,6 +33,12 @@ impl Token {
             to,
         }
     }
+    pub fn get_string_value(&self) -> String {
+        match &self.value {
+            TokenValue::String(s) => s.clone(),
+            _ => panic!("TokenValue is not a string"),
+        }
+    }
 }
 #[derive(Debug, Clone)]
 pub enum TokenValue {
