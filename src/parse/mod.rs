@@ -49,12 +49,16 @@ impl<L: Iterator<Item = Token>> Parser<L> {
                 };
                 p.expect(TokenKind::Eq)?;
                 let expr = p.expr()?;
-                Ok(ast::Def::Function(ast::FunctionDef {
-                    id,
-                    pars,
-                    type_,
-                    expr,
-                }))
+                if pars.is_empty() {
+                    Ok(ast::Def::Const(ast::ConstDef { id, type_, expr }))
+                } else {
+                    Ok(ast::Def::Function(ast::FunctionDef {
+                        id,
+                        pars,
+                        type_,
+                        expr,
+                    }))
+                }
             }),
             (TokenKind::Mutable, |p, _| {
                 let id = p.expect(TokenKind::IdLower)?.extract_string_value();

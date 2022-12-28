@@ -53,7 +53,7 @@ fn run_compiler(args: &cli::Cli) -> CompilerResult<()> {
         )?
         .into_parser()
         .program()?;
-    println!("{:#?}", ast);
+    ptree::print_tree(&parse::ast::Node::Program(&ast)).expect("Failed to print tree");
     // TODO: Implement parser
     // TODO: Implement sem
     // TODO: Implement irgen

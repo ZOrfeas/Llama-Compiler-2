@@ -202,9 +202,10 @@ mod tests {
         assert_eq!(iter.queue.len(), 3);
         assert_eq!(iter.drain_all_peeked().collect::<Vec<i32>>(), [3, 4, 5]);
         assert_eq!(iter.queue.len(), 0);
-        assert_eq!(iter.drain_all_peeked().collect::<Vec<i32>>(), &[]);
+        let empty: &[i32] = &[];
+        assert_eq!(iter.drain_all_peeked().collect::<Vec<i32>>(), empty);
         assert_eq!(iter.peek(), None);
-        assert_eq!(iter.drain_all_peeked().collect::<Vec<i32>>(), &[]);
+        assert_eq!(iter.drain_all_peeked().collect::<Vec<i32>>(), empty);
     }
     #[test]
     fn count_peeked() {
