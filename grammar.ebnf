@@ -38,7 +38,7 @@ expr ::= int_const | float_const | char_const | string_literal | "true" | "false
     | unop expr | expr binop expr | (id | Id) {expr}
     | id "[" expr, {",", expr}, "]"
     | "dim", [int_const], id # possibly obsolete as a language feature if it can be modeled as a polymorphic function
-    | "new", type | delete expr | letdef "in" expr | "begin" expr "end"
+    | "new", type | "delete" expr | letdef "in" expr | "begin" expr "end"
     | "if", expr, "then", expr, ["else", expr]
     | "while", expr, "do", expr, "done"
     | "for", id, "=", expr, ("to" | "downto") expr, "do", expr, "done"

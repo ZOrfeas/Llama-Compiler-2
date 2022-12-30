@@ -108,67 +108,26 @@ impl<L: Iterator<Item = Token>> Parser<L> {
         })
     }
     fn par(&mut self) -> ParseResult<ast::Par> {
-        self.expect_any_of(&[
-            (TokenKind::IdLower, |p, id| {
+        expect_any_of!(self,
+            (TokenKind::IdLower) -> |token: Token| {
                 Ok(ast::Par {
-                    id: id.get_string_value(),
+                    id: token.extract_string_value(),
                     type_: None,
                 })
-            }),
-            (TokenKind::LParen, |p, _| {
-                let id = p.expect(TokenKind::IdLower)?.extract_string_value();
-                p.expect(TokenKind::Colon)?;
-                let type_ = p.r#type()?;
-                p.expect(TokenKind::RParen)?;
+            },
+            (TokenKind::LParen) -> |_| {
+                let id = self.expect(TokenKind::IdLower)?.extract_string_value();
+                self.expect(TokenKind::Colon)?;
+                let type_ = self.r#type()?;
+                self.expect(TokenKind::RParen)?;
                 Ok(ast::Par {
                     id,
                     type_: Some(type_),
                 })
-            }),
-        ])
+            }
+        )
     }
 
-    fn type_precedence_helper(&mut self) -> ParseResult<ast::Type> {
-        let mut t = self.expect_any_of(&[
-            (TokenKind::Unit, |_, _| Ok(ast::Type::Unit)),
-            (TokenKind::Int, |_, _| Ok(ast::Type::Int)),
-            (TokenKind::Char, |_, _| Ok(ast::Type::Char)),
-            (TokenKind::Bool, |_, _| Ok(ast::Type::Bool)),
-            (TokenKind::Float, |_, _| Ok(ast::Type::Float)),
-            (TokenKind::LParen, |p, _| {
-                let t = p
-                    .match_at_least_one(Self::r#type, &TokenKind::Comma)
-                    .map(ast::Type::maybe_tuple)?;
-                p.expect(TokenKind::RParen)?;
-                Ok(t)
-            }),
-            (TokenKind::Array, |p, _| {
-                let dimensions = if p.accept(&TokenKind::LBracket).is_some() {
-                    p.expect(TokenKind::Star)?;
-                    let mut dimensions = 1;
-                    while p.accept(&TokenKind::Comma).is_some() {
-                        p.expect(TokenKind::Star)?;
-                        dimensions += 1;
-                    }
-                    p.expect(TokenKind::RBracket)?;
-                    dimensions
-                } else {
-                    1
-                };
-                p.expect(TokenKind::Of)?;
-                p.type_precedence_helper()
-                    .map(|t| ast::Type::Array(Box::new(t), dimensions))
-            }),
-            (TokenKind::IdLower, |_, t| {
-                Ok(ast::Type::Custom(t.extract_string_value()))
-            }),
-        ])?;
-        // below loop handles type_recursion_helper non-terminal
-        while self.accept(&TokenKind::Ref).is_some() {
-            t = ast::Type::Ref(Box::new(t));
-        }
-        Ok(t)
-    }
     fn r#type(&mut self) -> ParseResult<ast::Type> {
         let t1 = self.type_precedence_helper()?;
         if self.accept(&TokenKind::Arrow).is_some() {
@@ -178,29 +137,57 @@ impl<L: Iterator<Item = Token>> Parser<L> {
             Ok(t1)
         }
     }
+    fn type_precedence_helper(&mut self) -> ParseResult<ast::Type> {
+        let mut t = expect_any_of!(self,
+            (TokenKind::Unit) -> |token: Token| Ok((&token).into()),
+            (TokenKind::Int) -> |token: Token| Ok((&token).into()),
+            (TokenKind::Char) -> |token: Token| Ok((&token).into()),
+            (TokenKind::Bool) -> |token: Token| Ok((&token).into()),
+            (TokenKind::Float) -> |token: Token| Ok((&token).into()),
+            (TokenKind::LParen) -> |_| {
+                let t = self
+                    .match_at_least_one(Self::r#type, &TokenKind::Comma)
+                    .map(ast::Type::maybe_tuple)?;
+                self.expect(TokenKind::RParen)?;
+                Ok(t)
+            },
+            (TokenKind::Array) -> |_| {
+                let dimensions = if self.accept(&TokenKind::LBracket).is_some() {
+                    self.expect(TokenKind::Star)?;
+                    let mut dimensions = 1;
+                    while self.accept(&TokenKind::Comma).is_some() {
+                        self.expect(TokenKind::Star)?;
+                        dimensions += 1;
+                    }
+                    self.expect(TokenKind::RBracket)?;
+                    dimensions
+                } else {
+                    1
+                };
+                self.expect(TokenKind::Of)?;
+                self.type_precedence_helper()
+                    .map(|t| ast::Type::Array(Box::new(t), dimensions))
+            },
+            (TokenKind::IdLower) -> |token: Token| {
+                Ok(ast::Type::Custom(token.extract_string_value()))
+            }
+        )?;
+        // below loop handles type_recursion_helper non-terminal
+        while self.accept(&TokenKind::Ref).is_some() {
+            t = ast::Type::Ref(Box::new(t));
+        }
+        Ok(t)
+    }
     fn expr(&mut self) -> ParseResult<ast::Expr> {
         todo!("expr")
     }
-
-    fn expect_any_of<T>(
-        &mut self,
-        kinds_callbacks: &[(TokenKind, fn(&mut Self, Token) -> ParseResult<T>)],
-    ) -> ParseResult<T> {
-        if let Some((token, callback)) = kinds_callbacks
-            .iter()
-            .find_map(|(kind, callback)| self.accept(kind).map(|t| (t, callback)))
-        {
-            callback(self, token)
-        } else {
-            Err(ParseErr::UnexpectedToken(
-                self.lexer.peek().cloned(),
-                kinds_callbacks
-                    .iter()
-                    .map(|(kind, _)| kind.clone())
-                    .collect(),
-            ))
-        }
+    fn clause(&mut self) -> ParseResult<ast::Clause> {
+        todo!("clause")
     }
+    fn pattern(&mut self) -> ParseResult<ast::Pattern> {
+        todo!("pattern")
+    }
+
     fn expect(&mut self, token_kind: TokenKind) -> ParseResult<Token> {
         self.accept(&token_kind).ok_or(ParseErr::UnexpectedToken(
             self.lexer.peek().cloned(),
@@ -244,10 +231,18 @@ impl<L: Iterator<Item = Token>> Parser<L> {
     fn match_zero_or_more_until<T>(
         &mut self,
         matcher: fn(&mut Self) -> ParseResult<T>,
-        separators: &[TokenKind],
+        start_tokens: &[TokenKind],
+        stop_tokens: &[TokenKind],
     ) -> ParseResult<Vec<T>> {
+        if start_tokens
+            .iter()
+            .find(|&separator| Some(separator) == self.lexer.peek().map(|t| &t.kind))
+            .is_none()
+        {
+            return Ok(vec![]);
+        }
         let mut vec: Vec<T> = Vec::new();
-        while separators
+        while stop_tokens
             .iter()
             .find(|&separator| Some(separator) == self.lexer.peek().map(|t| &t.kind))
             .is_none()
@@ -259,13 +254,13 @@ impl<L: Iterator<Item = Token>> Parser<L> {
     fn match_at_least_one_until<T>(
         &mut self,
         matcher: fn(&mut Self) -> ParseResult<T>,
-        separators: &[TokenKind],
+        stop_tokens: &[TokenKind],
     ) -> ParseResult<Vec<T>> {
         let mut vec: Vec<T> = Vec::new();
         loop {
             vec.push(matcher(self)?);
             let peek_kind = self.lexer.peek().map(|t| &t.kind);
-            if separators
+            if stop_tokens
                 .iter()
                 .find(|&separator| Some(separator) == peek_kind)
                 .is_some()

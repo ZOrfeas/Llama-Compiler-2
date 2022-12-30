@@ -53,8 +53,9 @@ fn run_compiler(args: &cli::Cli) -> CompilerResult<()> {
         )?
         .into_parser()
         .program()?;
-    ptree::print_tree(&parse::ast::Node::Program(&ast)).expect("Failed to print tree");
-    // TODO: Implement parser
+    args.print
+        .get_ast_writer()?
+        .map(|w| ast.print(w).expect("Failed to print AST"));
     // TODO: Implement sem
     // TODO: Implement irgen
     // TODO: Implement codegen/binary-gen

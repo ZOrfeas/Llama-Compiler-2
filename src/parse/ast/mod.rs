@@ -2,6 +2,8 @@ use std::borrow::Cow;
 
 use ptree::TreeItem;
 
+use crate::lex::token::{Token, TokenKind};
+
 #[derive(Debug, Clone)]
 pub struct Program {
     pub definitions: Vec<Definition>,
@@ -91,7 +93,13 @@ pub struct Par {
 }
 #[derive(Debug, Clone)]
 pub struct Expr {}
-
+#[derive(Debug, Clone)]
+pub struct Clause {
+    pub pattern: Pattern,
+    pub expr: Expr,
+}
+#[derive(Debug, Clone)]
+pub enum Pattern {}
 impl Type {
     /// If the vector contains only one element, return that element.
     /// Otherwise, return a tuple.
@@ -100,6 +108,18 @@ impl Type {
             types.into_iter().next().expect("Tuple with 1 element")
         } else {
             Self::Tuple(types)
+        }
+    }
+}
+impl From<&Token> for Type {
+    fn from(token: &Token) -> Self {
+        match token.kind {
+            TokenKind::Unit => Self::Unit,
+            TokenKind::Int => Self::Int,
+            TokenKind::Char => Self::Char,
+            TokenKind::Bool => Self::Bool,
+            TokenKind::Float => Self::Float,
+            _ => panic!("Cannot convert token to type"),
         }
     }
 }
@@ -160,15 +180,16 @@ impl<'a> TreeItem for Node<'a> {
                 Node::Program(p) => format!("Program with {} definitions", p.definitions.len()),
                 Node::Definition(d) => match d {
                     Definition::Let(l) => format!(
-                        "{}Letdef with {} defs",
-                        if l.rec { "Rec " } else { "" },
+                        "{}let statement with {} definitions",
+                        if l.rec { "Recursive " } else { "" },
                         l.defs.len()
                     ),
-                    Definition::Type(t) => format!("Typedef with {} tdefs", t.tdefs.len()),
+                    Definition::Type(t) =>
+                        format!("type statement with {} type definitions", t.tdefs.len()),
                 },
                 Node::Def(d) => {
                     let (str, type_) = match d {
-                        Def::Const(c) => (format!("Const {}", c.id), &c.type_),
+                        Def::Const(c) => (format!("Constant {}", c.id), &c.type_),
                         Def::Variable(v) => (format!("Variable {}", v.id), &v.type_),
                         Def::Array(a) => (format!("Array {}", a.id), &a.type_),
                         Def::Function(f) => (format!("Function {}", f.id), &f.type_),
@@ -179,10 +200,10 @@ impl<'a> TreeItem for Node<'a> {
                         str
                     }
                 }
-                Node::TDef(t) => format!("TDef {}", t.id),
-                Node::Constr(c) => format!("Constr {}", c.id),
+                Node::TDef(t) => format!("Type {}", t.id),
+                Node::Constr(c) => format!("Constructor {}", c.id),
                 Node::Type(t) => format!("{}", t),
-                Node::Par(p) => format!("Par {}", p.id),
+                Node::Par(p) => format!("Parameter {}", p.id),
                 Node::Expr(e) => todo!(),
             })
         )

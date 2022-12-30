@@ -24,7 +24,7 @@
             },
             "args": [
                 "./tests/input.lla",
-                "-s", "preprocessing", "-v", "print", "--tokens",
+                "-s", "parsing", "print", "--ast",
             ],
             "cwd": "${workspaceFolder}"
         },
