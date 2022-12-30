@@ -1,9 +1,31 @@
+#![allow(unused_parens)]
+
 use crate::{
     lex::token::{Token, TokenKind},
     long_peekable::{LongPeek, LongPeekableIterator},
 };
 
 pub mod ast;
+macro_rules! expect_any_of {
+    (@as_expr $e:expr) => {$e};
+    (@as_pat $p:pat) => {$p};
+    ($self:ident, $($kind:tt -> $expr:expr),*) => {
+        match $self.lexer.peek().map(|t| &t.kind) {
+            $(
+                Some(expect_any_of!(@as_pat $kind)) => {
+                    let token = $self.accept(&expect_any_of!(@as_expr ($kind))).expect("TokenKind matched but not accepted");
+                    $expr(token)
+                }
+            )*
+            _ => Err(ParseErr::UnexpectedToken($self.lexer.peek().cloned(), vec![
+                $(
+                    expect_any_of!(@as_expr ($kind))
+                ),*
+            ]))
+
+        }
+    }
+}
 
 pub struct Parser<L: Iterator<Item = Token>> {
     lexer: LongPeekableIterator<L>,
@@ -20,12 +42,10 @@ impl<L: Iterator<Item = Token>> Parser<L> {
     pub fn program(&mut self) -> ParseResult<ast::Program> {
         let mut definitions: Vec<ast::Definition> = Vec::new();
         while self.accept(&TokenKind::EOF).is_none() {
-            let definition = self.expect_any_of(&[
-                (TokenKind::Let, |p, _| p.letdef().map(ast::Definition::Let)),
-                (TokenKind::Type, |p, _| {
-                    p.typedef().map(ast::Definition::Type)
-                }),
-            ])?;
+            let definition = expect_any_of!(self,
+                (TokenKind::Let) -> |_| self.letdef().map(ast::Definition::Let),
+                (TokenKind::Type) -> |_| self.typedef().map(ast::Definition::Type)
+            )?;
             definitions.push(definition);
         }
         Ok(ast::Program { definitions })
@@ -37,18 +57,21 @@ impl<L: Iterator<Item = Token>> Parser<L> {
         })
     }
     fn def(&mut self) -> ParseResult<ast::Def> {
-        self.expect_any_of(&[
-            (TokenKind::IdLower, |p, id| {
-                let id = id.extract_string_value();
-                let pars =
-                    p.match_zero_or_more_until(Self::par, &[TokenKind::Colon, TokenKind::Eq])?;
-                let type_ = if p.accept(&TokenKind::Colon).is_some() {
-                    Some(p.r#type()?)
+        expect_any_of!(self,
+            (TokenKind::IdLower) -> |token: Token| {
+                let id = token.extract_string_value();
+                let pars = self.match_zero_or_more_until(
+                    Self::par,
+                    &[TokenKind::Colon, TokenKind::Eq],
+                    &[TokenKind::IdLower, TokenKind::LParen],
+                )?;
+                let type_ = if self.accept(&TokenKind::Colon).is_some() {
+                    Some(self.r#type()?)
                 } else {
                     None
                 };
-                p.expect(TokenKind::Eq)?;
-                let expr = p.expr()?;
+                self.expect(TokenKind::Eq)?;
+                let expr = self.expr()?;
                 if pars.is_empty() {
                     Ok(ast::Def::Const(ast::ConstDef { id, type_, expr }))
                 } else {
@@ -59,18 +82,18 @@ impl<L: Iterator<Item = Token>> Parser<L> {
                         expr,
                     }))
                 }
-            }),
-            (TokenKind::Mutable, |p, _| {
-                let id = p.expect(TokenKind::IdLower)?.extract_string_value();
-                let dims = if p.accept(&TokenKind::LBracket).is_some() {
-                    let dims = p.match_at_least_one(Self::expr, &TokenKind::Comma)?;
-                    p.expect(TokenKind::RBracket)?;
+            },
+            (TokenKind::Mutable) -> |_| {
+                let id = self.expect(TokenKind::IdLower)?.extract_string_value();
+                let dims = if self.accept(&TokenKind::LBracket).is_some() {
+                    let dims = self.match_at_least_one(Self::expr, &TokenKind::Comma)?;
+                    self.expect(TokenKind::RBracket)?;
                     dims
                 } else {
                     Vec::new()
                 };
-                let type_ = if p.accept(&TokenKind::Colon).is_some() {
-                    Some(p.r#type()?)
+                let type_ = if self.accept(&TokenKind::Colon).is_some() {
+                    Some(self.r#type()?)
                 } else {
                     None
                 };
@@ -79,8 +102,8 @@ impl<L: Iterator<Item = Token>> Parser<L> {
                 } else {
                     Ok(ast::Def::Array(ast::ArrayDef { id, type_, dims }))
                 }
-            }),
-        ])
+            }
+        )
     }
     fn typedef(&mut self) -> ParseResult<ast::Typedef> {
         Ok(ast::Typedef {
