@@ -1,8 +1,8 @@
+pub mod print;
+
 use std::borrow::Cow;
 
-use ptree::TreeItem;
-
-use crate::lex::token::{Token, TokenKind};
+use crate::lex::token::TokenKind;
 
 #[derive(Debug, Clone)]
 pub struct Program {
@@ -12,7 +12,7 @@ impl Program {
     pub fn print(&self, w: impl std::io::Write) -> std::io::Result<()> {
         // let config = ptree::PrintConfig::from_env();
         // ptree::write_tree_with(&Node::Program(&self), w, &config)
-        ptree::write_tree(&Node::Program(&self), w)
+        ptree::write_tree(&print::Node::Program(&self), w)
     }
 }
 
@@ -92,14 +92,87 @@ pub struct Par {
     pub type_: Option<Type>,
 }
 #[derive(Debug, Clone)]
-pub struct Expr {}
+pub enum Expr {
+    UnitLiteral,
+    IntLiteral(i32),
+    FloatLiteral(f64),
+    CharLiteral(u8),
+    StringLiteral(String),
+    BoolLiteral(bool),
+    Tuple(Vec<Expr>),
+    Unop(Unop, Box<Expr>),
+    Binop(Binop, Box<Expr>, Box<Expr>),
+    Call(String, Vec<Expr>),
+    ConstrCall(String, Vec<Expr>),
+    ArrayAccess(String, Vec<Expr>),
+    Dim(String, i32),
+    New(Type),
+    LetIn(Letdef, Box<Expr>),
+    If(Box<Expr>, Box<Expr>, Option<Box<Expr>>),
+    While(Box<Expr>, Box<Expr>),
+    For(String, Box<Expr>, bool, Box<Expr>, Box<Expr>),
+    Match(Box<Expr>, Vec<Clause>),
+}
+#[derive(Debug, Clone)]
+pub enum Unop {
+    Plus,
+    Minus,
+    Deref,
+    Not,
+    PlusFlt,
+    MinusFlt,
+    Delete,
+}
+#[derive(Debug, Clone)]
+pub enum Binop {
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Mod,
+    Pow,
+    StrEq,
+    StrNotEq,
+    NatEq,
+    NatNotEq,
+    Lt,
+    Gt,
+    LEq,
+    GEq,
+    And,
+    Or,
+    Semicolon,
+    Assign,
+    AddFlt,
+    SubFlt,
+    MulFlt,
+    DivFlt,
+}
 #[derive(Debug, Clone)]
 pub struct Clause {
     pub pattern: Pattern,
     pub expr: Expr,
 }
 #[derive(Debug, Clone)]
-pub enum Pattern {}
+pub enum Pattern {
+    IntLiteral(i32),
+    FloatLiteral(f64),
+    CharLiteral(u8),
+    StringLiteral(String),
+    BoolLiteral(bool),
+    IdLower(String),
+    Tuple(Vec<Pattern>),
+    IdUpper(String, Vec<Pattern>),
+}
+impl Pattern {
+    pub fn maybe_tuple(patterns: Vec<Pattern>) -> Self {
+        if patterns.len() == 1 {
+            patterns.into_iter().next().expect("Tuple with 1 element")
+        } else {
+            Self::Tuple(patterns)
+        }
+    }
+}
 impl Type {
     /// If the vector contains only one element, return that element.
     /// Otherwise, return a tuple.
@@ -111,9 +184,28 @@ impl Type {
         }
     }
 }
-impl From<&Token> for Type {
-    fn from(token: &Token) -> Self {
-        match token.kind {
+impl Expr {
+    pub fn maybe_tuple(exprs: Vec<Expr>) -> Self {
+        if exprs.len() == 1 {
+            exprs
+                .into_iter()
+                .next()
+                .expect("Vector should not be empty")
+        } else {
+            Self::Tuple(exprs)
+        }
+    }
+    pub fn left_assoc_from_vec(exprs: Vec<Expr>, token_kind: &TokenKind) -> Self {
+        let binop = Binop::from(token_kind);
+        exprs
+            .into_iter()
+            .reduce(|acc, e| Expr::Binop(binop.clone(), Box::new(acc), Box::new(e)))
+            .expect("expression vector should not be empty")
+    }
+}
+impl From<&TokenKind> for Type {
+    fn from(token_kind: &TokenKind) -> Self {
+        match token_kind {
             TokenKind::Unit => Self::Unit,
             TokenKind::Int => Self::Int,
             TokenKind::Char => Self::Char,
@@ -123,128 +215,46 @@ impl From<&Token> for Type {
         }
     }
 }
-impl std::fmt::Display for Type {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Type::Unit => write!(f, "unit"),
-            Type::Int => write!(f, "int"),
-            Type::Char => write!(f, "char"),
-            Type::Bool => write!(f, "bool"),
-            Type::Float => write!(f, "float"),
-            Type::Func(t1, t2) => write!(f, "{} -> ({})", t1, t2),
-            Type::Ref(t) => write!(f, "({} ref)", t),
-            Type::Array(t, n) => write!(
-                f,
-                "{}[{}]",
-                t,
-                (0..*n).map(|_| "*").collect::<Vec<_>>().join(", ")
-            ),
-            Type::Tuple(ts) => {
-                write!(
-                    f,
-                    "({})",
-                    ts.iter()
-                        .map(|t| format!("{}", t))
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                )
-            }
-            Type::Custom(s) => write!(f, "{}", s),
+impl From<&TokenKind> for Unop {
+    fn from(token_kind: &TokenKind) -> Self {
+        match token_kind {
+            TokenKind::Plus => Self::Plus,
+            TokenKind::Minus => Self::Minus,
+            TokenKind::Exclam => Self::Deref,
+            TokenKind::Not => Self::Not,
+            TokenKind::PlusDot => Self::PlusFlt,
+            TokenKind::MinusDot => Self::MinusFlt,
+            TokenKind::Delete => Self::Delete,
+            _ => panic!("Cannot convert token to unop"),
         }
     }
 }
-
-#[derive(Debug, Clone)]
-pub enum Node<'a> {
-    Program(&'a Program),
-    Definition(&'a Definition),
-    Def(&'a Def),
-    TDef(&'a TDef),
-    Constr(&'a Constr),
-    Type(&'a Type),
-    Par(&'a Par),
-    Expr(&'a Expr),
-}
-
-impl<'a> TreeItem for Node<'a> {
-    type Child = Node<'a>;
-    fn write_self<W: std::io::Write>(
-        &self,
-        f: &mut W,
-        style: &ptree::Style,
-    ) -> std::io::Result<()> {
-        write!(
-            f,
-            "{}",
-            style.paint(match self {
-                Node::Program(p) => format!("Program with {} definitions", p.definitions.len()),
-                Node::Definition(d) => match d {
-                    Definition::Let(l) => format!(
-                        "{}let statement with {} definitions",
-                        if l.rec { "Recursive " } else { "" },
-                        l.defs.len()
-                    ),
-                    Definition::Type(t) =>
-                        format!("type statement with {} type definitions", t.tdefs.len()),
-                },
-                Node::Def(d) => {
-                    let (str, type_) = match d {
-                        Def::Const(c) => (format!("Constant {}", c.id), &c.type_),
-                        Def::Variable(v) => (format!("Variable {}", v.id), &v.type_),
-                        Def::Array(a) => (format!("Array {}", a.id), &a.type_),
-                        Def::Function(f) => (format!("Function {}", f.id), &f.type_),
-                    };
-                    if let Some(t) = type_ {
-                        format!("{} of type {}", str, t)
-                    } else {
-                        str
-                    }
-                }
-                Node::TDef(t) => format!("Type {}", t.id),
-                Node::Constr(c) => format!("Constructor {}", c.id),
-                Node::Type(t) => format!("{}", t),
-                Node::Par(p) => format!("Parameter {}", p.id),
-                Node::Expr(e) => todo!(),
-            })
-        )
-    }
-    fn children(&self) -> Cow<[Self::Child]> {
-        Cow::from(match self {
-            Node::Program(p) => p
-                .definitions
-                .iter()
-                .map(|d| Node::Definition(d))
-                .collect::<Vec<_>>(),
-            Node::Definition(d) => match d {
-                Definition::Let(l) => l.defs.iter().map(|d| Node::Def(d)).collect::<Vec<_>>(),
-                Definition::Type(t) => t.tdefs.iter().map(|t| Node::TDef(t)).collect::<Vec<_>>(),
-            },
-            Node::Def(d) => match d {
-                Def::Const(c) => vec![Node::Expr(&c.expr)],
-                Def::Variable(v) => Vec::new(),
-                Def::Array(a) => a.dims.iter().map(|e| Node::Expr(e)).collect(),
-                Def::Function(fun) => {
-                    let mut vec = Vec::new();
-                    vec.extend(fun.pars.iter().map(|p| Node::Par(p)));
-                    vec.push(Node::Expr(&fun.expr));
-                    vec
-                }
-            },
-            Node::TDef(t) => t
-                .constrs
-                .iter()
-                .map(|c| Node::Constr(c))
-                .collect::<Vec<_>>(),
-            Node::Constr(c) => c.types.iter().map(|t| Node::Type(t)).collect::<Vec<_>>(),
-            Node::Type(t) => Vec::new(),
-            Node::Par(p) => {
-                let mut vec = Vec::new();
-                if let Some(t) = &p.type_ {
-                    vec.push(Node::Type(t));
-                }
-                vec
-            }
-            Node::Expr(e) => todo!(),
-        })
+impl From<&TokenKind> for Binop {
+    fn from(token_kind: &TokenKind) -> Self {
+        match token_kind {
+            TokenKind::Plus => Self::Add,
+            TokenKind::Minus => Self::Sub,
+            TokenKind::Star => Self::Mul,
+            TokenKind::Slash => Self::Div,
+            TokenKind::Mod => Self::Mod,
+            TokenKind::DblStar => Self::Pow,
+            TokenKind::Eq => Self::StrEq,
+            TokenKind::LtGt => Self::StrNotEq,
+            TokenKind::DblEq => Self::NatEq,
+            TokenKind::ExclamEq => Self::NatNotEq,
+            TokenKind::Lt => Self::Lt,
+            TokenKind::Gt => Self::Gt,
+            TokenKind::LEq => Self::LEq,
+            TokenKind::GEq => Self::GEq,
+            TokenKind::DblAmpersand => Self::And,
+            TokenKind::DblBar => Self::Or,
+            TokenKind::Semicolon => Self::Semicolon,
+            TokenKind::ColonEq => Self::Assign,
+            TokenKind::PlusDot => Self::AddFlt,
+            TokenKind::MinusDot => Self::SubFlt,
+            TokenKind::StarDot => Self::MulFlt,
+            TokenKind::SlashDot => Self::DivFlt,
+            _ => panic!("Cannot convert token to binop"),
+        }
     }
 }

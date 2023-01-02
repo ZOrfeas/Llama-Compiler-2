@@ -33,16 +33,28 @@ impl Token {
             to,
         }
     }
-    pub fn get_string_value(&self) -> String {
-        match &self.value {
-            TokenValue::String(s) => s.clone(),
-            _ => panic!("TokenValue is not a string"),
-        }
-    }
     pub fn extract_string_value(self) -> String {
         match self.value {
             TokenValue::String(s) => s,
             _ => panic!("TokenValue is not a string"),
+        }
+    }
+    pub fn extract_int_value(self) -> i32 {
+        match self.value {
+            TokenValue::Int(i) => i,
+            _ => panic!("TokenValue is not an int"),
+        }
+    }
+    pub fn extract_float_value(self) -> f64 {
+        match self.value {
+            TokenValue::Float(f) => f,
+            _ => panic!("TokenValue is not a float"),
+        }
+    }
+    pub fn extract_char_value(self) -> u8 {
+        match self.value {
+            TokenValue::Char(c) => c,
+            _ => panic!("TokenValue is not a char"),
         }
     }
 }

@@ -1,13 +1,13 @@
 ####### General Grammar #######
 # original
 program ::= {letdef | typedef};
-letdef ::= "let", ["rec"], def, {"and", def};
-def ::= id, {par}, [":", type] "=", expr
-    | "mutable", id, ["[" expr, {",", expr}, "]"] [":", type]
+letdef ::= "let" ["rec"] def {"and" def};
+def ::= id {par} [":" type] "=" expr
+    | "mutable" id ["[" expr {"," expr} "]"] [":" type]
 ;
-typedef ::= "type", tdef, {"and", tdef};
-tdef ::= id, "=", constr, { "|", constr };
-constr ::= Id, ["of" {type}+];
+typedef ::= "type" tdef {"and" tdef};
+tdef ::= id "=" constr { "|" constr };
+constr ::= Id ["of" {type}+];
 par ::= id | "(" id : type ")";
 
 ####### Type Grammar #######
@@ -23,44 +23,76 @@ par ::= id | "(" id : type ")";
 # "->" is right associative
 # "ref" and "array" have higher precedence than "->"
 
-type ::= type_precedence_helper, ["->", type];
-type_precedence_helper ::= ("unit" | "int" | "char" | "bool" | "float"
-    | "(", type, {",", type} ")" # supports tuples
-    | "array", [ "[", "*", {",", "*"}, "]" ], "of", type_precedence_helper
-    | id), [type_recursion_helper]
+type ::= type_precedence_helper ["->" type];
+type_precedence_helper ::=
+    ("unit" | "int" | "char" | "bool" | "float"
+        | "(" type {"," type} ")" # supports tuples
+        | "array" [ "[" "*" {"," "*"} "]" ] "of" type_precedence_helper
+        | id
+    ) [type_recursion_helper]
 ;
 type_recursion_helper ::= "ref" | "ref" type_recursion_helper;
 
 ####### Expression Grammar #######
-# original
-expr ::= int_const | float_const | char_const | string_literal | "true" | "false" | "(", ")" 
-    | "(", expr, {",", expr}, ")" # supports tuples
-    | unop expr | expr binop expr | (id | Id) {expr}
-    | id "[" expr, {",", expr}, "]"
-    | "dim", [int_const], id # possibly obsolete as a language feature if it can be modeled as a polymorphic function
-    | "new", type | "delete" expr | letdef "in" expr | "begin" expr "end"
-    | "if", expr, "then", expr, ["else", expr]
-    | "while", expr, "do", expr, "done"
-    | "for", id, "=", expr, ("to" | "downto") expr, "do", expr, "done"
-    | "match", expr, "with", clause, { "|", clause }, "end"
-;
-unop ::= "+" | "-" | "!" | "not"
-    | "+." | "-." # possibly not in the spirit of the language if it supports polymorphism
-;
-binop ::= "+" | "-" | "*" | "/" | "mod" | "**" | "=" | "<>" | "<" | ">"| "<=" | ">="
-    | "==" | "!=" | "&&" | "||" | ";" | ":="
-    | "+." | "-." | "*." | "/." # possibly not in the spirit of the language if it supports polymorphism
-;
+# # original
+# expr ::= int_const | float_const | char_const | string_literal | "true" | "false" | "(", ")" 
+#     | "(" expr {"," expr} ")" # supports tuples
+#     | unop expr | expr binop expr | (id | Id) {expr}
+#     | id "[" expr {"," expr} "]"
+#     | "dim" [int_const] id # possibly obsolete as a language feature if it can be modeled as a polymorphic function
+#     | "new" type | "delete" expr | letdef "in" expr | "begin" expr "end"
+#     | "if" expr "then" expr ["else" expr]
+#     | "while" expr "do" expr "done"
+#     | "for" id "=" expr ("to" | "downto") expr "do" expr "done"
+#     | "match" expr "with" clause { "|" clause } "end"
+# ;
+# unop ::= "+" | "-" | "!" | "not"
+#     | "+." | "-." # possibly not in the spirit of the language if it supports polymorphism
+# ;
+# binop ::= "+" | "-" | "*" | "/" | "mod" | "**" | "=" | "<>" | "<" | ">"| "<=" | ">="
+#     | "==" | "!=" | "&&" | "||" | ";" | ":="
+#     | "+." | "-." | "*." | "/." # possibly not in the spirit of the language if it supports polymorphism
+# ;
 clause ::= pattern "->" expr;
 pattern ::= ["+" | "-"] int_const 
     | ["+." | "-."] float_const # possibly not in the spirit of the language if it supports polymorphism
     | char_const 
     # | string_literal # we may want to support this
     | "true" | "false" | id
-    | "(" pattern, {",", pattern}, ")" # supports tuples
-    | Id, {pattern}
+    | "(" pattern {"," pattern} ")" # supports tuples
+    | Id {pattern}
+;
+# consider relaxing precedence requirements for many where expression is bound both left and right by terminals
+expr ::= expr(0);
+expr(0) ::= {letdef "in"} expr(1);
+expr(1) ::= expr(2) {";" expr(2)};
+expr(2) ::= "if" expr(2) "then" expr(2) ["else" expr(2)] # dangling else handled by closest if
+    | expr(3)
+;
+## these can be handled by a precedence climbing algorithm
+expr(3) ::= expr(4) {"||" expr(4)};
+expr(4) ::= expr(5) {"&&" expr(5)};
+expr(5) ::= expr(6) [("=" | "<>" | "<" | ">"| "<=" | ">=" | "==" | "!=") expr(6)];
+expr(6) ::= expr(7) {("+" | "-" | "+." | "-.") expr(7)}; # possibly not in the spirit of the language if it supports polymorphism
+expr(7) ::= expr(8) {("*" | "/" | "mod" | "*." | "/.") expr(8)}; # possibly not in the spirit of the language if it supports polymorphism
+expr(8) ::= expr(9) ["**" expr(8)];
+
+expr(9) ::= {"+" | "-" | "+." | "-." | "not" | "delete"} expr(10); # possibly not in the spirit of the language if it supports polymorphism
+expr(10) ::= (id | Id) {expr(10)}
+    | {"!"} id "[" expr {"," expr} "]"
+    | {"!"} expr_primary
+;
+expr_primary ::= int_const | float_const | char_const | string_literal | "true" | "false"
+    | "(" ")" | "(" expr {"," expr} ")"
+    | "dim" [int_const] id
+    | "new" type
+    | "begin" expr "end"
+    | "while" expr "do" expr "done"
+    | "for" id "=" expr ("to" | "downto") expr "do" expr "done"
+    | "match" expr "with" clause { "|" clause } "end"
 ;
 
-####### Terminals #######
+
+####### "Terminals" #######
 id ::= [a-z][a-zA-Z0-9_]*;
 Id ::= [A-Z][a-zA-Z0-9_]*;

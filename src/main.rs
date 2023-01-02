@@ -25,17 +25,15 @@ fn main() -> ExitCode {
         Ok(_) => 0.into(),
         Err(CompilerError::EarlyExit(msg)) => {
             info!("{}", msg);
-            0.into()
+            ExitCode::SUCCESS
         }
         Err(err) => {
             error!("{}", err);
-            1.into()
+            ExitCode::FAILURE
         }
     }
 }
 fn run_compiler(args: &cli::Cli) -> CompilerResult<()> {
-    // let scanner = make_scanner(args)?;
-    // let _lexer = make_lexer(args, scanner)?;
     let ast = scan::Scanner::new(&args.filename)?
         .preprocess()
         .make_step(
@@ -56,6 +54,7 @@ fn run_compiler(args: &cli::Cli) -> CompilerResult<()> {
     args.print
         .get_ast_writer()?
         .map(|w| ast.print(w).expect("Failed to print AST"));
+    // TODO: Implement parsing
     // TODO: Implement sem
     // TODO: Implement irgen
     // TODO: Implement codegen/binary-gen

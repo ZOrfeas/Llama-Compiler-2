@@ -1,5 +1,7 @@
 #![allow(unused_parens)]
 
+use log::debug;
+
 use crate::{
     lex::token::{Token, TokenKind},
     long_peekable::{LongPeek, LongPeekableIterator},
@@ -9,19 +11,19 @@ pub mod ast;
 macro_rules! expect_any_of {
     (@as_expr $e:expr) => {$e};
     (@as_pat $p:pat) => {$p};
-    ($self:ident, $($kind:tt -> $expr:expr),*) => {
-        match $self.lexer.peek().map(|t| &t.kind) {
+    ($self:ident, $($kind:path $(| $kinds:path)* => $expr:expr),+) => {
+        match $self.peek_token().map(|t| &t.kind) {
             $(
-                Some(expect_any_of!(@as_pat $kind)) => {
-                    let token = $self.accept(&expect_any_of!(@as_expr ($kind))).expect("TokenKind matched but not accepted");
+                Some($kind) $(| Some($kinds))* => {
+                    let token = $self.consume_token()
+                        .expect("TokenKind matched but not accepted");
                     $expr(token)
                 }
             )*
-            _ => Err(ParseErr::UnexpectedToken($self.lexer.peek().cloned(), vec![
-                $(
-                    expect_any_of!(@as_expr ($kind))
-                ),*
-            ]))
+            _ => Err(ParseErr::UnexpectedToken(
+                $self.peek_token().cloned(),
+                vec![$($kind $(,$kinds)*),*]
+            ))
 
         }
     }
@@ -43,8 +45,8 @@ impl<L: Iterator<Item = Token>> Parser<L> {
         let mut definitions: Vec<ast::Definition> = Vec::new();
         while self.accept(&TokenKind::EOF).is_none() {
             let definition = expect_any_of!(self,
-                (TokenKind::Let) -> |_| self.letdef().map(ast::Definition::Let),
-                (TokenKind::Type) -> |_| self.typedef().map(ast::Definition::Type)
+                TokenKind::Let => |_| self.letdef().map(ast::Definition::Let),
+                TokenKind::Type => |_| self.typedef().map(ast::Definition::Type)
             )?;
             definitions.push(definition);
         }
@@ -58,11 +60,10 @@ impl<L: Iterator<Item = Token>> Parser<L> {
     }
     fn def(&mut self) -> ParseResult<ast::Def> {
         expect_any_of!(self,
-            (TokenKind::IdLower) -> |token: Token| {
+            TokenKind::IdLower => |token: Token| {
                 let id = token.extract_string_value();
-                let pars = self.match_zero_or_more_until(
+                let pars = self.match_zero_or_more_multiple(
                     Self::par,
-                    &[TokenKind::Colon, TokenKind::Eq],
                     &[TokenKind::IdLower, TokenKind::LParen],
                 )?;
                 let type_ = if self.accept(&TokenKind::Colon).is_some() {
@@ -83,7 +84,7 @@ impl<L: Iterator<Item = Token>> Parser<L> {
                     }))
                 }
             },
-            (TokenKind::Mutable) -> |_| {
+            TokenKind::Mutable => |_| {
                 let id = self.expect(TokenKind::IdLower)?.extract_string_value();
                 let dims = if self.accept(&TokenKind::LBracket).is_some() {
                     let dims = self.match_at_least_one(Self::expr, &TokenKind::Comma)?;
@@ -132,13 +133,13 @@ impl<L: Iterator<Item = Token>> Parser<L> {
     }
     fn par(&mut self) -> ParseResult<ast::Par> {
         expect_any_of!(self,
-            (TokenKind::IdLower) -> |token: Token| {
+            TokenKind::IdLower => |token: Token| {
                 Ok(ast::Par {
                     id: token.extract_string_value(),
                     type_: None,
                 })
             },
-            (TokenKind::LParen) -> |_| {
+            TokenKind::LParen => |_| {
                 let id = self.expect(TokenKind::IdLower)?.extract_string_value();
                 self.expect(TokenKind::Colon)?;
                 let type_ = self.r#type()?;
@@ -154,27 +155,25 @@ impl<L: Iterator<Item = Token>> Parser<L> {
     fn r#type(&mut self) -> ParseResult<ast::Type> {
         let t1 = self.type_precedence_helper()?;
         if self.accept(&TokenKind::Arrow).is_some() {
-            let t2 = self.r#type()?;
-            Ok(ast::Type::Func(Box::new(t1), Box::new(t2)))
+            let t1 = Box::new(t1);
+            let t2 = Box::new(self.r#type()?);
+            Ok(ast::Type::Func(t1, t2))
         } else {
             Ok(t1)
         }
     }
     fn type_precedence_helper(&mut self) -> ParseResult<ast::Type> {
         let mut t = expect_any_of!(self,
-            (TokenKind::Unit) -> |token: Token| Ok((&token).into()),
-            (TokenKind::Int) -> |token: Token| Ok((&token).into()),
-            (TokenKind::Char) -> |token: Token| Ok((&token).into()),
-            (TokenKind::Bool) -> |token: Token| Ok((&token).into()),
-            (TokenKind::Float) -> |token: Token| Ok((&token).into()),
-            (TokenKind::LParen) -> |_| {
+            TokenKind::Unit | TokenKind::Int | TokenKind::Char
+            | TokenKind::Bool | TokenKind::Float  => |token: Token| Ok((&token.kind).into()),
+            TokenKind::LParen => |_| {
                 let t = self
                     .match_at_least_one(Self::r#type, &TokenKind::Comma)
                     .map(ast::Type::maybe_tuple)?;
                 self.expect(TokenKind::RParen)?;
                 Ok(t)
             },
-            (TokenKind::Array) -> |_| {
+            TokenKind::Array => |_| {
                 let dimensions = if self.accept(&TokenKind::LBracket).is_some() {
                     self.expect(TokenKind::Star)?;
                     let mut dimensions = 1;
@@ -191,7 +190,7 @@ impl<L: Iterator<Item = Token>> Parser<L> {
                 self.type_precedence_helper()
                     .map(|t| ast::Type::Array(Box::new(t), dimensions))
             },
-            (TokenKind::IdLower) -> |token: Token| {
+            TokenKind::IdLower => |token: Token| {
                 Ok(ast::Type::Custom(token.extract_string_value()))
             }
         )?;
@@ -201,28 +200,280 @@ impl<L: Iterator<Item = Token>> Parser<L> {
         }
         Ok(t)
     }
+    #[inline(always)]
     fn expr(&mut self) -> ParseResult<ast::Expr> {
-        todo!("expr")
+        self.expr0()
     }
+    fn expr0(&mut self) -> ParseResult<ast::Expr> {
+        let letdefs = self.match_zero_or_more(Self::letdef, &TokenKind::Let)?;
+        if letdefs.is_empty() {
+            self.expr1()
+        } else {
+            self.expect(TokenKind::In)?;
+            let expr = self.expr1()?;
+            Ok(letdefs.into_iter().rfold(expr, |expr, letdef| {
+                ast::Expr::LetIn(letdef, Box::new(expr))
+            }))
+        }
+    }
+    fn expr1(&mut self) -> ParseResult<ast::Expr> {
+        let exprs = self.match_at_least_one(Self::expr2, &TokenKind::Semicolon)?;
+        Ok(ast::Expr::left_assoc_from_vec(exprs, &TokenKind::Semicolon))
+    }
+    fn expr2(&mut self) -> ParseResult<ast::Expr> {
+        if self.accept(&TokenKind::If).is_some() {
+            let cond = Box::new(self.expr2()?);
+            self.expect(TokenKind::Then)?;
+            let then = Box::new(self.expr2()?);
+            let r#else = if self.accept(&TokenKind::Else).is_some() {
+                Some(Box::new(self.expr2()?))
+            } else {
+                None
+            };
+            Ok(ast::Expr::If(cond, then, r#else))
+        } else {
+            self.expr3()
+        }
+    }
+    // TODO: Use structs on AST.
+    // TODO: Improve printing where possible.
+    // TODO: Think about error messages.
+    fn expr3(&mut self) -> ParseResult<ast::Expr> {
+        todo!()
+        // self.expr9()
+    }
+    fn expr9(&mut self) -> ParseResult<ast::Expr> {
+        const OPS: [TokenKind; 6] = [
+            TokenKind::Plus,
+            TokenKind::Minus,
+            TokenKind::PlusDot,
+            TokenKind::MinusDot,
+            TokenKind::Not,
+            TokenKind::Delete,
+        ];
+        let mut unops = Vec::new();
+        while self
+            .peek_token()
+            .map(|token| OPS.contains(&token.kind))
+            .unwrap_or(false)
+        {
+            unops.push(
+                self.consume_token()
+                    .expect("peeeked token should be present"),
+            );
+        }
+        let expr = self.expr10()?;
+        Ok(unops.into_iter().rfold(expr, |expr, token| {
+            ast::Expr::Unop((&token.kind).into(), Box::new(expr))
+        }))
+    }
+    fn expr10(&mut self) -> ParseResult<ast::Expr> {
+        let match_array_access = |s: &mut Self, id| {
+            let indexes = s.match_at_least_one(Self::expr, &TokenKind::Comma)?;
+            s.expect(TokenKind::RBracket)?;
+            Ok(ast::Expr::ArrayAccess(id, indexes))
+        };
+        let match_call = |s: &mut Self, id, make: fn(String, Vec<ast::Expr>) -> ast::Expr| {
+            let args = s.match_zero_or_more_multiple(
+                Self::expr10,
+                &[
+                    TokenKind::IdLower,
+                    TokenKind::IdUpper,
+                    TokenKind::Exclam,
+                    TokenKind::IntLiteral,
+                    TokenKind::FloatLiteral,
+                    TokenKind::CharLiteral,
+                    TokenKind::StringLiteral,
+                    TokenKind::True,
+                    TokenKind::False,
+                    TokenKind::LParen,
+                    TokenKind::Dim,
+                    TokenKind::New,
+                    TokenKind::Begin,
+                    TokenKind::While,
+                    TokenKind::For,
+                    TokenKind::Match,
+                ],
+            )?;
+            Ok(make(id, args))
+        };
+        let deref_cnt = self.accept_many_and_count(&TokenKind::Exclam);
+        if deref_cnt > 0 {
+            let inner_expr = if let Some(token) = self.accept(&TokenKind::IdLower) {
+                let id = token.extract_string_value();
+                self.expect(TokenKind::LBracket)?;
+                match_array_access(self, id)?
+            } else {
+                self.expr_primary()?
+            };
+            Ok((0..deref_cnt).rfold(inner_expr, |expr, _| {
+                ast::Expr::Unop((&TokenKind::Exclam).into(), Box::new(expr))
+            }))
+        } else {
+            if let Some(token) = self.accept(&TokenKind::IdLower) {
+                if self.accept(&TokenKind::LBracket).is_some() {
+                    match_array_access(self, token.extract_string_value())
+                } else {
+                    match_call(self, token.extract_string_value(), ast::Expr::Call)
+                }
+            } else if let Some(token) = self.accept(&TokenKind::IdUpper) {
+                match_call(self, token.extract_string_value(), ast::Expr::ConstrCall)
+            } else {
+                self.expr_primary()
+            }
+        }
+    }
+    fn expr_primary(&mut self) -> ParseResult<ast::Expr> {
+        expect_any_of!(self,
+            TokenKind::IntLiteral => |token: Token| Ok(ast::Expr::IntLiteral(token.extract_int_value())),
+            TokenKind::FloatLiteral => |token: Token| Ok(ast::Expr::FloatLiteral(token.extract_float_value())),
+            TokenKind::CharLiteral => |token: Token| Ok(ast::Expr::CharLiteral(token.extract_char_value())),
+            TokenKind::StringLiteral => |token: Token| Ok(ast::Expr::StringLiteral(token.extract_string_value())),
+            TokenKind::True => |_| Ok(ast::Expr::BoolLiteral(true)),
+            TokenKind::False => |_| Ok(ast::Expr::BoolLiteral(false)),
+            TokenKind::LParen => |_| {
+                if self.accept(&TokenKind::RParen).is_some() {
+                    Ok(ast::Expr::UnitLiteral)
+                } else {
+                    Ok(ast::Expr::maybe_tuple(
+                        self.match_at_least_one(Self::expr, &TokenKind::Comma)?
+                    ))
+                }
+            },
+            TokenKind::Dim => |_| {
+                let dim = self.accept(&TokenKind::IntLiteral).map_or(1, |token| token.extract_int_value());
+                let id = self.expect(TokenKind::IdLower)?.extract_string_value();
+                Ok(ast::Expr::Dim(id, dim))
+            },
+            TokenKind::New => |_| Ok(ast::Expr::New(self.r#type()?)),
+            TokenKind::Begin => |_| {
+                let expr = self.expr()?;
+                self.expect(TokenKind::End)?;
+                Ok(expr)
+            },
+            TokenKind::While => |_| {
+                let cond = Box::new(self.expr()?);
+                self.expect(TokenKind::Do)?;
+                let body = Box::new(self.expr()?);
+                Ok(ast::Expr::While(cond, body))
+            },
+            TokenKind::For => |_| {
+                let id = self.expect(TokenKind::IdLower)?.extract_string_value();
+                self.expect(TokenKind::Eq)?;
+                let init = Box::new(self.expr()?);
+                let to_downto = expect_any_of!(self,
+                    TokenKind::To => |_| Ok(true),
+                    TokenKind::Downto => |_| Ok(false)
+                )?;
+                let end = Box::new(self.expr()?);
+                self.expect(TokenKind::Do)?;
+                let body = Box::new(self.expr()?);
+                self.expect(TokenKind::Done)?;
+                Ok(ast::Expr::For(id, init, to_downto, end, body))
+            },
+            TokenKind::Match => |_| {
+                let expr = Box::new(self.expr()?);
+                self.expect(TokenKind::With)?;
+                let clauses = self.match_at_least_one(Self::clause, &TokenKind::Bar)?;
+                Ok(ast::Expr::Match(expr, clauses))
+            }
+        )
+    }
+
     fn clause(&mut self) -> ParseResult<ast::Clause> {
-        todo!("clause")
+        let pattern = self.pattern()?;
+        self.expect(TokenKind::Arrow)?;
+        let expr = self.expr()?;
+        Ok(ast::Clause { pattern, expr })
     }
     fn pattern(&mut self) -> ParseResult<ast::Pattern> {
-        todo!("pattern")
+        expect_any_of!(self,
+            TokenKind::Plus | TokenKind::Minus => |token: Token| {
+                let mut integer = self.expect(TokenKind::IntLiteral)?.extract_int_value();
+                if token.kind == TokenKind::Minus {
+                    integer = -integer;
+                }
+                Ok(ast::Pattern::IntLiteral(integer))
+            },
+            TokenKind::PlusDot | TokenKind::MinusDot => |token: Token| {
+                let mut float = self.expect(TokenKind::FloatLiteral)?.extract_float_value();
+                if token.kind == TokenKind::MinusDot {
+                    float = -float;
+                }
+                Ok(ast::Pattern::FloatLiteral(float))
+            },
+            TokenKind::CharLiteral => |_| {
+                let char = self.expect(TokenKind::CharLiteral)?.extract_char_value();
+                Ok(ast::Pattern::CharLiteral(char))
+            },
+            TokenKind::StringLiteral => |_| {
+                let string = self.expect(TokenKind::StringLiteral)?.extract_string_value();
+                Ok(ast::Pattern::StringLiteral(string))
+            },
+            TokenKind::IntLiteral => |_| {
+                let integer = self.expect(TokenKind::IntLiteral)?.extract_int_value();
+                Ok(ast::Pattern::IntLiteral(integer))
+            },
+            TokenKind::FloatLiteral => |_| {
+                let float = self.expect(TokenKind::FloatLiteral)?.extract_float_value();
+                Ok(ast::Pattern::FloatLiteral(float))
+            },
+            TokenKind::False => |_| {Ok(ast::Pattern::BoolLiteral(false))},
+            TokenKind::True => |_| {Ok(ast::Pattern::BoolLiteral(true))},
+            TokenKind::IdLower => |token: Token| {
+                Ok(ast::Pattern::IdLower(token.extract_string_value()))
+            },
+            TokenKind::LParen => |_| {
+                let patterns = self
+                    .match_at_least_one(Self::pattern, &TokenKind::Comma)
+                    .map(ast::Pattern::maybe_tuple)?;
+                self.expect(TokenKind::RParen)?;
+                Ok(patterns)
+            },
+            TokenKind::IdUpper => |token: Token| {
+                let id = token.extract_string_value();
+                let patterns = self.match_zero_or_more_multiple(Self::pattern, &[
+                    TokenKind::Plus, TokenKind::Minus, TokenKind::PlusDot, TokenKind::MinusDot,
+                    TokenKind::CharLiteral, TokenKind::StringLiteral, TokenKind::IntLiteral,
+                    TokenKind::FloatLiteral, TokenKind::False, TokenKind::True, TokenKind::IdLower,
+                    TokenKind::LParen, TokenKind::IdUpper
+                ])?;
+                Ok(ast::Pattern::IdUpper(id, patterns))
+            }
+        )
     }
 
     fn expect(&mut self, token_kind: TokenKind) -> ParseResult<Token> {
         self.accept(&token_kind).ok_or(ParseErr::UnexpectedToken(
-            self.lexer.peek().cloned(),
+            self.peek_token().cloned(),
             vec![token_kind],
         ))
     }
+    fn accept_many_and_count(&mut self, token_kind: &TokenKind) -> usize {
+        let mut cnt = 0;
+        while self.accept(token_kind).is_some() {
+            cnt += 1;
+        }
+        cnt
+    }
     fn accept(&mut self, token_kind: &TokenKind) -> Option<Token> {
-        if let Some(true) = self.lexer.peek().map(|t| &t.kind == (token_kind)) {
-            self.lexer.next()
+        if let Some(true) = self.peek_token().map(|t| &t.kind == (token_kind)) {
+            self.consume_token()
         } else {
             None
         }
+    }
+    fn consume_token(&mut self) -> Option<Token> {
+        while self.lexer.peek().map(|t| &t.kind) == Some(&TokenKind::COMMENT) {
+            self.lexer.next();
+        }
+        self.lexer.next()
+    }
+    fn peek_token(&mut self) -> Option<&Token> {
+        while self.lexer.peek().map(|t| &t.kind) == Some(&TokenKind::COMMENT) {
+            self.lexer.next();
+        }
+        self.lexer.peek()
     }
 
     fn match_zero_or_more<T>(
@@ -251,24 +502,16 @@ impl<L: Iterator<Item = Token>> Parser<L> {
         }
         Ok(vec)
     }
-    fn match_zero_or_more_until<T>(
+    fn match_zero_or_more_multiple<T>(
         &mut self,
         matcher: fn(&mut Self) -> ParseResult<T>,
-        start_tokens: &[TokenKind],
-        stop_tokens: &[TokenKind],
+        first_tokens: &[TokenKind],
     ) -> ParseResult<Vec<T>> {
-        if start_tokens
-            .iter()
-            .find(|&separator| Some(separator) == self.lexer.peek().map(|t| &t.kind))
-            .is_none()
-        {
-            return Ok(vec![]);
-        }
         let mut vec: Vec<T> = Vec::new();
-        while stop_tokens
+        while first_tokens
             .iter()
-            .find(|&separator| Some(separator) == self.lexer.peek().map(|t| &t.kind))
-            .is_none()
+            .find(|&separator| Some(separator) == self.peek_token().map(|t| &t.kind))
+            .is_some()
         {
             vec.push(matcher(self)?);
         }
@@ -277,13 +520,13 @@ impl<L: Iterator<Item = Token>> Parser<L> {
     fn match_at_least_one_until<T>(
         &mut self,
         matcher: fn(&mut Self) -> ParseResult<T>,
-        stop_tokens: &[TokenKind],
+        follow_tokens: &[TokenKind],
     ) -> ParseResult<Vec<T>> {
         let mut vec: Vec<T> = Vec::new();
         loop {
             vec.push(matcher(self)?);
-            let peek_kind = self.lexer.peek().map(|t| &t.kind);
-            if stop_tokens
+            let peek_kind = self.peek_token().map(|t| &t.kind);
+            if follow_tokens
                 .iter()
                 .find(|&separator| Some(separator) == peek_kind)
                 .is_some()
