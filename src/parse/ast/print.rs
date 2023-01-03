@@ -42,7 +42,7 @@ impl std::fmt::Display for Type {
     }
 }
 #[derive(Debug, Clone)]
-pub enum Node<'a> {
+enum Node<'a> {
     Program(&'a Program),
     Definition(&'a Definition),
     Def(&'a Def),
@@ -114,7 +114,8 @@ impl<'a> TreeItem for Node<'a> {
                     Expr::IntLiteral(i) => format!("Int Literal '{}'", i),
                     Expr::FloatLiteral(f) => format!("Float Literal '{}'", f),
                     Expr::CharLiteral(c) => format!("Char Literal '{}'", c),
-                    Expr::StringLiteral(s) => format!("String Literal '{}'", s),
+                    Expr::StringLiteral(s) =>
+                        format!("String Literal '{}'", s.replace("\n", "\\n")),
                     Expr::BoolLiteral(b) => format!("Bool Literal '{}'", b),
                     Expr::Tuple(ts) => format!(
                         "Tuple with {} element{}",
@@ -202,8 +203,8 @@ impl<'a> TreeItem for Node<'a> {
                 .map(|d| Node::Definition(d))
                 .collect::<Vec<_>>(),
             Node::Definition(d) => match d {
-                Definition::Let(l) => l.defs.iter().map(|d| Node::Def(d)).collect::<Vec<_>>(),
-                Definition::Type(t) => t.tdefs.iter().map(|t| Node::TDef(t)).collect::<Vec<_>>(),
+                Definition::Let(l) => l.defs.iter().map(|d| Node::Def(d)).collect(),
+                Definition::Type(t) => t.tdefs.iter().map(|t| Node::TDef(t)).collect(),
             },
             Node::Def(d) => match d {
                 Def::Const(c) => vec![Node::Expr(&c.expr)],
@@ -221,7 +222,7 @@ impl<'a> TreeItem for Node<'a> {
                 .iter()
                 .map(|c| Node::Constr(c))
                 .collect::<Vec<_>>(),
-            Node::Constr(c) => c.types.iter().map(|t| Node::Type(t)).collect::<Vec<_>>(),
+            Node::Constr(c) => c.types.iter().map(|t| Node::Type(t)).collect(),
             Node::Type(_) => Vec::new(),
             Node::Par(p) => {
                 let mut vec = Vec::new();

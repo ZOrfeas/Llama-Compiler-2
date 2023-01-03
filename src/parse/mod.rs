@@ -9,8 +9,6 @@ use crate::{
 
 pub mod ast;
 macro_rules! expect_any_of {
-    (@as_expr $e:expr) => {$e};
-    (@as_pat $p:pat) => {$p};
     ($self:ident, $($kind:path $(| $kinds:path)* => $expr:expr),+) => {
         match $self.peek_token().map(|t| &t.kind) {
             $(
@@ -39,7 +37,6 @@ impl<L: Iterator<Item = Token>> Parser<L> {
             lexer: lexer.long_peekable(),
         }
     }
-    // pub fn parse(&mut self) -> ast::Program {}
 
     pub fn program(&mut self) -> ParseResult<ast::Program> {
         let mut definitions: Vec<ast::def::Definition> = Vec::new();
@@ -256,7 +253,6 @@ impl<L: Iterator<Item = Token>> Parser<L> {
             self.expr3()
         }
     }
-    // TODO: Use structs on AST.
     // TODO: Improve printing where possible.
     // TODO: Think about error messages.
     fn expr3(&mut self) -> ParseResult<ast::expr::Expr> {
@@ -266,7 +262,7 @@ impl<L: Iterator<Item = Token>> Parser<L> {
             Ok(ast::expr::Expr::Binop {
                 lhs: Box::new(lhs),
                 op: (&token.kind).into(),
-                rhs: rhs,
+                rhs,
             })
         } else {
             Ok(lhs)
@@ -293,11 +289,11 @@ impl<L: Iterator<Item = Token>> Parser<L> {
             .or_else(|| self.accept(&TokenKind::DblEq))
             .or_else(|| self.accept(&TokenKind::ExclamEq))
         {
-            let rhs = self.expr7()?;
+            let rhs = Box::new(self.expr7()?);
             Ok(ast::expr::Expr::Binop {
                 lhs: Box::new(lhs),
                 op: (&token.kind).into(),
-                rhs: Box::new(rhs),
+                rhs,
             })
         } else {
             Ok(lhs)
@@ -311,11 +307,11 @@ impl<L: Iterator<Item = Token>> Parser<L> {
             .or_else(|| self.accept(&TokenKind::PlusDot))
             .or_else(|| self.accept(&TokenKind::MinusDot))
         {
-            let rhs = self.expr8()?;
+            let rhs = Box::new(self.expr8()?);
             lhs = ast::expr::Expr::Binop {
                 lhs: Box::new(lhs),
                 op: (&token.kind).into(),
-                rhs: Box::new(rhs),
+                rhs,
             };
         }
         Ok(lhs)
@@ -329,11 +325,11 @@ impl<L: Iterator<Item = Token>> Parser<L> {
             .or_else(|| self.accept(&TokenKind::StarDot))
             .or_else(|| self.accept(&TokenKind::SlashDot))
         {
-            let rhs = self.expr9()?;
+            let rhs = Box::new(self.expr9()?);
             lhs = ast::expr::Expr::Binop {
                 lhs: Box::new(lhs),
                 op: (&token.kind).into(),
-                rhs: Box::new(rhs),
+                rhs,
             };
         }
         Ok(lhs)
@@ -341,11 +337,11 @@ impl<L: Iterator<Item = Token>> Parser<L> {
     fn expr9(&mut self) -> ParseResult<ast::expr::Expr> {
         let lhs = self.expr10()?;
         if let Some(token) = self.accept(&TokenKind::DblStar) {
-            let rhs = self.expr9()?;
+            let rhs = Box::new(self.expr9()?);
             Ok(ast::expr::Expr::Binop {
                 lhs: Box::new(lhs),
                 op: (&token.kind).into(),
-                rhs: Box::new(rhs),
+                rhs,
             })
         } else {
             Ok(lhs)
