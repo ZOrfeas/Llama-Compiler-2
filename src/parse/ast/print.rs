@@ -1,6 +1,15 @@
+use std::borrow::Cow;
+
 use ptree::TreeItem;
 
-use super::*;
+use super::{annotation::*, def::*, expr::*, *};
+impl Program {
+    pub fn print(&self, w: impl std::io::Write) -> std::io::Result<()> {
+        // let config = ptree::PrintConfig::from_env();
+        // ptree::write_tree_with(&Node::Program(&self), w, &config)
+        ptree::write_tree(&print::Node::Program(&self), w)
+    }
+}
 
 impl std::fmt::Display for Type {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -10,13 +19,13 @@ impl std::fmt::Display for Type {
             Type::Char => write!(f, "char"),
             Type::Bool => write!(f, "bool"),
             Type::Float => write!(f, "float"),
-            Type::Func(t1, t2) => write!(f, "{} -> ({})", t1, t2),
+            Type::Func { lhs, rhs } => write!(f, "{} -> ({})", lhs, rhs),
             Type::Ref(t) => write!(f, "({} ref)", t),
-            Type::Array(t, n) => write!(
+            Type::Array { inner, dim_cnt } => write!(
                 f,
                 "{}[{}]",
-                t,
-                (0..*n).map(|_| "*").collect::<Vec<_>>().join(", ")
+                inner,
+                (0..*dim_cnt).map(|_| "*").collect::<Vec<_>>().join(", ")
             ),
             Type::Tuple(ts) => {
                 write!(
@@ -28,7 +37,7 @@ impl std::fmt::Display for Type {
                         .join(", ")
                 )
             }
-            Type::Custom(s) => write!(f, "{}", s),
+            Type::Custom { id } => write!(f, "{}", id),
         }
     }
 }
@@ -91,7 +100,15 @@ impl<'a> TreeItem for Node<'a> {
                 Node::TDef(t) => format!("Type {}", t.id),
                 Node::Constr(c) => format!("Constructor {}", c.id),
                 Node::Type(t) => format!("{}", t),
-                Node::Par(p) => format!("Parameter {}", p.id),
+                Node::Par(p) => format!(
+                    "Parameter {}{}",
+                    p.id,
+                    if let Some(t) = &p.type_ {
+                        format!(" of type {}", t)
+                    } else {
+                        "".to_string()
+                    }
+                ),
                 Node::Expr(e) => match e {
                     Expr::UnitLiteral => "Unit Literal".to_string(),
                     Expr::IntLiteral(i) => format!("Int Literal '{}'", i),
@@ -104,32 +121,39 @@ impl<'a> TreeItem for Node<'a> {
                         ts.len(),
                         if ts.len() == 1 { "" } else { "s" }
                     ),
-                    Expr::Unop(op, _) => format!("Unary Operation '{:?}'", op),
-                    Expr::Binop(op, _, _) => format!("Binary Operation '{:?}'", op),
-                    Expr::Call(id, args) => format!(
+                    Expr::Unop { op, operand: _ } => format!("Unary Operation '{:?}'", op),
+                    Expr::Binop { lhs: _, op, rhs: _ } => format!("Binary Operation '{:?}'", op),
+                    Expr::Call { id, args } => format!(
                         "Call to {} with {} argument{}",
                         id,
                         args.len(),
                         if args.len() == 1 { "" } else { "s" }
                     ),
-                    Expr::ConstrCall(id, args) => format!(
+                    Expr::ConstrCall { id, args } => format!(
                         "Constructor call to {} with {} argument{}",
                         id,
                         args.len(),
                         if args.len() == 1 { "" } else { "s" }
                     ),
-                    Expr::ArrayAccess(id, args) => format!(
+                    Expr::ArrayAccess { id, indexes } => format!(
                         "Array access to {} with {} argument{}",
                         id,
-                        args.len(),
-                        if args.len() == 1 { "" } else { "s" }
+                        indexes.len(),
+                        if indexes.len() == 1 { "" } else { "s" }
                     ),
-                    Expr::Dim(id, arg) => format!("dim call for id {} and dimension {}", id, arg),
+                    Expr::Dim { id, dim } =>
+                        format!("dim call for id {} and dimension {}", id, dim),
                     Expr::New(t) => format!("New on type {}", t),
-                    Expr::LetIn(_, _) => format!("Let In expression"),
-                    Expr::If(_, _, _) => format!("If expression"),
-                    Expr::While(_, _) => format!("While expression"),
-                    Expr::For(id, _, ascending, _, _) => format!(
+                    Expr::LetIn { .. } => format!("Let In expression"),
+                    Expr::If { .. } => format!("If expression"),
+                    Expr::While { cond: _, body: _ } => format!("While expression"),
+                    Expr::For {
+                        id,
+                        from: _,
+                        ascending,
+                        to: _,
+                        body: _,
+                    } => format!(
                         "For expression with id {} and {}",
                         id,
                         if *ascending {
@@ -138,7 +162,10 @@ impl<'a> TreeItem for Node<'a> {
                             "descending order"
                         }
                     ),
-                    Expr::Match(_, clauses) => format!(
+                    Expr::Match {
+                        to_match: _,
+                        clauses,
+                    } => format!(
                         "Match expression with {} clause{}",
                         clauses.len(),
                         if clauses.len() == 1 { "" } else { "s" }
@@ -152,11 +179,11 @@ impl<'a> TreeItem for Node<'a> {
                     Pattern::StringLiteral(s) => format!("String Literal '{}'", s),
                     Pattern::BoolLiteral(b) => format!("Bool Literal '{}'", b),
                     Pattern::IdLower(id) => format!("Name binding on '{}'", id),
-                    Pattern::IdUpper(id, patterns) => format!(
+                    Pattern::IdUpper { id, args } => format!(
                         "Pattern matching on constructor '{}' with {} argument{}",
                         id,
-                        patterns.len(),
-                        if patterns.len() == 1 { "" } else { "s" }
+                        args.len(),
+                        if args.len() == 1 { "" } else { "s" }
                     ),
                     Pattern::Tuple(ps) => format!(
                         "Tuple with {} element{}",
@@ -211,33 +238,45 @@ impl<'a> TreeItem for Node<'a> {
                 | Expr::StringLiteral(_)
                 | Expr::BoolLiteral(_) => Vec::new(),
                 Expr::Tuple(ts) => ts.iter().map(|e| Node::Expr(e)).collect(),
-                Expr::Unop(_, e) => vec![Node::Expr(e)],
-                Expr::Binop(_, e1, e2) => vec![Node::Expr(e1), Node::Expr(e2)],
-                Expr::Call(_, args) => args.iter().map(|e| Node::Expr(e)).collect(),
-                Expr::ConstrCall(_, args) => args.iter().map(|e| Node::Expr(e)).collect(),
-                Expr::ArrayAccess(_, args) => args.iter().map(|e| Node::Expr(e)).collect(),
-                Expr::Dim(_, _) => Vec::new(),
+                Expr::Unop { op: _, operand } => vec![Node::Expr(operand)],
+                Expr::Binop { lhs, op: _, rhs } => vec![Node::Expr(lhs), Node::Expr(rhs)],
+                Expr::Call { id: _, args } => args.iter().map(|e| Node::Expr(e)).collect(),
+                Expr::ConstrCall { id: _, args } => args.iter().map(|e| Node::Expr(e)).collect(),
+                Expr::ArrayAccess { id: _, indexes } => {
+                    indexes.iter().map(|e| Node::Expr(e)).collect()
+                }
+                Expr::Dim { .. } => Vec::new(),
                 Expr::New(_) => Vec::new(),
-                Expr::LetIn(letdef, e) => {
+                Expr::LetIn { letdef, expr } => {
                     let mut vec = Vec::new();
                     vec.extend(letdef.defs.iter().map(|d| Node::Def(d)));
-                    vec.push(Node::Expr(e));
+                    vec.push(Node::Expr(expr));
                     vec
                 }
-                Expr::If(e1, e2, e3) => {
-                    let mut v = vec![Node::Expr(e1), Node::Expr(e2)];
-                    if let Some(e) = e3 {
+                Expr::If {
+                    cond,
+                    then_body,
+                    else_body,
+                } => {
+                    let mut v = vec![Node::Expr(cond), Node::Expr(then_body)];
+                    if let Some(e) = else_body {
                         v.push(Node::Expr(e));
                     }
                     v
                 }
-                Expr::While(e1, e2) => vec![Node::Expr(e1), Node::Expr(e2)],
-                Expr::For(_, e1, _, e2, e3) => {
-                    vec![Node::Expr(e1), Node::Expr(e2), Node::Expr(e3)]
+                Expr::While { cond, body } => vec![Node::Expr(cond), Node::Expr(body)],
+                Expr::For {
+                    id: _,
+                    from,
+                    ascending: _,
+                    to,
+                    body,
+                } => {
+                    vec![Node::Expr(from), Node::Expr(to), Node::Expr(body)]
                 }
-                Expr::Match(e, clauses) => {
+                Expr::Match { to_match, clauses } => {
                     let mut vec = Vec::new();
-                    vec.push(Node::Expr(e));
+                    vec.push(Node::Expr(&to_match));
                     vec.extend(clauses.iter().map(|c| Node::Clause(c)));
                     vec
                 }
@@ -250,9 +289,7 @@ impl<'a> TreeItem for Node<'a> {
                 | Pattern::StringLiteral(_)
                 | Pattern::BoolLiteral(_) => Vec::new(),
                 Pattern::IdLower(_) => Vec::new(),
-                Pattern::IdUpper(_, patterns) => {
-                    patterns.iter().map(|p| Node::Pattern(p)).collect()
-                }
+                Pattern::IdUpper { id: _, args } => args.iter().map(|p| Node::Pattern(p)).collect(),
                 Pattern::Tuple(ps) => ps.iter().map(|p| Node::Pattern(p)).collect(),
             },
         })
