@@ -3,7 +3,7 @@ pub mod def;
 pub mod expr;
 pub mod print;
 
-use def::Definition;
+use self::def::Definition;
 
 #[derive(Debug, Clone)]
 pub struct Program {

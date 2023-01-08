@@ -1,13 +1,11 @@
 #![allow(unused_parens)]
-
-use log::debug;
+pub mod ast;
 
 use crate::{
     lex::token::{Token, TokenKind},
     long_peekable::{LongPeek, LongPeekableIterator},
 };
 
-pub mod ast;
 macro_rules! expect_any_of {
     ($self:ident, $($kind:path $(| $kinds:path)* => $expr:expr),+) => {
         match $self.peek_token().map(|t| &t.kind) {
@@ -277,22 +275,26 @@ impl<L: Iterator<Item = Token>> Parser<L> {
             .map(|v| ast::expr::Expr::left_assoc_from_vec(v, &TokenKind::DblAmpersand))
     }
     fn expr6(&mut self) -> ParseResult<ast::expr::Expr> {
+        const OPS: [Option<&TokenKind>; 8] = [
+            Some(&TokenKind::Eq),
+            Some(&TokenKind::LtGt),
+            Some(&TokenKind::Lt),
+            Some(&TokenKind::Gt),
+            Some(&TokenKind::LEq),
+            Some(&TokenKind::GEq),
+            Some(&TokenKind::DblEq),
+            Some(&TokenKind::ExclamEq),
+        ];
         let lhs = self.expr7()?;
-        if let Some(token) = self
-            .accept(&TokenKind::Eq)
-            .or_else(|| self.accept(&TokenKind::Eq))
-            .or_else(|| self.accept(&TokenKind::LtGt))
-            .or_else(|| self.accept(&TokenKind::Lt))
-            .or_else(|| self.accept(&TokenKind::Gt))
-            .or_else(|| self.accept(&TokenKind::LEq))
-            .or_else(|| self.accept(&TokenKind::GEq))
-            .or_else(|| self.accept(&TokenKind::DblEq))
-            .or_else(|| self.accept(&TokenKind::ExclamEq))
+        if let Some(Some(op)) = OPS
+            .iter()
+            .find(|&t| t == &self.peek_token().map(|t| &t.kind))
         {
+            self.consume_token();
             let rhs = Box::new(self.expr7()?);
             Ok(ast::expr::Expr::Binop {
                 lhs: Box::new(lhs),
-                op: (&token.kind).into(),
+                op: (*op).into(),
                 rhs,
             })
         } else {
@@ -300,35 +302,45 @@ impl<L: Iterator<Item = Token>> Parser<L> {
         }
     }
     fn expr7(&mut self) -> ParseResult<ast::expr::Expr> {
+        const OPS: [Option<&TokenKind>; 4] = [
+            Some(&TokenKind::Plus),
+            Some(&TokenKind::Minus),
+            Some(&TokenKind::PlusDot),
+            Some(&TokenKind::MinusDot),
+        ];
         let mut lhs = self.expr8()?;
-        while let Some(token) = self
-            .accept(&TokenKind::Plus)
-            .or_else(|| self.accept(&TokenKind::Minus))
-            .or_else(|| self.accept(&TokenKind::PlusDot))
-            .or_else(|| self.accept(&TokenKind::MinusDot))
+        while let Some(Some(op)) = OPS
+            .iter()
+            .find(|&t| t == &self.peek_token().map(|t| &t.kind))
         {
+            self.consume_token();
             let rhs = Box::new(self.expr8()?);
             lhs = ast::expr::Expr::Binop {
                 lhs: Box::new(lhs),
-                op: (&token.kind).into(),
+                op: (*op).into(),
                 rhs,
             };
         }
         Ok(lhs)
     }
     fn expr8(&mut self) -> ParseResult<ast::expr::Expr> {
+        const OPS: [Option<&TokenKind>; 5] = [
+            Some(&TokenKind::Star),
+            Some(&TokenKind::Slash),
+            Some(&TokenKind::Mod),
+            Some(&TokenKind::StarDot),
+            Some(&TokenKind::SlashDot),
+        ];
         let mut lhs = self.expr9()?;
-        while let Some(token) = self
-            .accept(&TokenKind::Star)
-            .or_else(|| self.accept(&TokenKind::Slash))
-            .or_else(|| self.accept(&TokenKind::Mod))
-            .or_else(|| self.accept(&TokenKind::StarDot))
-            .or_else(|| self.accept(&TokenKind::SlashDot))
+        while let Some(Some(op)) = OPS
+            .iter()
+            .find(|&t| t == &self.peek_token().map(|t| &t.kind))
         {
+            self.consume_token();
             let rhs = Box::new(self.expr9()?);
             lhs = ast::expr::Expr::Binop {
                 lhs: Box::new(lhs),
-                op: (&token.kind).into(),
+                op: (*op).into(),
                 rhs,
             };
         }
@@ -348,20 +360,16 @@ impl<L: Iterator<Item = Token>> Parser<L> {
         }
     }
     fn expr10(&mut self) -> ParseResult<ast::expr::Expr> {
-        const OPS: [TokenKind; 6] = [
-            TokenKind::Plus,
-            TokenKind::Minus,
-            TokenKind::PlusDot,
-            TokenKind::MinusDot,
-            TokenKind::Not,
-            TokenKind::Delete,
+        const OPS: [Option<&TokenKind>; 6] = [
+            Some(&TokenKind::Plus),
+            Some(&TokenKind::Minus),
+            Some(&TokenKind::PlusDot),
+            Some(&TokenKind::MinusDot),
+            Some(&TokenKind::Not),
+            Some(&TokenKind::Delete),
         ];
         let mut unops = Vec::new();
-        while self
-            .peek_token()
-            .map(|token| OPS.contains(&token.kind))
-            .unwrap_or(false)
-        {
+        while OPS.contains(&self.peek_token().map(|t| &t.kind)) {
             unops.push(
                 self.consume_token()
                     .expect("peeeked token should be present"),

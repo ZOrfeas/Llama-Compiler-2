@@ -2,6 +2,7 @@ use crate::lex::token::TokenKind;
 
 #[derive(Debug, Clone)]
 pub enum Type {
+    Unknown(u32),
     Unit,
     Int,
     Char,

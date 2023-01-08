@@ -70,7 +70,7 @@ expr(2) ::= "if" expr "then" expr ["else" expr] # dangling else handled by close
     | expr(3)
 ;
 ## these can be handled by a precedence climbing algorithm
-expr(3) ::= expr(4) [":=" expr(4)];
+expr(3) ::= expr(4) [":=" expr(3)];
 expr(4) ::= expr(5) {"||" expr(5)};
 expr(5) ::= expr(6) {"&&" expr(6)};
 expr(6) ::= expr(7) [("=" | "<>" | "<" | ">"| "<=" | ">=" | "==" | "!=") expr(7)];
