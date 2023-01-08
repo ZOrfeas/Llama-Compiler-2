@@ -22,7 +22,7 @@ fn main() -> ExitCode {
     let args = cli::Cli::parse();
     let res = run_compiler(&args);
     match res {
-        Ok(_) => 0.into(),
+        Ok(_) => ExitCode::SUCCESS,
         Err(CompilerError::EarlyExit(msg)) => {
             info!("{}", msg);
             ExitCode::SUCCESS

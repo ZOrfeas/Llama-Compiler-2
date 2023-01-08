@@ -1,6 +1,6 @@
 pub mod token;
 
-use std::rc::Rc;
+use std::{iter::FusedIterator, rc::Rc};
 
 use log::error;
 
@@ -524,6 +524,7 @@ impl<S: Iterator<Item = scan::Line>> Iterator for Lexer<S> {
         }
     }
 }
+impl<S: Iterator<Item = scan::Line>> FusedIterator for Lexer<S> {}
 pub trait IntoLexer: Iterator<Item = scan::Line> + Sized {
     fn into_lexer(self, exit_on_error: bool) -> Lexer<Self> {
         let mut lexer = Lexer::new(self);

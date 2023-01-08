@@ -2,7 +2,7 @@ use core::fmt;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{self, BufRead, BufReader};
-use std::iter::Peekable;
+use std::iter::{FusedIterator, Peekable};
 use std::rc::Rc;
 use std::str::SplitWhitespace;
 
@@ -114,6 +114,8 @@ impl Iterator for Scanner {
         }
     }
 }
+impl FusedIterator for Scanner {}
+
 #[derive(Debug)]
 pub enum Line {
     ChangeFile(Rc<String>),

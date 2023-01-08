@@ -1,4 +1,4 @@
-use std::io::Write;
+use std::{io::Write, iter::FusedIterator};
 
 pub struct WriterIterator<I, W, Item>
 where
@@ -10,11 +10,11 @@ where
     writer: W,
 }
 
-impl<I, W, Iter> Iterator for WriterIterator<I, W, Iter>
+impl<I, W, Item> Iterator for WriterIterator<I, W, Item>
 where
-    I: Iterator<Item = Iter>,
+    I: Iterator<Item = Item>,
     W: Write,
-    Iter: std::fmt::Display,
+    Item: std::fmt::Display,
 {
     type Item = I::Item;
     fn next(&mut self) -> Option<Self::Item> {
@@ -28,7 +28,13 @@ where
         }
     }
 }
-
+impl<I: FusedIterator, W, Item> FusedIterator for WriterIterator<I, W, Item>
+where
+    I: Iterator<Item = Item>,
+    W: Write,
+    Item: std::fmt::Display,
+{
+}
 pub trait WriterIter<Item>: Iterator<Item = Item> + Sized
 where
     Item: std::fmt::Display,

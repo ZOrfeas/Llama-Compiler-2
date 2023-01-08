@@ -559,7 +559,6 @@ impl<L: Iterator<Item = Token>> Parser<L> {
                     TokenKind::FloatLiteral, TokenKind::False, TokenKind::True, TokenKind::IdLower,
                     TokenKind::LParen, TokenKind::IdUpper
                 ])?;
-                debug!("id {}, args: {:?}",id , args);
                 Ok(ast::expr::Pattern::IdUpper{id, args})
             }
         )
