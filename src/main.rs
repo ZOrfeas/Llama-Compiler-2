@@ -2,6 +2,7 @@ mod cli;
 mod lex;
 mod long_peekable;
 mod parse;
+mod pass;
 mod scan;
 mod writer_iter;
 

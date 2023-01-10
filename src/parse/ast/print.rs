@@ -2,13 +2,13 @@ use std::borrow::Cow;
 
 use ptree::TreeItem;
 
-use super::{annotation::*, def::*, expr::*, *};
+use super::{annotation::*, data_map::NodeRef, def::*, expr::*, *};
 
 impl Program {
     pub fn print(&self, w: impl std::io::Write) -> std::io::Result<()> {
         // let config = ptree::PrintConfig::from_env();
-        // ptree::write_tree_with(&Node::Program(&self), w, &config)
-        ptree::write_tree(&print::Node::Program(&self), w)
+        // ptree::write_tree_with(&NodeRef::Program(&self), w, &config)
+        ptree::write_tree(&NodeRef::Program(&self), w)
     }
 }
 
@@ -44,8 +44,8 @@ impl std::fmt::Display for Type {
     }
 }
 
-impl<'a> TreeItem for Node<'a> {
-    type Child = Node<'a>;
+impl<'a> TreeItem for NodeRef<'a> {
+    type Child = NodeRef<'a>;
     fn write_self<W: std::io::Write>(
         &self,
         f: &mut W,
@@ -55,12 +55,12 @@ impl<'a> TreeItem for Node<'a> {
             f,
             "{}",
             style.paint(match self {
-                Node::Program(p) => format!(
+                NodeRef::Program(p) => format!(
                     "Program with {} statement{}",
                     p.definitions.len(),
                     if p.definitions.len() == 1 { "" } else { "s" }
                 ),
-                Node::Definition(d) => match d {
+                NodeRef::Definition(d) => match d {
                     Definition::Let(l) => format!(
                         "{}let statement with {} definition{}",
                         if l.rec { "Recursive " } else { "" },
@@ -73,7 +73,7 @@ impl<'a> TreeItem for Node<'a> {
                         if t.tdefs.len() == 1 { "" } else { "s" }
                     ),
                 },
-                Node::Def(d) => {
+                NodeRef::Def(d) => {
                     let (str, type_) = match d {
                         Def::Const(c) => (format!("Constant {}", c.id), &c.type_),
                         Def::Variable(v) => (format!("Variable {}", v.id), &v.type_),
@@ -86,10 +86,10 @@ impl<'a> TreeItem for Node<'a> {
                         str
                     }
                 }
-                Node::TDef(t) => format!("Type {}", t.id),
-                Node::Constr(c) => format!("Constructor {}", c.id),
-                Node::Type(t) => format!("{}", t),
-                Node::Par(p) => format!(
+                NodeRef::TDef(t) => format!("Type {}", t.id),
+                NodeRef::Constr(c) => format!("Constructor {}", c.id),
+                NodeRef::Type(t) => format!("{}", t),
+                NodeRef::Par(p) => format!(
                     "Parameter {}{}",
                     p.id,
                     if let Some(t) = &p.type_ {
@@ -98,7 +98,7 @@ impl<'a> TreeItem for Node<'a> {
                         "".to_string()
                     }
                 ),
-                Node::Expr(e) => match e {
+                NodeRef::Expr(e) => match e {
                     Expr::UnitLiteral => "Unit Literal".to_string(),
                     Expr::IntLiteral(i) => format!("Int Literal '{}'", i),
                     Expr::FloatLiteral(f) => format!("Float Literal '{}'", f),
@@ -161,8 +161,8 @@ impl<'a> TreeItem for Node<'a> {
                         if clauses.len() == 1 { "" } else { "s" }
                     ),
                 },
-                Node::Clause(_) => format!("Clause"),
-                Node::Pattern(p) => match p {
+                NodeRef::Clause(_) => format!("Clause"),
+                NodeRef::Pattern(p) => match p {
                     Pattern::IntLiteral(i) => format!("Int Literal '{}'", i),
                     Pattern::FloatLiteral(f) => format!("Float Literal '{}'", f),
                     Pattern::CharLiteral(c) => format!("Char Literal '{}'", c),
@@ -185,92 +185,82 @@ impl<'a> TreeItem for Node<'a> {
         )
     }
     fn children(&self) -> Cow<[Self::Child]> {
-        let mut children: Vec<Node> = self.children().unwrap_or(Vec::new());
-        children.retain(|child| !matches!(child, Node::Type(_)));
+        let mut children: Vec<NodeRef> = self.children().unwrap_or(Vec::new());
+        children.retain(|child| !matches!(child, NodeRef::Type(_)));
         Cow::from(children)
     }
 }
-#[derive(Debug, Clone)]
-pub enum Node<'a> {
-    Program(&'a Program),
-    Definition(&'a Definition),
-    Def(&'a Def),
-    TDef(&'a TDef),
-    Constr(&'a Constr),
-    Type(&'a Type),
-    Par(&'a Par),
-    Expr(&'a Expr),
-    Clause(&'a Clause),
-    Pattern(&'a Pattern),
-}
-impl<'a> Node<'a> {
+
+impl<'a> NodeRef<'a> {
     fn children(&self) -> Option<Vec<Self>> {
         match self {
-            Node::Program(p) => Some(p.definitions.iter().map(Node::Definition).collect()),
-            Node::Definition(d) => match d {
-                Definition::Let(l) => Some(l.defs.iter().map(Node::Def).collect()),
-                Definition::Type(t) => Some(t.tdefs.iter().map(Node::TDef).collect()),
+            NodeRef::Program(p) => Some(p.definitions.iter().map(NodeRef::Definition).collect()),
+            NodeRef::Definition(d) => match d {
+                Definition::Let(l) => Some(l.defs.iter().map(NodeRef::Def).collect()),
+                Definition::Type(t) => Some(t.tdefs.iter().map(NodeRef::TDef).collect()),
             },
-            Node::Def(d) => match d {
+            NodeRef::Def(d) => match d {
                 Def::Const(c) => {
                     let mut children = Vec::new();
                     if let Some(t) = &c.type_ {
-                        children.push(Node::Type(t));
+                        children.push(NodeRef::Type(t));
                     }
-                    children.push(Node::Expr(&c.expr));
+                    children.push(NodeRef::Expr(&c.expr));
                     Some(children)
                 }
-                Def::Variable(v) => v.type_.as_ref().map(|t| vec![Node::Type(t)]),
+                Def::Variable(v) => v.type_.as_ref().map(|t| vec![NodeRef::Type(t)]),
                 Def::Array(a) => {
                     let mut children = Vec::new();
                     if let Some(t) = &a.type_ {
-                        children.push(Node::Type(t));
+                        children.push(NodeRef::Type(t));
                     }
-                    children.extend(a.dims.iter().map(Node::Expr));
+                    children.extend(a.dims.iter().map(NodeRef::Expr));
                     Some(children)
                 }
                 Def::Function(fun) => {
                     let mut children = Vec::new();
                     if let Some(t) = &fun.type_ {
-                        children.push(Node::Type(t));
+                        children.push(NodeRef::Type(t));
                     }
-                    children.extend(fun.pars.iter().map(|p| Node::Par(p)));
-                    children.push(Node::Expr(&fun.expr));
+                    children.extend(fun.pars.iter().map(|p| NodeRef::Par(p)));
+                    children.push(NodeRef::Expr(&fun.expr));
                     Some(children)
                 }
             },
-            Node::TDef(t) => Some(t.constrs.iter().map(Node::Constr).collect()),
-            Node::Constr(c) => Some(c.types.iter().map(Node::Type).collect()),
-            Node::Type(t) => match t {
-                Type::Func { lhs, rhs } => Some(vec![Node::Type(lhs), Node::Type(rhs)]),
-                Type::Ref(t) => Some(vec![Node::Type(t)]),
-                Type::Array { inner, .. } => Some(vec![Node::Type(inner)]),
-                Type::Tuple(ts) => Some(ts.iter().map(Node::Type).collect()),
+            NodeRef::TDef(t) => Some(t.constrs.iter().map(NodeRef::Constr).collect()),
+            NodeRef::Constr(c) => Some(c.types.iter().map(NodeRef::Type).collect()),
+            NodeRef::Type(t) => match t {
+                Type::Func { lhs, rhs } => Some(vec![NodeRef::Type(lhs), NodeRef::Type(rhs)]),
+                Type::Ref(t) => Some(vec![NodeRef::Type(t)]),
+                Type::Array { inner, .. } => Some(vec![NodeRef::Type(inner)]),
+                Type::Tuple(ts) => Some(ts.iter().map(NodeRef::Type).collect()),
                 _ => None,
             },
-            Node::Par(p) => p.type_.as_ref().map(|t| vec![Node::Type(t)]),
-            Node::Expr(e) => match e {
+            NodeRef::Par(p) => p.type_.as_ref().map(|t| vec![NodeRef::Type(t)]),
+            NodeRef::Expr(e) => match e {
                 Expr::UnitLiteral
                 | Expr::IntLiteral(_)
                 | Expr::FloatLiteral(_)
                 | Expr::CharLiteral(_)
                 | Expr::StringLiteral(_)
                 | Expr::BoolLiteral(_) => None,
-                Expr::Tuple(ts) => Some(ts.iter().map(Node::Expr).collect()),
-                Expr::Unop { op: _, operand } => Some(vec![Node::Expr(operand)]),
-                Expr::Binop { lhs, op: _, rhs } => Some(vec![Node::Expr(lhs), Node::Expr(rhs)]),
+                Expr::Tuple(ts) => Some(ts.iter().map(NodeRef::Expr).collect()),
+                Expr::Unop { op: _, operand } => Some(vec![NodeRef::Expr(operand)]),
+                Expr::Binop { lhs, op: _, rhs } => {
+                    Some(vec![NodeRef::Expr(lhs), NodeRef::Expr(rhs)])
+                }
                 Expr::Call { id: _, args } | Expr::ConstrCall { id: _, args } => {
-                    Some(args.iter().map(Node::Expr).collect())
+                    Some(args.iter().map(NodeRef::Expr).collect())
                 }
                 Expr::ArrayAccess { id: _, indexes } => {
-                    Some(indexes.iter().map(Node::Expr).collect())
+                    Some(indexes.iter().map(NodeRef::Expr).collect())
                 }
                 Expr::Dim { id: _, dim: _ } => None,
-                Expr::New(t) => Some(vec![Node::Type(t)]),
+                Expr::New(t) => Some(vec![NodeRef::Type(t)]),
                 Expr::LetIn { letdef, expr } => {
                     let mut children = Vec::new();
-                    children.extend(letdef.defs.iter().map(Node::Def));
-                    children.push(Node::Expr(expr));
+                    children.extend(letdef.defs.iter().map(NodeRef::Def));
+                    children.push(NodeRef::Expr(expr));
                     Some(children)
                 }
                 Expr::If {
@@ -278,36 +268,42 @@ impl<'a> Node<'a> {
                     then_body,
                     else_body,
                 } => {
-                    let mut children = vec![Node::Expr(cond), Node::Expr(then_body)];
+                    let mut children = vec![NodeRef::Expr(cond), NodeRef::Expr(then_body)];
                     if let Some(e) = else_body {
-                        children.push(Node::Expr(e));
+                        children.push(NodeRef::Expr(e));
                     }
                     Some(children)
                 }
-                Expr::While { cond, body } => Some(vec![Node::Expr(cond), Node::Expr(body)]),
+                Expr::While { cond, body } => Some(vec![NodeRef::Expr(cond), NodeRef::Expr(body)]),
                 Expr::For {
                     id: _,
                     from,
                     ascending: _,
                     to,
                     body,
-                } => Some(vec![Node::Expr(from), Node::Expr(to), Node::Expr(body)]),
+                } => Some(vec![
+                    NodeRef::Expr(from),
+                    NodeRef::Expr(to),
+                    NodeRef::Expr(body),
+                ]),
                 Expr::Match { to_match, clauses } => {
-                    let mut children = vec![Node::Expr(to_match)];
-                    children.extend(clauses.iter().map(Node::Clause));
+                    let mut children = vec![NodeRef::Expr(to_match)];
+                    children.extend(clauses.iter().map(NodeRef::Clause));
                     Some(children)
                 }
             },
-            Node::Clause(c) => Some(vec![Node::Pattern(&c.pattern), Node::Expr(&c.expr)]),
-            Node::Pattern(p) => match p {
+            NodeRef::Clause(c) => Some(vec![NodeRef::Pattern(&c.pattern), NodeRef::Expr(&c.expr)]),
+            NodeRef::Pattern(p) => match p {
                 Pattern::IntLiteral(_)
                 | Pattern::FloatLiteral(_)
                 | Pattern::CharLiteral(_)
                 | Pattern::StringLiteral(_)
                 | Pattern::BoolLiteral(_)
                 | Pattern::IdLower(_) => None,
-                Pattern::IdUpper { id: _, args } => Some(args.iter().map(Node::Pattern).collect()),
-                Pattern::Tuple(ps) => Some(ps.iter().map(Node::Pattern).collect()),
+                Pattern::IdUpper { id: _, args } => {
+                    Some(args.iter().map(NodeRef::Pattern).collect())
+                }
+                Pattern::Tuple(ps) => Some(ps.iter().map(NodeRef::Pattern).collect()),
             },
         }
     }
