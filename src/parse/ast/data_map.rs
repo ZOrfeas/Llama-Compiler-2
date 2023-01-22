@@ -128,7 +128,10 @@ impl<'a> Hash for NodeRef<'a> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::parse::ast::def::{Letdef, VariableDef};
+    use crate::parse::ast::{
+        def::{Letdef, VariableDef},
+        Span,
+    };
 
     #[test]
     fn can_create() {
@@ -166,6 +169,7 @@ mod test {
                     type_: None,
                 })],
             })],
+            span: Span::default(),
         }
     }
 }

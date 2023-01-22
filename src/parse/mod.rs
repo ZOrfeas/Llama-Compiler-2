@@ -1,8 +1,7 @@
-#![allow(unused_parens)]
 pub mod ast;
 
 use crate::{
-    lex::token::{Token, TokenKind},
+    lex::token::{Position, Token, TokenKind},
     long_peekable::{LongPeek, LongPeekableIterator},
 };
 
@@ -38,14 +37,29 @@ impl<L: Iterator<Item = Token>> Parser<L> {
 
     pub fn program(&mut self) -> ParseResult<ast::Program> {
         let mut definitions: Vec<ast::def::Definition> = Vec::new();
-        while self.accept(&TokenKind::EOF).is_none() {
-            let definition = expect_any_of!(self,
-                TokenKind::Let => |_| self.letdef().map(ast::def::Definition::Let),
-                TokenKind::Type => |_| self.typedef().map(ast::def::Definition::Type)
-            )?;
-            definitions.push(definition);
-        }
-        Ok(ast::Program { definitions })
+        let mut from: Option<Position> = None;
+        let to: Position = loop {
+            if let Some(token) = self.accept(&TokenKind::EOF) {
+                break token.to;
+            } else {
+                let definition = expect_any_of!(self,
+                    TokenKind::Let | TokenKind::Type => |token: Token| {
+                        from.get_or_insert(token.from);
+                        match token.kind {
+                            TokenKind::Let => self.letdef().map(ast::def::Definition::Let),
+                            TokenKind::Type => self.typedef().map(ast::def::Definition::Type),
+                            _ => unreachable!()
+                        }
+                    }
+                )?;
+                definitions.push(definition);
+            }
+        };
+        Ok(ast::Program::new(
+            definitions,
+            from.unwrap_or(to.clone()),
+            to,
+        ))
     }
     fn letdef(&mut self) -> ParseResult<ast::def::Letdef> {
         Ok(ast::def::Letdef {

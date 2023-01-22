@@ -72,7 +72,7 @@ impl std::fmt::Display for Token {
         write!(f, "`{}` from {} to {}\n", self.kind, self.from, self.to)
     }
 }
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Position {
     pub line: usize,
     pub column: usize,
@@ -87,9 +87,19 @@ impl Position {
         }
     }
 }
+impl Default for Position {
+    fn default() -> Self {
+        Self::new(0, 0, Rc::new("".to_string()))
+    }
+}
 impl std::fmt::Display for Position {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "({},{} in {})", self.line, self.column, self.filename)
+        write!(f, "{}:{}:{}", self.filename, self.line, self.column)
+    }
+}
+impl std::fmt::Debug for Position {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self)
     }
 }
 
