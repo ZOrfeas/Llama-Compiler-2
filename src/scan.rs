@@ -7,6 +7,7 @@ use std::rc::Rc;
 use std::str::SplitWhitespace;
 
 use log::error;
+use thiserror::Error;
 // !Consider Scanners that can read from stdin.
 /// Simple file scanner that can read line by line and preprocess files.
 pub struct Scanner {
@@ -203,52 +204,26 @@ fn decide_directive(first: &str, mut rest: Peekable<SplitWhitespace>) -> ScanRes
 }
 
 type ScanResult<T> = Result<T, ScanErr>;
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub enum ScanErr {
-    IO(std::io::Error),
+    #[error("IO error: {0}")]
+    IO(#[from] std::io::Error),
+    #[error("Unknown directive: {0}")]
     UnknownDirective(String),
 
+    #[error("Include directive has trailing arguments")]
     IncludeTrailingArgs,
+    #[error("Include directive has no arguments")]
     IncludeEmpty,
+    #[error("Include cycle found: {included_file} included again in {in_file} at line {at_line} {}",
+        .prev_included_at.as_ref()
+        .map(|x| format!("(previously included in {})", x))
+        .unwrap_or("(it's possibly also the source file given to the compiler)".to_string())
+    )]
     IncludeCycle {
         included_file: String,
         in_file: String,
         at_line: usize,
         prev_included_at: Option<String>,
     },
-}
-impl std::fmt::Display for ScanErr {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            ScanErr::IncludeCycle {
-                included_file,
-                in_file,
-                at_line,
-                prev_included_at,
-            } => {
-                let prev_included_at = if let Some(prev) = prev_included_at {
-                    format!("(previously included in {})", prev)
-                } else {
-                    "(it's possibly also the source file given to the compiler)".to_string()
-                };
-                write!(
-                    f,
-                    "Include cycle detected: {} included again in {} at line {} {}",
-                    included_file,
-                    in_file,
-                    at_line + 1,
-                    prev_included_at
-                )
-            }
-            ScanErr::IncludeEmpty => write!(f, "Include directive without filename"),
-            ScanErr::IncludeTrailingArgs => write!(f, "Include directive with trailing arguments"),
-            ScanErr::UnknownDirective(s) => write!(f, "Unknown directive: {}", s),
-            ScanErr::IO(e) => write!(f, "IO error: {}", e),
-        }
-    }
-}
-impl From<std::io::Error> for ScanErr {
-    fn from(e: std::io::Error) -> Self {
-        ScanErr::IO(e)
-    }
 }

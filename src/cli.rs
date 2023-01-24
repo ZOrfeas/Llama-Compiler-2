@@ -3,6 +3,7 @@ use std::{fs::File, io::BufWriter, io::Write, path::Path};
 use clap::{ArgGroup, Args, Parser, Subcommand, ValueEnum};
 use colored::Colorize;
 use log::{error, warn};
+use thiserror::Error;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -169,19 +170,8 @@ impl PrintCalls {
 }
 
 type CliResult<T> = Result<T, CliErr>;
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub enum CliErr {
-    IO(std::io::Error),
-}
-impl std::fmt::Display for CliErr {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::IO(err) => write!(f, "IO error: {}", err),
-        }
-    }
-}
-impl From<std::io::Error> for CliErr {
-    fn from(err: std::io::Error) -> Self {
-        Self::IO(err)
-    }
+    #[error("IO error: {0}")]
+    IO(#[from] std::io::Error),
 }

@@ -322,6 +322,7 @@ dependencies = [
  "env_logger",
  "log",
  "ptree",
+ "thiserror",
 ]
 
 [[package]]

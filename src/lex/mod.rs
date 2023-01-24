@@ -3,6 +3,7 @@ pub mod token;
 use std::{iter::FusedIterator, rc::Rc};
 
 use log::error;
+use thiserror::Error;
 
 use crate::scan;
 
@@ -535,27 +536,34 @@ pub trait IntoLexer: Iterator<Item = scan::Line> + Sized {
 impl<S: Iterator<Item = scan::Line>> IntoLexer for S {}
 
 type LexResult<T> = Result<T, LexErr>;
+#[derive(Error, Debug)]
 pub enum LexErr {
+    #[error("unterminated comment at {0}")]
     UnterminatedComment(Position),
+    #[error("{1} at {0}")]
     InvalidCharLiteral(Position, &'static str),
+    #[error("{1} at {0}")]
     InvalidStringLiteral(Position, &'static str),
+    #[error("{1} at {0}")]
     ParseFloatError(Position, String),
+    #[error("{1} at {0}")]
     ParseIntError(Position, String),
+    #[error("{1} at {0}")]
     FromUtf8Error(Position, String),
 }
 
-impl std::fmt::Display for LexErr {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::UnterminatedComment(pos) => write!(f, "unterminated comment at {}", pos),
-            Self::InvalidCharLiteral(pos, msg) | Self::InvalidStringLiteral(pos, msg) => {
-                write!(f, "{} at {}", msg, pos)
-            }
-            Self::ParseFloatError(pos, msg)
-            | Self::ParseIntError(pos, msg)
-            | Self::FromUtf8Error(pos, msg) => {
-                write!(f, "{} at {}", msg, pos)
-            }
-        }
-    }
-}
+// impl std::fmt::Display for LexErr {
+//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//         match self {
+//             Self::UnterminatedComment(pos) => write!(f, "unterminated comment at {}", pos),
+//             Self::InvalidCharLiteral(pos, msg) | Self::InvalidStringLiteral(pos, msg) => {
+//                 write!(f, "{} at {}", msg, pos)
+//             }
+//             Self::ParseFloatError(pos, msg)
+//             | Self::ParseIntError(pos, msg)
+//             | Self::FromUtf8Error(pos, msg) => {
+//                 write!(f, "{} at {}", msg, pos)
+//             }
+//         }
+//     }
+// }

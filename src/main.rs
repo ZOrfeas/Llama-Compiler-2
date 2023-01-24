@@ -16,6 +16,7 @@ use log::info;
 use parse::IntoParser;
 use std::io::Write;
 use std::process::ExitCode;
+use thiserror::Error;
 use writer_iter::WriterIter;
 
 fn main() -> ExitCode {
@@ -114,36 +115,15 @@ fn init_logger() {
 }
 
 type CompilerResult<T> = Result<T, CompilerError>;
-#[derive(Debug)]
+#[derive(Error, Debug)]
 enum CompilerError {
+    #[error("{0}")]
     EarlyExit(&'static str),
 
-    ParserError(parse::ParseErr),
-    ScannerError(scan::ScanErr),
-    CliError(cli::CliErr),
-}
-impl std::fmt::Display for CompilerError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            CompilerError::EarlyExit(msg) => write!(f, "{}", msg),
-            CompilerError::ParserError(err) => write!(f, "{}", err),
-            CompilerError::ScannerError(err) => write!(f, "{}", err),
-            CompilerError::CliError(err) => write!(f, "{}", err),
-        }
-    }
-}
-impl From<parse::ParseErr> for CompilerError {
-    fn from(err: parse::ParseErr) -> Self {
-        CompilerError::ParserError(err)
-    }
-}
-impl From<scan::ScanErr> for CompilerError {
-    fn from(err: scan::ScanErr) -> Self {
-        CompilerError::ScannerError(err)
-    }
-}
-impl From<cli::CliErr> for CompilerError {
-    fn from(err: cli::CliErr) -> Self {
-        CompilerError::CliError(err)
-    }
+    #[error("{0}")]
+    ParserError(#[from] parse::ParseErr),
+    #[error("{0}")]
+    ScannerError(#[from] scan::ScanErr),
+    #[error("{0}")]
+    CliError(#[from] cli::CliErr),
 }

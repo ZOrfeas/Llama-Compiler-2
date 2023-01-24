@@ -1,5 +1,7 @@
 pub mod ast;
 
+use thiserror::Error;
+
 use crate::{
     lex::token::{Position, Token, TokenKind},
     long_peekable::{LongPeek, LongPeekableIterator},
@@ -688,29 +690,13 @@ pub trait IntoParser: Iterator<Item = Token> + Sized {
 impl<I: Iterator<Item = Token>> IntoParser for I {}
 
 type ParseResult<T> = Result<T, ParseErr>;
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub enum ParseErr {
+    #[error(
+        "{}, expected any of {{{}}}",
+        .0.as_ref().map(|t| format!("{}: Unexpected token \"{}\"", t.from, t.kind))
+            .unwrap_or("Unexpected end of input".to_string()),
+        .1.iter().map(|t| format!("\"{}\"", t)).collect::<Vec<_>>().join(", ")
+    )]
     UnexpectedToken(Option<Token>, Vec<TokenKind>),
-}
-
-impl std::fmt::Display for ParseErr {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ParseErr::UnexpectedToken(token, expected) => {
-                let expected = expected
-                    .iter()
-                    .map(|t| format!("\"{}\"", t))
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                match token {
-                    Some(token) => write!(
-                        f,
-                        "{}: Unexpected token \"{}\", expected any of {{{}}}",
-                        token.from, token.kind, expected
-                    ),
-                    None => write!(f, "Unexpected end of file, expected any of {}", expected),
-                }
-            }
-        }
-    }
 }
