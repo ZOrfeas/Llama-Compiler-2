@@ -1,4 +1,6 @@
-use std::{collections::HashMap, hash::Hash};
+use std::{collections::HashMap, fmt::Debug, hash::Hash};
+
+use enum_dispatch::enum_dispatch;
 
 use super::{
     annotation::Type,
@@ -10,6 +12,7 @@ use super::{
 pub struct DataMap<'a, T> {
     map: HashMap<NodeRef<'a>, T>,
 }
+#[enum_dispatch(NodeRefInner)]
 #[derive(Debug, Clone)]
 pub enum NodeRef<'a> {
     Program(&'a Program),
@@ -22,6 +25,61 @@ pub enum NodeRef<'a> {
     Expr(&'a Expr),
     Clause(&'a Clause),
     Pattern(&'a Pattern),
+}
+#[enum_dispatch]
+trait NodeRefInner: Debug {
+    // TODO: Think of a way to implement this function here only once.
+    fn into_ptr(&self) -> *const ();
+}
+impl<'a> NodeRefInner for &'a Program {
+    fn into_ptr(&self) -> *const () {
+        *self as *const Program as *const ()
+    }
+}
+impl<'a> NodeRefInner for &'a Definition {
+    fn into_ptr(&self) -> *const () {
+        *self as *const Definition as *const ()
+    }
+}
+impl<'a> NodeRefInner for &'a Def {
+    fn into_ptr(&self) -> *const () {
+        *self as *const Def as *const ()
+    }
+}
+impl<'a> NodeRefInner for &'a TDef {
+    fn into_ptr(&self) -> *const () {
+        *self as *const TDef as *const ()
+    }
+}
+impl<'a> NodeRefInner for &'a Constr {
+    fn into_ptr(&self) -> *const () {
+        *self as *const Constr as *const ()
+    }
+}
+impl<'a> NodeRefInner for &'a Type {
+    fn into_ptr(&self) -> *const () {
+        *self as *const Type as *const ()
+    }
+}
+impl<'a> NodeRefInner for &'a Par {
+    fn into_ptr(&self) -> *const () {
+        *self as *const Par as *const ()
+    }
+}
+impl<'a> NodeRefInner for &'a Expr {
+    fn into_ptr(&self) -> *const () {
+        *self as *const Expr as *const ()
+    }
+}
+impl<'a> NodeRefInner for &'a Clause {
+    fn into_ptr(&self) -> *const () {
+        *self as *const Clause as *const ()
+    }
+}
+impl<'a> NodeRefInner for &'a Pattern {
+    fn into_ptr(&self) -> *const () {
+        *self as *const Pattern as *const ()
+    }
 }
 
 impl<'a, T> DataMap<'a, T> {
@@ -40,88 +98,19 @@ impl<'a, T> DataMap<'a, T> {
     //     self.map.iter()
     // }
 }
-impl<'a> From<&'a Program> for NodeRef<'a> {
-    fn from(item: &'a Program) -> Self {
-        NodeRef::Program(item)
-    }
-}
-impl<'a> From<&'a Definition> for NodeRef<'a> {
-    fn from(item: &'a Definition) -> Self {
-        NodeRef::Definition(item)
-    }
-}
-impl<'a> From<&'a Def> for NodeRef<'a> {
-    fn from(item: &'a Def) -> Self {
-        NodeRef::Def(item)
-    }
-}
-impl<'a> From<&'a TDef> for NodeRef<'a> {
-    fn from(item: &'a TDef) -> Self {
-        NodeRef::TDef(item)
-    }
-}
-impl<'a> From<&'a Constr> for NodeRef<'a> {
-    fn from(item: &'a Constr) -> Self {
-        NodeRef::Constr(item)
-    }
-}
-impl<'a> From<&'a Type> for NodeRef<'a> {
-    fn from(item: &'a Type) -> Self {
-        NodeRef::Type(item)
-    }
-}
-impl<'a> From<&'a Par> for NodeRef<'a> {
-    fn from(item: &'a Par) -> Self {
-        NodeRef::Par(item)
-    }
-}
-impl<'a> From<&'a Expr> for NodeRef<'a> {
-    fn from(item: &'a Expr) -> Self {
-        NodeRef::Expr(item)
-    }
-}
-impl<'a> From<&'a Clause> for NodeRef<'a> {
-    fn from(item: &'a Clause) -> Self {
-        NodeRef::Clause(item)
-    }
-}
-impl<'a> From<&'a Pattern> for NodeRef<'a> {
-    fn from(item: &'a Pattern) -> Self {
-        NodeRef::Pattern(item)
-    }
-}
 impl<'a> PartialEq for NodeRef<'a> {
     fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (NodeRef::Program(this), NodeRef::Program(other)) => std::ptr::eq(*this, *other),
-            (NodeRef::Definition(this), NodeRef::Definition(other)) => std::ptr::eq(*this, *other),
-            (NodeRef::Def(this), NodeRef::Def(other)) => std::ptr::eq(*this, *other),
-            (NodeRef::TDef(this), NodeRef::TDef(other)) => std::ptr::eq(*this, *other),
-            (NodeRef::Constr(this), NodeRef::Constr(other)) => std::ptr::eq(*this, *other),
-            (NodeRef::Type(this), NodeRef::Type(other)) => std::ptr::eq(*this, *other),
-            (NodeRef::Par(this), NodeRef::Par(other)) => std::ptr::eq(*this, *other),
-            (NodeRef::Expr(this), NodeRef::Expr(other)) => std::ptr::eq(*this, *other),
-            (NodeRef::Clause(this), NodeRef::Clause(other)) => std::ptr::eq(*this, *other),
-            (NodeRef::Pattern(this), NodeRef::Pattern(other)) => std::ptr::eq(*this, *other),
-            _ => false,
+        if std::mem::discriminant(self) == std::mem::discriminant(other) {
+            std::ptr::eq(self.into_ptr(), other.into_ptr())
+        } else {
+            false
         }
     }
 }
 impl<'a> Eq for NodeRef<'a> {}
 impl<'a> Hash for NodeRef<'a> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        match self {
-            NodeRef::Program(item) => ((*item) as *const Program).hash(state),
-            NodeRef::Definition(item) => ((*item) as *const Definition).hash(state),
-            NodeRef::Def(item) => ((*item) as *const Def).hash(state),
-            NodeRef::TDef(item) => ((*item) as *const TDef).hash(state),
-            NodeRef::Constr(item) => ((*item) as *const Constr).hash(state),
-            NodeRef::Type(item) => ((*item) as *const Type).hash(state),
-            NodeRef::Par(item) => ((*item) as *const Par).hash(state),
-            NodeRef::Expr(item) => ((*item) as *const Expr).hash(state),
-            NodeRef::Clause(item) => ((*item) as *const Clause).hash(state),
-            NodeRef::Pattern(item) => ((*item) as *const Pattern).hash(state),
-        }
+        self.into_ptr().hash(state)
     }
 }
 
@@ -136,7 +125,7 @@ mod test {
     #[test]
     fn can_create() {
         let program = make_dummy_program();
-        let mut data_map: DataMap<i32> = DataMap::new(&program);
+        let _: DataMap<i32> = DataMap::new(&program);
     }
     #[test]
     fn can_insert() {
