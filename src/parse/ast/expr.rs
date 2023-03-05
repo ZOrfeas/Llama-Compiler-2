@@ -1,9 +1,11 @@
-use crate::lex::token::TokenKind;
+use strum::Display;
 
-use super::{annotation::Type, def::Letdef};
+use crate::lex::token::{Token, TokenKind};
+
+use super::{annotation::Type, def::Letdef, Span};
 
 #[derive(Debug, Clone)]
-pub enum Expr {
+pub enum ExprKind {
     UnitLiteral,
     IntLiteral(i32),
     FloatLiteral(f64),
@@ -11,69 +13,91 @@ pub enum Expr {
     StringLiteral(String),
     BoolLiteral(bool),
     Tuple(Vec<Expr>),
-    Unop {
-        op: Unop,
-        operand: Box<Expr>,
-    },
-    Binop {
-        lhs: Box<Expr>,
-        op: Binop,
-        rhs: Box<Expr>,
-    },
-    Call {
-        id: String,
-        args: Vec<Expr>,
-    },
-    ConstrCall {
-        id: String,
-        args: Vec<Expr>,
-    },
-    ArrayAccess {
-        id: String,
-        indexes: Vec<Expr>,
-    },
-    Dim {
-        id: String,
-        dim: i32,
-    },
+    Unop(Unop),
+    Binop(Binop),
+    Call(Call),
+    ConstrCall(Call),
+    ArrayAccess(ArrayAccess),
+    Dim(Dim),
     New(Type),
-    LetIn {
-        letdef: Letdef,
-        expr: Box<Expr>,
-    },
-    If {
-        cond: Box<Expr>,
-        then_body: Box<Expr>,
-        else_body: Option<Box<Expr>>,
-    },
-    While {
-        cond: Box<Expr>,
-        body: Box<Expr>,
-    },
-    For {
-        id: String,
-        from: Box<Expr>,
-        ascending: bool,
-        to: Box<Expr>,
-        body: Box<Expr>,
-    },
-    Match {
-        to_match: Box<Expr>,
-        clauses: Vec<Clause>,
-    },
+    LetIn(LetIn),
+    If(If),
+    While(While),
+    For(For),
+    Match(Match),
 }
 #[derive(Debug, Clone)]
-pub enum Unop {
+pub struct Expr {
+    pub kind: ExprKind,
+    pub span: Span,
+}
+#[derive(Debug, Clone)]
+pub struct Unop {
+    pub op: UnopKind,
+    pub operand: Box<Expr>,
+}
+#[derive(Debug, Clone)]
+pub struct Binop {
+    pub lhs: Box<Expr>,
+    pub op: BinopKind,
+    pub rhs: Box<Expr>,
+}
+#[derive(Debug, Clone)]
+pub struct Call {
+    pub id: String,
+    pub args: Vec<Expr>,
+}
+#[derive(Debug, Clone)]
+pub struct ArrayAccess {
+    pub id: String,
+    pub indexes: Vec<Expr>,
+}
+#[derive(Debug, Clone)]
+pub struct Dim {
+    pub id: String,
+    pub dim: i32,
+}
+#[derive(Debug, Clone)]
+pub struct LetIn {
+    pub letdef: Letdef,
+    pub expr: Box<Expr>,
+}
+#[derive(Debug, Clone)]
+pub struct If {
+    pub cond: Box<Expr>,
+    pub then_body: Box<Expr>,
+    pub else_body: Option<Box<Expr>>,
+}
+#[derive(Debug, Clone)]
+pub struct While {
+    pub cond: Box<Expr>,
+    pub body: Box<Expr>,
+}
+#[derive(Debug, Clone)]
+pub struct For {
+    pub id: String,
+    pub from: Box<Expr>,
+    pub ascending: bool,
+    pub to: Box<Expr>,
+    pub body: Box<Expr>,
+}
+#[derive(Debug, Clone)]
+pub struct Match {
+    pub to_match: Box<Expr>,
+    pub clauses: Vec<Clause>,
+}
+#[derive(Debug, Clone, Display)]
+pub enum UnopKind {
     Plus,
     Minus,
     Deref,
     Not,
-    PlusFlt,
-    MinusFlt,
+    // PlusFlt,
+    // MinusFlt,
     Delete,
 }
-#[derive(Debug, Clone)]
-pub enum Binop {
+#[derive(Debug, Clone, Display)]
+pub enum BinopKind {
     Add,
     Sub,
     Mul,
@@ -92,10 +116,10 @@ pub enum Binop {
     Or,
     Semicolon,
     Assign,
-    AddFlt,
-    SubFlt,
-    MulFlt,
-    DivFlt,
+    // AddFlt,
+    // SubFlt,
+    // MulFlt,
+    // DivFlt,
 }
 #[derive(Debug, Clone)]
 pub struct Clause {
@@ -130,36 +154,92 @@ impl Expr {
                 .next()
                 .expect("Vector should not be empty")
         } else {
-            Self::Tuple(exprs)
+            // let span = Span::new(
+            //     exprs
+            //         .first()
+            //         .expect("Vector should not be empty")
+            //         .span
+            //         .start,
+            //     exprs.last().expect("Vector should not be empty").span.end,
+            // );
+            Self {
+                kind: ExprKind::Tuple(exprs),
+                span: Default::default(), // caller should set span
+            }
         }
     }
     pub fn left_assoc_from_vec(exprs: Vec<Expr>, token_kind: &TokenKind) -> Self {
-        let binop = Binop::from(token_kind);
+        let binop = BinopKind::from(token_kind);
         exprs
             .into_iter()
-            .reduce(|acc, e| Expr::Binop {
-                lhs: Box::new(acc),
-                op: binop.clone(),
-                rhs: Box::new(e),
+            .reduce(|acc, e| Expr {
+                span: Span::new(acc.span.start.clone(), e.span.end.clone()),
+                kind: ExprKind::Binop(Binop {
+                    lhs: Box::new(acc),
+                    op: binop.clone(),
+                    rhs: Box::new(e),
+                }),
             })
             .expect("expression vector should not be empty")
     }
+    pub fn from_literal(token: Token) -> Self {
+        match &token.kind {
+            TokenKind::IntLiteral => {
+                let (span, val) = token.into_span_and_value::<i32>();
+                Expr {
+                    kind: ExprKind::IntLiteral(val),
+                    span,
+                }
+            }
+            TokenKind::FloatLiteral => {
+                let (span, val) = token.into_span_and_value::<f64>();
+                Expr {
+                    kind: ExprKind::FloatLiteral(val),
+                    span,
+                }
+            }
+            TokenKind::CharLiteral => {
+                let (span, val) = token.into_span_and_value::<u8>();
+                Expr {
+                    kind: ExprKind::CharLiteral(val),
+                    span,
+                }
+            }
+            TokenKind::StringLiteral => {
+                let (span, val) = token.into_span_and_value::<String>();
+                Expr {
+                    kind: ExprKind::StringLiteral(val),
+                    span,
+                }
+            }
+            TokenKind::True | TokenKind::False => {
+                let span = Span::new(token.from, token.to);
+                Expr {
+                    kind: ExprKind::BoolLiteral(match &token.kind {
+                        TokenKind::True => true,
+                        TokenKind::False => false,
+                        _ => panic!("Cannot convert token to bool"),
+                    }),
+                    span,
+                }
+            }
+            _ => panic!("Cannot convert token to literal"),
+        }
+    }
 }
-impl From<&TokenKind> for Unop {
+impl From<&TokenKind> for UnopKind {
     fn from(token_kind: &TokenKind) -> Self {
         match token_kind {
             TokenKind::Plus => Self::Plus,
             TokenKind::Minus => Self::Minus,
             TokenKind::Exclam => Self::Deref,
             TokenKind::Not => Self::Not,
-            TokenKind::PlusDot => Self::PlusFlt,
-            TokenKind::MinusDot => Self::MinusFlt,
             TokenKind::Delete => Self::Delete,
             _ => panic!("Cannot convert token to unop"),
         }
     }
 }
-impl From<&TokenKind> for Binop {
+impl From<&TokenKind> for BinopKind {
     fn from(token_kind: &TokenKind) -> Self {
         match token_kind {
             TokenKind::Plus => Self::Add,
@@ -180,10 +260,6 @@ impl From<&TokenKind> for Binop {
             TokenKind::DblBar => Self::Or,
             TokenKind::Semicolon => Self::Semicolon,
             TokenKind::ColonEq => Self::Assign,
-            TokenKind::PlusDot => Self::AddFlt,
-            TokenKind::MinusDot => Self::SubFlt,
-            TokenKind::StarDot => Self::MulFlt,
-            TokenKind::SlashDot => Self::DivFlt,
             _ => panic!("Cannot convert token to binop"),
         }
     }

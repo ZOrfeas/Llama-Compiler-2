@@ -15,7 +15,7 @@ impl Program {
 impl std::fmt::Display for Type {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Type::Unknown(id) => write!(f, "@{}", id),
+            Type::Unknown(id) => write!(f, "'{}", Type::unknown_id_to_name(*id)),
             Type::Unit => write!(f, "unit"),
             Type::Int => write!(f, "int"),
             Type::Char => write!(f, "char"),
@@ -74,17 +74,20 @@ impl<'a> TreeItem for NodeRef<'a> {
                     ),
                 },
                 NodeRef::Def(d) => {
-                    let (str, type_) = match d {
-                        Def::Const(c) => (format!("Constant {}", c.id), &c.type_),
-                        Def::Variable(v) => (format!("Variable {}", v.id), &v.type_),
-                        Def::Array(a) => (format!("Array {}", a.id), &a.type_),
-                        Def::Function(f) => (format!("Function {}", f.id), &f.type_),
+                    let def_type = match &d.kind {
+                        DefKind::Const { .. } => "Constant",
+                        DefKind::Variable => "Variable",
+                        DefKind::Array { .. } => "Array",
+                        DefKind::Function { .. } => "Function",
                     };
-                    if let Some(t) = type_ {
-                        format!("{} of type {}", str, t)
-                    } else {
-                        str
-                    }
+                    format!(
+                        "{} {}{}",
+                        def_type,
+                        d.id,
+                        d.type_
+                            .as_ref()
+                            .map_or("".to_string(), |t| format!(" of type {}", t))
+                    )
                 }
                 NodeRef::TDef(t) => format!("Type {}", t.id),
                 NodeRef::Constr(c) => format!("Constructor {}", c.id),
@@ -98,52 +101,53 @@ impl<'a> TreeItem for NodeRef<'a> {
                         "".to_string()
                     }
                 ),
-                NodeRef::Expr(e) => match e {
-                    Expr::UnitLiteral => "Unit Literal".to_string(),
-                    Expr::IntLiteral(i) => format!("Int Literal '{}'", i),
-                    Expr::FloatLiteral(f) => format!("Float Literal '{}'", f),
-                    Expr::CharLiteral(c) => format!("Char Literal '{}'", c),
-                    Expr::StringLiteral(s) =>
+                NodeRef::Expr(e) => match &e.kind {
+                    ExprKind::UnitLiteral => "Unit Literal".to_string(),
+                    ExprKind::IntLiteral(i) => format!("Int Literal '{}'", i),
+                    ExprKind::FloatLiteral(f) => format!("Float Literal '{}'", f),
+                    ExprKind::CharLiteral(c) => format!("Char Literal '{}'", c),
+                    ExprKind::StringLiteral(s) =>
                         format!("String Literal '{}'", s.replace("\n", "\\n")),
-                    Expr::BoolLiteral(b) => format!("Bool Literal '{}'", b),
-                    Expr::Tuple(ts) => format!(
+                    ExprKind::BoolLiteral(b) => format!("Bool Literal '{}'", b),
+                    ExprKind::Tuple(ts) => format!(
                         "Tuple with {} element{}",
                         ts.len(),
                         if ts.len() == 1 { "" } else { "s" }
                     ),
-                    Expr::Unop { op, operand: _ } => format!("Unary Operation '{:?}'", op),
-                    Expr::Binop { lhs: _, op, rhs: _ } => format!("Binary Operation '{:?}'", op),
-                    Expr::Call { id, args } => format!(
+                    ExprKind::Unop(Unop { op, operand: _ }) => format!("Unary Operation '{}'", op),
+                    ExprKind::Binop(Binop { lhs: _, op, rhs: _ }) =>
+                        format!("Binary Operation '{}'", op),
+                    ExprKind::Call(Call { id, args }) => format!(
                         "Call to {} with {} argument{}",
                         id,
                         args.len(),
                         if args.len() == 1 { "" } else { "s" }
                     ),
-                    Expr::ConstrCall { id, args } => format!(
+                    ExprKind::ConstrCall(Call { id, args }) => format!(
                         "Constructor call to {} with {} argument{}",
                         id,
                         args.len(),
                         if args.len() == 1 { "" } else { "s" }
                     ),
-                    Expr::ArrayAccess { id, indexes } => format!(
+                    ExprKind::ArrayAccess(ArrayAccess { id, indexes }) => format!(
                         "Array access to {} with {} argument{}",
                         id,
                         indexes.len(),
                         if indexes.len() == 1 { "" } else { "s" }
                     ),
-                    Expr::Dim { id, dim } =>
+                    ExprKind::Dim(Dim { id, dim }) =>
                         format!("dim call for id {} and dimension {}", id, dim),
-                    Expr::New(t) => format!("New on type {}", t),
-                    Expr::LetIn { .. } => format!("Let In expression"),
-                    Expr::If { .. } => format!("If expression"),
-                    Expr::While { cond: _, body: _ } => format!("While expression"),
-                    Expr::For {
+                    ExprKind::New(t) => format!("New on type {}", t),
+                    ExprKind::LetIn { .. } => format!("Let In expression"),
+                    ExprKind::If { .. } => format!("If expression"),
+                    ExprKind::While(While { cond: _, body: _ }) => format!("While expression"),
+                    ExprKind::For(For {
                         id,
                         from: _,
                         ascending,
                         to: _,
                         body: _,
-                    } => format!(
+                    }) => format!(
                         "For expression with id {} and {}",
                         id,
                         if *ascending {
@@ -152,10 +156,10 @@ impl<'a> TreeItem for NodeRef<'a> {
                             "descending order"
                         }
                     ),
-                    Expr::Match {
+                    ExprKind::Match(Match {
                         to_match: _,
                         clauses,
-                    } => format!(
+                    }) => format!(
                         "Match expression with {} clause{}",
                         clauses.len(),
                         if clauses.len() == 1 { "" } else { "s" }
@@ -199,31 +203,31 @@ impl<'a> NodeRef<'a> {
                 Definition::Let(l) => Some(l.defs.iter().map(NodeRef::Def).collect()),
                 Definition::Type(t) => Some(t.tdefs.iter().map(NodeRef::TDef).collect()),
             },
-            NodeRef::Def(d) => match d {
-                Def::Const(c) => {
+            NodeRef::Def(d) => match &d.kind {
+                DefKind::Const { expr } => {
                     let mut children = Vec::new();
-                    if let Some(t) = &c.type_ {
+                    if let Some(t) = &d.type_ {
                         children.push(NodeRef::Type(t));
                     }
-                    children.push(NodeRef::Expr(&c.expr));
+                    children.push(NodeRef::Expr(expr));
                     Some(children)
                 }
-                Def::Variable(v) => v.type_.as_ref().map(|t| vec![NodeRef::Type(t)]),
-                Def::Array(a) => {
+                DefKind::Variable => d.type_.as_ref().map(|t| vec![NodeRef::Type(t)]),
+                DefKind::Array { dims } => {
                     let mut children = Vec::new();
-                    if let Some(t) = &a.type_ {
+                    if let Some(t) = &d.type_ {
                         children.push(NodeRef::Type(t));
                     }
-                    children.extend(a.dims.iter().map(NodeRef::Expr));
+                    children.extend(dims.iter().map(NodeRef::Expr));
                     Some(children)
                 }
-                Def::Function(fun) => {
+                DefKind::Function { expr, pars } => {
                     let mut children = Vec::new();
-                    if let Some(t) = &fun.type_ {
+                    if let Some(t) = &d.type_ {
                         children.push(NodeRef::Type(t));
                     }
-                    children.extend(fun.pars.iter().map(|p| NodeRef::Par(p)));
-                    children.push(NodeRef::Expr(&fun.expr));
+                    children.extend(pars.iter().map(|p| NodeRef::Par(p)));
+                    children.push(NodeRef::Expr(expr));
                     Some(children)
                 }
             },
@@ -237,56 +241,59 @@ impl<'a> NodeRef<'a> {
                 _ => None,
             },
             NodeRef::Par(p) => p.type_.as_ref().map(|t| vec![NodeRef::Type(t)]),
-            NodeRef::Expr(e) => match e {
-                Expr::UnitLiteral
-                | Expr::IntLiteral(_)
-                | Expr::FloatLiteral(_)
-                | Expr::CharLiteral(_)
-                | Expr::StringLiteral(_)
-                | Expr::BoolLiteral(_) => None,
-                Expr::Tuple(ts) => Some(ts.iter().map(NodeRef::Expr).collect()),
-                Expr::Unop { op: _, operand } => Some(vec![NodeRef::Expr(operand)]),
-                Expr::Binop { lhs, op: _, rhs } => {
+            NodeRef::Expr(e) => match &e.kind {
+                ExprKind::UnitLiteral
+                | ExprKind::IntLiteral(_)
+                | ExprKind::FloatLiteral(_)
+                | ExprKind::CharLiteral(_)
+                | ExprKind::StringLiteral(_)
+                | ExprKind::BoolLiteral(_) => None,
+                ExprKind::Tuple(ts) => Some(ts.iter().map(NodeRef::Expr).collect()),
+                ExprKind::Unop(Unop { op: _, operand }) => Some(vec![NodeRef::Expr(operand)]),
+                ExprKind::Binop(Binop { lhs, op: _, rhs }) => {
                     Some(vec![NodeRef::Expr(lhs), NodeRef::Expr(rhs)])
                 }
-                Expr::Call { id: _, args } | Expr::ConstrCall { id: _, args } => {
+                ExprKind::Call(Call { id: _, args })
+                | ExprKind::ConstrCall(Call { id: _, args }) => {
                     Some(args.iter().map(NodeRef::Expr).collect())
                 }
-                Expr::ArrayAccess { id: _, indexes } => {
+                ExprKind::ArrayAccess(ArrayAccess { id: _, indexes }) => {
                     Some(indexes.iter().map(NodeRef::Expr).collect())
                 }
-                Expr::Dim { id: _, dim: _ } => None,
-                Expr::New(t) => Some(vec![NodeRef::Type(t)]),
-                Expr::LetIn { letdef, expr } => {
+                ExprKind::Dim(Dim { id: _, dim: _ }) => None,
+                ExprKind::New(t) => Some(vec![NodeRef::Type(t)]),
+                ExprKind::LetIn(LetIn { letdef, expr }) => {
                     let mut children = Vec::new();
                     children.extend(letdef.defs.iter().map(NodeRef::Def));
                     children.push(NodeRef::Expr(expr));
                     Some(children)
                 }
-                Expr::If {
+                ExprKind::If(If {
                     cond,
                     then_body,
                     else_body,
-                } => {
+                }) => {
                     let mut children = vec![NodeRef::Expr(cond), NodeRef::Expr(then_body)];
                     if let Some(e) = else_body {
                         children.push(NodeRef::Expr(e));
                     }
                     Some(children)
                 }
-                Expr::While { cond, body } => Some(vec![NodeRef::Expr(cond), NodeRef::Expr(body)]),
-                Expr::For {
+                ExprKind::While(While { cond, body }) => {
+                    Some(vec![NodeRef::Expr(cond), NodeRef::Expr(body)])
+                }
+                ExprKind::For(For {
                     id: _,
                     from,
                     ascending: _,
                     to,
                     body,
-                } => Some(vec![
+                }) => Some(vec![
                     NodeRef::Expr(from),
                     NodeRef::Expr(to),
                     NodeRef::Expr(body),
                 ]),
-                Expr::Match { to_match, clauses } => {
+                ExprKind::Match(Match { to_match, clauses }) => {
                     let mut children = vec![NodeRef::Expr(to_match)];
                     children.extend(clauses.iter().map(NodeRef::Clause));
                     Some(children)

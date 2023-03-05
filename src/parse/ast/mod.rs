@@ -4,18 +4,13 @@ pub mod def;
 pub mod expr;
 pub mod print;
 
-use std::rc::Rc;
-
 use crate::lex::token::Position;
 
 use self::def::Definition;
 
-// TODO: Think of a way to store the start and end position of every ast-node.
-
 #[derive(Debug, Clone)]
 pub struct Program {
     pub definitions: Vec<Definition>,
-    pub span: Span,
 }
 #[derive(Debug, Clone)]
 pub struct Span {
@@ -36,11 +31,11 @@ impl Default for Span {
     }
 }
 
-impl Program {
-    pub fn new(definitions: Vec<Definition>, from: Position, to: Position) -> Self {
-        Self {
-            definitions,
-            span: Span::new(from, to),
-        }
-    }
-}
+// impl Program {
+//     pub fn new(definitions: Vec<Definition>) -> Self {
+//         Self {
+//             definitions,
+//             // span: Span::new(from, to),
+//         }
+//     }
+// }

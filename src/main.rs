@@ -14,6 +14,7 @@ use lex::IntoLexer;
 use log::error;
 use log::info;
 use parse::IntoParser;
+use pass::sem::sem;
 use std::io::Write;
 use std::process::ExitCode;
 use thiserror::Error;
@@ -56,13 +57,14 @@ fn run_compiler(args: &cli::Cli) -> CompilerResult<()> {
     args.print
         .get_ast_writer()?
         .map(|w| ast.print(w).expect("Failed to print AST"));
-    // println!("{:?}", ast);
+    println!("{:#?}", ast);
     if args.stop_after == StopAfter::Parsing {
         return Err(CompilerError::EarlyExit(
             "Stopping... (--stop-after parsing)",
         ));
     }
     // TODO: Implement sem
+    let _sem_results = sem(&ast)?;
     // TODO: Implement irgen
     // TODO: Implement codegen/binary-gen
     Ok(())
@@ -98,7 +100,6 @@ trait MaybeStop<Item: std::fmt::Display + 'static>: WriterIter<Item> + 'static {
 impl<Item: std::fmt::Display + 'static, I: Iterator<Item = Item> + 'static> MaybeStop<Item> for I {}
 
 fn init_logger() {
-    // let log_level = if args.verbose { "info" } else { "warn" };
     env_logger::Builder::from_env(Env::default().default_filter_or("warn"))
         .format(|f, record| {
             let level = match record.level() {
@@ -116,14 +117,12 @@ fn init_logger() {
 
 type CompilerResult<T> = Result<T, CompilerError>;
 #[derive(Error, Debug)]
+#[error("{0}")]
 enum CompilerError {
-    #[error("{0}")]
     EarlyExit(&'static str),
 
-    #[error("{0}")]
+    SemanticError(#[from] pass::sem::SemanticError),
     ParserError(#[from] parse::ParseErr),
-    #[error("{0}")]
     ScannerError(#[from] scan::ScanErr),
-    #[error("{0}")]
     CliError(#[from] cli::CliErr),
 }

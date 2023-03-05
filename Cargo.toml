@@ -14,3 +14,4 @@ env_logger = "0.10.0"
 ptree = "0.4"
 thiserror = "1.0"
 enum_dispatch = "0.3.11"
+strum = { version = "0.24", features = ["derive"] }

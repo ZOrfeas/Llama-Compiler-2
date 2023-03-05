@@ -74,11 +74,14 @@ expr(3) ::= expr(4) [":=" expr(3)];
 expr(4) ::= expr(5) {"||" expr(5)};
 expr(5) ::= expr(6) {"&&" expr(6)};
 expr(6) ::= expr(7) [("=" | "<>" | "<" | ">"| "<=" | ">=" | "==" | "!=") expr(7)];
-expr(7) ::= expr(8) {("+" | "-" | "+." | "-.") expr(8)}; # possibly not in the spirit of the language if it supports polymorphism
-expr(8) ::= expr(9) {("*" | "/" | "mod" | "*." | "/.") expr(9)}; # possibly not in the spirit of the language if it supports polymorphism
+expr(7) ::= expr(8) {("+" | "-") expr(8)}; # possibly not in the spirit of the language if it supports polymorphism
+# | "+." | "-."
+expr(8) ::= expr(9) {("*" | "/" | "mod") expr(9)}; # possibly not in the spirit of the language if it supports polymorphism
+# | "*." | "/."
 expr(9) ::= expr(10) ["**" expr(9)];
 
-expr(10) ::= {"+" | "-" | "+." | "-." | "not" | "delete"} expr(11); # possibly not in the spirit of the language if it supports polymorphism
+expr(10) ::= {"+" | "-" | "not" | "delete"} expr(11); # possibly not in the spirit of the language if it supports polymorphism
+# | "+." | "-." 
 expr(11) ::= (id | Id) {expr(11)}
     | {"!"} id "[" expr {"," expr} "]"
     | {"!"} expr_primary

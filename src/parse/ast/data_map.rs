@@ -88,11 +88,17 @@ impl<'a, T> DataMap<'a, T> {
             map: HashMap::new(),
         }
     }
+    /// Insert a value into the map.
+    /// The key is the node that the value is associated with.
+    /// Returns None if the key was not present, otherwise returns the old value.
     pub fn insert<K: Into<NodeRef<'a>>>(&mut self, key: K, value: T) -> Option<T> {
         self.map.insert(key.into(), value)
     }
     pub fn get<K: Into<NodeRef<'a>>>(&self, key: K) -> Option<&T> {
         self.map.get(&key.into())
+    }
+    pub fn get_node(&self, key: &NodeRef<'a>) -> Option<&T> {
+        self.map.get(key)
     }
     // pub fn iter(&self) -> std::collections::hash_map::Iter<NodeRef<'a>, T> {
     //     self.map.iter()
@@ -117,10 +123,7 @@ impl<'a> Hash for NodeRef<'a> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::parse::ast::{
-        def::{Letdef, VariableDef},
-        Span,
-    };
+    use crate::parse::ast::def::{Def, DefKind, Letdef};
 
     #[test]
     fn can_create() {
@@ -153,12 +156,15 @@ mod test {
         Program {
             definitions: vec![Definition::Let(Letdef {
                 rec: false,
-                defs: vec![Def::Variable(VariableDef {
+                defs: vec![Def {
                     id: "some_name".to_string(),
                     type_: None,
-                })],
+                    kind: DefKind::Variable,
+                    span: Default::default(),
+                }],
+                span: Default::default(),
             })],
-            span: Span::default(),
+            // span: Span::default(),
         }
     }
 }

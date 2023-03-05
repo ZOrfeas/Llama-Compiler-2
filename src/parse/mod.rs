@@ -7,6 +7,8 @@ use crate::{
     long_peekable::{LongPeek, LongPeekableIterator},
 };
 
+use self::ast::Span;
+
 macro_rules! expect_any_of {
     ($self:ident, $($kind:path $(| $kinds:path)* => $expr:expr),+) => {
         match $self.peek_token().map(|t| &t.kind) {
@@ -28,51 +30,41 @@ macro_rules! expect_any_of {
 
 pub struct Parser<L: Iterator<Item = Token>> {
     lexer: LongPeekableIterator<L>,
+    consumed_token_span: Span,
 }
 
 impl<L: Iterator<Item = Token>> Parser<L> {
     pub fn new(lexer: L) -> Self {
         Self {
             lexer: lexer.long_peekable(),
+            consumed_token_span: Default::default(),
         }
     }
 
     pub fn program(&mut self) -> ParseResult<ast::Program> {
         let mut definitions: Vec<ast::def::Definition> = Vec::new();
-        let mut from: Option<Position> = None;
-        let to: Position = loop {
-            if let Some(token) = self.accept(&TokenKind::EOF) {
-                break token.to;
-            } else {
-                let definition = expect_any_of!(self,
-                    TokenKind::Let | TokenKind::Type => |token: Token| {
-                        from.get_or_insert(token.from);
-                        match token.kind {
-                            TokenKind::Let => self.letdef().map(ast::def::Definition::Let),
-                            TokenKind::Type => self.typedef().map(ast::def::Definition::Type),
-                            _ => unreachable!()
-                        }
-                    }
-                )?;
-                definitions.push(definition);
-            }
-        };
-        Ok(ast::Program::new(
-            definitions,
-            from.unwrap_or(to.clone()),
-            to,
-        ))
+        while self.accept(&TokenKind::EOF).is_none() {
+            let definition = expect_any_of!(self,
+                TokenKind::Let  => |_| self.letdef().map(ast::def::Definition::Let),
+                TokenKind::Type => |_| self.typedef().map(ast::def::Definition::Type)
+            )?;
+            definitions.push(definition);
+        }
+        Ok(ast::Program { definitions })
     }
     fn letdef(&mut self) -> ParseResult<ast::def::Letdef> {
+        let from = self.consumed_token_span.start.clone();
         Ok(ast::def::Letdef {
             rec: self.accept(&TokenKind::Rec).is_some(),
             defs: self.match_at_least_one(Self::def, &TokenKind::And)?,
+            span: Span::new(from, self.consumed_token_span.end.clone()),
         })
     }
     fn def(&mut self) -> ParseResult<ast::def::Def> {
         expect_any_of!(self,
             TokenKind::IdLower => |token: Token| {
-                let id = token.extract_string_value();
+                let from = token.from.clone();
+                let id = token.extract_value();
                 let pars = self.match_zero_or_more_multiple(
                     Self::par,
                     &[TokenKind::IdLower, TokenKind::LParen],
@@ -84,19 +76,19 @@ impl<L: Iterator<Item = Token>> Parser<L> {
                 };
                 self.expect(TokenKind::Eq)?;
                 let expr = self.expr()?;
+                let span = Span::new(from, self.consumed_token_span.end.clone());
                 if pars.is_empty() {
-                    Ok(ast::def::Def::Const(ast::def::ConstDef { id, type_, expr }))
+                    Ok(ast::def::Def { id, type_, kind: ast::def::DefKind::Const{ expr }, span })
                 } else {
-                    Ok(ast::def::Def::Function(ast::def::FunctionDef {
-                        id,
-                        pars,
-                        type_,
-                        expr,
-                    }))
+                    Ok(ast::def::Def {
+                        id, type_, span,
+                        kind: ast::def::DefKind::Function {pars, expr},
+                    })
                 }
             },
             TokenKind::Mutable => |_| {
-                let id = self.expect(TokenKind::IdLower)?.extract_string_value();
+                let from = self.consumed_token_span.start.clone();
+                let id = self.expect(TokenKind::IdLower)?.extract_value();
                 let dims = if self.accept(&TokenKind::LBracket).is_some() {
                     let dims = self.match_at_least_one(Self::expr, &TokenKind::Comma)?;
                     self.expect(TokenKind::RBracket)?;
@@ -109,29 +101,35 @@ impl<L: Iterator<Item = Token>> Parser<L> {
                 } else {
                     None
                 };
+                let span = Span::new(from, self.consumed_token_span.end.clone());
                 if dims.is_empty() {
-                    Ok(ast::def::Def::Variable(ast::def::VariableDef { id, type_ }))
+                    Ok(ast::def::Def { id, type_, kind: ast::def::DefKind::Variable, span })
                 } else {
-                    Ok(ast::def::Def::Array(ast::def::ArrayDef { id, type_, dims }))
+                    Ok(ast::def::Def{ id, type_, kind: ast::def::DefKind::Array{dims}, span })
                 }
             }
         )
     }
     fn typedef(&mut self) -> ParseResult<ast::def::Typedef> {
+        let from = self.consumed_token_span.start.clone();
         Ok(ast::def::Typedef {
             tdefs: self.match_at_least_one(Self::tdef, &TokenKind::And)?,
+            span: Span::new(from, self.consumed_token_span.end.clone()),
         })
     }
     fn tdef(&mut self) -> ParseResult<ast::def::TDef> {
         let id = self.expect(TokenKind::IdLower)?;
+        let from = id.from.clone();
         self.expect(TokenKind::Eq)?;
         Ok(ast::def::TDef {
-            id: id.extract_string_value(),
+            id: id.extract_value(),
             constrs: self.match_at_least_one(Self::constr, &TokenKind::Bar)?,
+            span: Span::new(from, self.consumed_token_span.end.clone()),
         })
     }
     fn constr(&mut self) -> ParseResult<ast::def::Constr> {
-        let id = self.expect(TokenKind::IdUpper)?.extract_string_value();
+        let id = self.expect(TokenKind::IdUpper)?.extract_value();
+        let from = self.consumed_token_span.start.clone();
         let types = if self.accept(&TokenKind::Of).is_some() {
             self.match_at_least_one_until(
                 Self::r#type,
@@ -146,24 +144,32 @@ impl<L: Iterator<Item = Token>> Parser<L> {
         } else {
             Vec::new()
         };
-        Ok(ast::def::Constr { id: id, types })
+        Ok(ast::def::Constr {
+            id,
+            types,
+            span: Span::new(from, self.consumed_token_span.end.clone()),
+        })
     }
     fn par(&mut self) -> ParseResult<ast::def::Par> {
         expect_any_of!(self,
             TokenKind::IdLower => |token: Token| {
+                let span = Span::new(token.from.clone(), token.to.clone());
                 Ok(ast::def::Par {
-                    id: token.extract_string_value(),
+                    id: token.extract_value(),
                     type_: None,
+                    span
                 })
             },
-            TokenKind::LParen => |_| {
-                let id = self.expect(TokenKind::IdLower)?.extract_string_value();
+            TokenKind::LParen => |token: Token| {
+                let from = token.from;
+                let id = self.expect(TokenKind::IdLower)?.extract_value();
                 self.expect(TokenKind::Colon)?;
                 let type_ = self.r#type()?;
                 self.expect(TokenKind::RParen)?;
                 Ok(ast::def::Par {
                     id,
                     type_: Some(type_),
+                    span: Span::new(from, self.consumed_token_span.end.clone()),
                 })
             }
         )
@@ -208,7 +214,7 @@ impl<L: Iterator<Item = Token>> Parser<L> {
                     .map(|t| ast::annotation::Type::Array{ inner: Box::new(t), dim_cnt })
             },
             TokenKind::IdLower => |token: Token| {
-                Ok(ast::annotation::Type::Custom{ id: token.extract_string_value() })
+                Ok(ast::annotation::Type::Custom{ id: token.extract_value() })
             }
         )?;
         // below loop handles type_recursion_helper non-terminal
@@ -231,25 +237,31 @@ impl<L: Iterator<Item = Token>> Parser<L> {
             self.expr1()
         } else {
             let expr = self.expr1()?;
+            let end = expr.span.end.clone();
             Ok(letdefs.into_iter().rfold(expr, |expr, letdef| {
                 let expr = Box::new(expr);
-                ast::expr::Expr::LetIn { letdef, expr }
+                ast::expr::Expr {
+                    span: Span::new(letdef.span.start.clone(), end.clone()),
+                    kind: ast::expr::ExprKind::LetIn(ast::expr::LetIn { letdef, expr }),
+                }
             }))
         }
     }
     fn expr1(&mut self) -> ParseResult<ast::expr::Expr> {
         let lhs = self.expr2()?;
         let exprs = self.match_zero_or_more(Self::expr, &TokenKind::Semicolon)?;
-        Ok(exprs
-            .into_iter()
-            .fold(lhs, |lhs, rhs| ast::expr::Expr::Binop {
+        Ok(exprs.into_iter().fold(lhs, |lhs, rhs| ast::expr::Expr {
+            span: Span::new(lhs.span.start.clone(), rhs.span.end.clone()),
+            kind: ast::expr::ExprKind::Binop(ast::expr::Binop {
                 lhs: Box::new(lhs),
                 op: (&TokenKind::Semicolon).into(),
                 rhs: Box::new(rhs),
-            }))
+            }),
+        }))
     }
     fn expr2(&mut self) -> ParseResult<ast::expr::Expr> {
-        if self.accept(&TokenKind::If).is_some() {
+        if let Some(token) = self.accept(&TokenKind::If) {
+            let from = token.from;
             let cond = Box::new(self.expr()?);
             self.expect(TokenKind::Then)?;
             let then_body = Box::new(self.expr()?);
@@ -258,10 +270,19 @@ impl<L: Iterator<Item = Token>> Parser<L> {
             } else {
                 None
             };
-            Ok(ast::expr::Expr::If {
-                cond,
-                then_body,
-                else_body,
+            Ok(ast::expr::Expr {
+                span: Span::new(
+                    from,
+                    else_body
+                        .as_ref()
+                        .map(|e| e.span.end.clone())
+                        .unwrap_or_else(|| then_body.span.end.clone()),
+                ),
+                kind: ast::expr::ExprKind::If(ast::expr::If {
+                    cond,
+                    then_body,
+                    else_body,
+                }),
             })
         } else {
             self.expr3()
@@ -273,10 +294,13 @@ impl<L: Iterator<Item = Token>> Parser<L> {
         let lhs = self.expr4()?;
         if let Some(token) = self.accept(&TokenKind::ColonEq) {
             let rhs = Box::new(self.expr3()?);
-            Ok(ast::expr::Expr::Binop {
-                lhs: Box::new(lhs),
-                op: (&token.kind).into(),
-                rhs,
+            Ok(ast::expr::Expr {
+                span: Span::new(lhs.span.start.clone(), rhs.span.end.clone()),
+                kind: ast::expr::ExprKind::Binop(ast::expr::Binop {
+                    lhs: Box::new(lhs),
+                    op: (&token.kind).into(),
+                    rhs,
+                }),
             })
         } else {
             Ok(lhs)
@@ -308,21 +332,24 @@ impl<L: Iterator<Item = Token>> Parser<L> {
         {
             self.consume_token();
             let rhs = Box::new(self.expr7()?);
-            Ok(ast::expr::Expr::Binop {
-                lhs: Box::new(lhs),
-                op: (*op).into(),
-                rhs,
+            Ok(ast::expr::Expr {
+                span: Span::new(lhs.span.start.clone(), rhs.span.end.clone()),
+                kind: ast::expr::ExprKind::Binop(ast::expr::Binop {
+                    lhs: Box::new(lhs),
+                    op: (*op).into(),
+                    rhs,
+                }),
             })
         } else {
             Ok(lhs)
         }
     }
     fn expr7(&mut self) -> ParseResult<ast::expr::Expr> {
-        const OPS: [Option<&TokenKind>; 4] = [
+        const OPS: [Option<&TokenKind>; 2] = [
             Some(&TokenKind::Plus),
             Some(&TokenKind::Minus),
-            Some(&TokenKind::PlusDot),
-            Some(&TokenKind::MinusDot),
+            // Some(&TokenKind::PlusDot),
+            // Some(&TokenKind::MinusDot),
         ];
         let mut lhs = self.expr8()?;
         while let Some(Some(op)) = OPS
@@ -331,21 +358,24 @@ impl<L: Iterator<Item = Token>> Parser<L> {
         {
             self.consume_token();
             let rhs = Box::new(self.expr8()?);
-            lhs = ast::expr::Expr::Binop {
-                lhs: Box::new(lhs),
-                op: (*op).into(),
-                rhs,
+            lhs = ast::expr::Expr {
+                span: Span::new(lhs.span.start.clone(), rhs.span.end.clone()),
+                kind: ast::expr::ExprKind::Binop(ast::expr::Binop {
+                    lhs: Box::new(lhs),
+                    op: (*op).into(),
+                    rhs,
+                }),
             };
         }
         Ok(lhs)
     }
     fn expr8(&mut self) -> ParseResult<ast::expr::Expr> {
-        const OPS: [Option<&TokenKind>; 5] = [
+        const OPS: [Option<&TokenKind>; 3] = [
             Some(&TokenKind::Star),
             Some(&TokenKind::Slash),
             Some(&TokenKind::Mod),
-            Some(&TokenKind::StarDot),
-            Some(&TokenKind::SlashDot),
+            // Some(&TokenKind::StarDot),
+            // Some(&TokenKind::SlashDot),
         ];
         let mut lhs = self.expr9()?;
         while let Some(Some(op)) = OPS
@@ -354,10 +384,13 @@ impl<L: Iterator<Item = Token>> Parser<L> {
         {
             self.consume_token();
             let rhs = Box::new(self.expr9()?);
-            lhs = ast::expr::Expr::Binop {
-                lhs: Box::new(lhs),
-                op: (*op).into(),
-                rhs,
+            lhs = ast::expr::Expr {
+                span: Span::new(lhs.span.start.clone(), rhs.span.end.clone()),
+                kind: ast::expr::ExprKind::Binop(ast::expr::Binop {
+                    lhs: Box::new(lhs),
+                    op: (*op).into(),
+                    rhs,
+                }),
             };
         }
         Ok(lhs)
@@ -366,21 +399,22 @@ impl<L: Iterator<Item = Token>> Parser<L> {
         let lhs = self.expr10()?;
         if let Some(token) = self.accept(&TokenKind::DblStar) {
             let rhs = Box::new(self.expr9()?);
-            Ok(ast::expr::Expr::Binop {
-                lhs: Box::new(lhs),
-                op: (&token.kind).into(),
-                rhs,
+            Ok(ast::expr::Expr {
+                span: Span::new(lhs.span.start.clone(), rhs.span.end.clone()),
+                kind: ast::expr::ExprKind::Binop(ast::expr::Binop {
+                    lhs: Box::new(lhs),
+                    op: (&token.kind).into(),
+                    rhs,
+                }),
             })
         } else {
             Ok(lhs)
         }
     }
     fn expr10(&mut self) -> ParseResult<ast::expr::Expr> {
-        const OPS: [Option<&TokenKind>; 6] = [
+        const OPS: [Option<&TokenKind>; 4] = [
             Some(&TokenKind::Plus),
             Some(&TokenKind::Minus),
-            Some(&TokenKind::PlusDot),
-            Some(&TokenKind::MinusDot),
             Some(&TokenKind::Not),
             Some(&TokenKind::Delete),
         ];
@@ -394,19 +428,30 @@ impl<L: Iterator<Item = Token>> Parser<L> {
         let expr = self.expr11()?;
         Ok(unops
             .into_iter()
-            .rfold(expr, |expr, token| ast::expr::Expr::Unop {
-                op: (&token.kind).into(),
-                operand: Box::new(expr),
+            .rfold(expr, |expr, token| ast::expr::Expr {
+                span: Span::new(token.from.clone(), expr.span.end.clone()),
+                kind: ast::expr::ExprKind::Unop(ast::expr::Unop {
+                    op: (&token.kind).into(),
+                    operand: Box::new(expr),
+                }),
             }))
     }
     fn expr11(&mut self) -> ParseResult<ast::expr::Expr> {
-        let match_array_access = |s: &mut Self, id| {
+        let match_array_access = |s: &mut Self, id: Token| {
+            let from = id.from.clone();
             let indexes = s.match_at_least_one(Self::expr, &TokenKind::Comma)?;
-            s.expect(TokenKind::RBracket)?;
-            Ok(ast::expr::Expr::ArrayAccess { id, indexes })
+            let to = s.expect(TokenKind::RBracket)?.to;
+            Ok(ast::expr::Expr {
+                span: Span::new(from, to),
+                kind: ast::expr::ExprKind::ArrayAccess(ast::expr::ArrayAccess {
+                    id: id.extract_value(),
+                    indexes,
+                }),
+            })
         };
         let match_call =
-            |s: &mut Self, id, make: fn(String, Vec<ast::expr::Expr>) -> ast::expr::Expr| {
+            |s: &mut Self, id: Token, make: fn(ast::expr::Call) -> ast::expr::ExprKind| {
+                let from = id.from.clone();
                 let args = s.match_zero_or_more_multiple(
                     Self::expr11,
                     &[
@@ -428,37 +473,43 @@ impl<L: Iterator<Item = Token>> Parser<L> {
                         TokenKind::Match,
                     ],
                 )?;
-                Ok(make(id, args))
+                let to = s.consumed_token_span.end.clone();
+                Ok(ast::expr::Expr {
+                    kind: make(ast::expr::Call {
+                        id: id.extract_value(),
+                        args,
+                    }),
+                    span: Span::new(from, to),
+                })
             };
-        let match_array_access_or_call = |s: &mut Self, id, make| {
+        let match_array_access_or_fn_call = |s: &mut Self, id| {
             if s.accept(&TokenKind::LBracket).is_some() {
                 match_array_access(s, id)
             } else {
-                match_call(s, id, make)
+                match_call(s, id, ast::expr::ExprKind::Call)
             }
         };
-        let deref_cnt = self.accept_many_and_count(&TokenKind::Exclam);
-        if deref_cnt > 0 {
+        let deref_tokens = self.accept_many(&TokenKind::Exclam);
+        if deref_tokens.len() > 0 {
             let inner_expr = if let Some(token) = self.accept(&TokenKind::IdLower) {
-                let id = token.extract_string_value();
-                match_array_access_or_call(self, id, |id, args| ast::expr::Expr::Call { id, args })?
+                match_array_access(self, token)?
             } else {
                 self.expr_primary()?
             };
-            Ok(
-                (0..deref_cnt).rfold(inner_expr, |expr, _| ast::expr::Expr::Unop {
-                    op: (&TokenKind::Exclam).into(),
-                    operand: Box::new(expr),
-                }),
-            )
+            Ok(deref_tokens
+                .into_iter()
+                .rfold(inner_expr, |expr, deref_tok| ast::expr::Expr {
+                    span: Span::new(deref_tok.from.clone(), expr.span.end.clone()),
+                    kind: ast::expr::ExprKind::Unop(ast::expr::Unop {
+                        op: (&TokenKind::Exclam).into(),
+                        operand: Box::new(expr),
+                    }),
+                }))
         } else {
             if let Some(token) = self.accept(&TokenKind::IdLower) {
-                let id = token.extract_string_value();
-                match_array_access_or_call(self, id, |id, args| ast::expr::Expr::Call { id, args })
+                match_array_access_or_fn_call(self, token)
             } else if let Some(token) = self.accept(&TokenKind::IdUpper) {
-                match_call(self, token.extract_string_value(), |id, args| {
-                    ast::expr::Expr::ConstrCall { id, args }
-                })
+                match_call(self, token, ast::expr::ExprKind::ConstrCall)
             } else {
                 self.expr_primary()
             }
@@ -466,43 +517,63 @@ impl<L: Iterator<Item = Token>> Parser<L> {
     }
     fn expr_primary(&mut self) -> ParseResult<ast::expr::Expr> {
         expect_any_of!(self,
-            TokenKind::IntLiteral => |token: Token| Ok(ast::expr::Expr::IntLiteral(token.extract_int_value())),
-            TokenKind::FloatLiteral => |token: Token| Ok(ast::expr::Expr::FloatLiteral(token.extract_float_value())),
-            TokenKind::CharLiteral => |token: Token| Ok(ast::expr::Expr::CharLiteral(token.extract_char_value())),
-            TokenKind::StringLiteral => |token: Token| Ok(ast::expr::Expr::StringLiteral(token.extract_string_value())),
-            TokenKind::True => |_| Ok(ast::expr::Expr::BoolLiteral(true)),
-            TokenKind::False => |_| Ok(ast::expr::Expr::BoolLiteral(false)),
-            TokenKind::LParen => |_| {
-                if self.accept(&TokenKind::RParen).is_some() {
-                    Ok(ast::expr::Expr::UnitLiteral)
+            TokenKind::IntLiteral | TokenKind::FloatLiteral | TokenKind::CharLiteral
+            | TokenKind::StringLiteral | TokenKind::True | TokenKind::False => |token: Token| {
+                Ok(ast::expr::Expr::from_literal(token))
+            },
+            TokenKind::LParen => |token: Token| {
+                let from = token.from;
+                if let Some(rparen_token) = self.accept(&TokenKind::RParen) {
+                    Ok(ast::expr::Expr {
+                        span: Span::new(from, rparen_token.to),
+                        kind: ast::expr::ExprKind::UnitLiteral,
+                    })
                 } else {
-                    let retval = Ok(ast::expr::Expr::maybe_tuple(
+                    let mut retval = ast::expr::Expr::maybe_tuple(
                         self.match_at_least_one(Self::expr, &TokenKind::Comma)?
-                    ));
-                    self.expect(TokenKind::RParen)?;
-                    retval
+                    );
+                    let to = self.expect(TokenKind::RParen)?.to;
+                    retval.span = Span::new(from, to);
+                    Ok(retval)
                 }
             },
-            TokenKind::Dim => |_| {
-                let dim = self.accept(&TokenKind::IntLiteral).map_or(1, |token| token.extract_int_value());
-                let id = self.expect(TokenKind::IdLower)?.extract_string_value();
-                Ok(ast::expr::Expr::Dim{id, dim})
+            TokenKind::Dim => |token: Token| {
+                let from = token.from;
+                let dim = self.accept(&TokenKind::IntLiteral).map_or(1, |token| token.extract_value());
+                let (id_span, id) = self.expect(TokenKind::IdLower)?.into_span_and_value::<String>();
+                Ok(ast::expr::Expr {
+                    kind: ast::expr::ExprKind::Dim(ast::expr::Dim {id, dim}),
+                    span: Span::new(from, id_span.end)
+                })
             },
-            TokenKind::New => |_| Ok(ast::expr::Expr::New(self.r#type()?)),
-            TokenKind::Begin => |_| {
-                let expr = self.expr()?;
-                self.expect(TokenKind::End)?;
+            TokenKind::New => |token: Token| {
+                let from = token.from;
+                Ok(ast::expr::Expr{
+                    kind: ast::expr::ExprKind::New(self.r#type()?),
+                    span: Span::new(from, self.consumed_token_span.end.clone())
+                })
+            },
+            TokenKind::Begin => |token: Token| {
+                let from = token.from;
+                let mut expr = self.expr()?;
+                let to = self.expect(TokenKind::End)?.to;
+                expr.span = Span::new(from, to);
                 Ok(expr)
             },
-            TokenKind::While => |_| {
+            TokenKind::While => |token: Token| {
+                let from = token.from;
                 let cond = Box::new(self.expr()?);
                 self.expect(TokenKind::Do)?;
                 let body = Box::new(self.expr()?);
-                self.expect(TokenKind::Done)?;
-                Ok(ast::expr::Expr::While{cond, body})
+                let to = self.expect(TokenKind::Done)?.to;
+                Ok(ast::expr::Expr{
+                    kind: ast::expr::ExprKind::While(ast::expr::While {cond, body}),
+                    span: Span::new(from, to)
+                })
             },
-            TokenKind::For => |_| {
-                let id = self.expect(TokenKind::IdLower)?.extract_string_value();
+            TokenKind::For => |token: Token| {
+                let span_from = token.from;
+                let id = self.expect(TokenKind::IdLower)?.extract_value();
                 self.expect(TokenKind::Eq)?;
                 let from = Box::new(self.expr()?);
                 let ascending = expect_any_of!(self,
@@ -512,15 +583,22 @@ impl<L: Iterator<Item = Token>> Parser<L> {
                 let to = Box::new(self.expr()?);
                 self.expect(TokenKind::Do)?;
                 let body = Box::new(self.expr()?);
-                self.expect(TokenKind::Done)?;
-                Ok(ast::expr::Expr::For{id, from, ascending, to, body})
+                let span_to = self.expect(TokenKind::Done)?.to;
+                Ok(ast::expr::Expr{
+                    kind: ast::expr::ExprKind::For(ast::expr::For {id, from, ascending, to, body}),
+                    span: Span::new(span_from, span_to),
+                })
             },
-            TokenKind::Match => |_| {
+            TokenKind::Match => |token: Token| {
+                let from = token.from;
                 let to_match = Box::new(self.expr()?);
                 self.expect(TokenKind::With)?;
                 let clauses = self.match_at_least_one(Self::clause, &TokenKind::Bar)?;
-                self.expect(TokenKind::End)?;
-                Ok(ast::expr::Expr::Match{to_match, clauses})
+                let to = self.expect(TokenKind::End)?.to;
+                Ok(ast::expr::Expr{
+                    kind: ast::expr::ExprKind::Match(ast::expr::Match {to_match, clauses}),
+                    span: Span::new(from, to)
+                })
             }
         )
     }
@@ -534,39 +612,32 @@ impl<L: Iterator<Item = Token>> Parser<L> {
     fn pattern(&mut self) -> ParseResult<ast::expr::Pattern> {
         expect_any_of!(self,
             TokenKind::Plus | TokenKind::Minus => |token: Token| {
-                let mut integer = self.expect(TokenKind::IntLiteral)?.extract_int_value();
+                let mut integer = self.expect(TokenKind::IntLiteral)?.extract_value::<i32>();
                 if token.kind == TokenKind::Minus {
                     integer = -integer;
                 }
                 Ok(ast::expr::Pattern::IntLiteral(integer))
             },
-            TokenKind::PlusDot | TokenKind::MinusDot => |token: Token| {
-                let mut float = self.expect(TokenKind::FloatLiteral)?.extract_float_value();
-                if token.kind == TokenKind::MinusDot {
-                    float = -float;
-                }
-                Ok(ast::expr::Pattern::FloatLiteral(float))
-            },
             TokenKind::CharLiteral => |token: Token| {
-                let char = token.extract_char_value();
+                let char = token.extract_value();
                 Ok(ast::expr::Pattern::CharLiteral(char))
             },
             TokenKind::StringLiteral => |token: Token| {
-                let string = token.extract_string_value();
+                let string = token.extract_value();
                 Ok(ast::expr::Pattern::StringLiteral(string))
             },
             TokenKind::IntLiteral => |token: Token| {
-                let integer = token.extract_int_value();
+                let integer = token.extract_value();
                 Ok(ast::expr::Pattern::IntLiteral(integer))
             },
             TokenKind::FloatLiteral => |token: Token| {
-                let float = token.extract_float_value();
+                let float = token.extract_value();
                 Ok(ast::expr::Pattern::FloatLiteral(float))
             },
             TokenKind::False => |_| {Ok(ast::expr::Pattern::BoolLiteral(false))},
             TokenKind::True => |_| {Ok(ast::expr::Pattern::BoolLiteral(true))},
             TokenKind::IdLower => |token: Token| {
-                Ok(ast::expr::Pattern::IdLower(token.extract_string_value()))
+                Ok(ast::expr::Pattern::IdLower(token.extract_value()))
             },
             TokenKind::LParen => |_| {
                 let patterns = self
@@ -576,9 +647,9 @@ impl<L: Iterator<Item = Token>> Parser<L> {
                 Ok(patterns)
             },
             TokenKind::IdUpper => |token: Token| {
-                let id = token.extract_string_value();
+                let id = token.extract_value();
                 let args = self.match_zero_or_more_multiple(Self::pattern, &[
-                    TokenKind::Plus, TokenKind::Minus, TokenKind::PlusDot, TokenKind::MinusDot,
+                    TokenKind::Plus, TokenKind::Minus,
                     TokenKind::CharLiteral, TokenKind::StringLiteral, TokenKind::IntLiteral,
                     TokenKind::FloatLiteral, TokenKind::False, TokenKind::True, TokenKind::IdLower,
                     TokenKind::LParen, TokenKind::IdUpper
@@ -589,17 +660,22 @@ impl<L: Iterator<Item = Token>> Parser<L> {
     }
 
     fn expect(&mut self, token_kind: TokenKind) -> ParseResult<Token> {
-        self.accept(&token_kind).ok_or(ParseErr::UnexpectedToken(
-            self.peek_token().cloned(),
-            vec![token_kind],
-        ))
+        self.accept(&token_kind)
+            .ok_or_else(|| ParseErr::UnexpectedToken(self.peek_token().cloned(), vec![token_kind]))
     }
-    fn accept_many_and_count(&mut self, token_kind: &TokenKind) -> usize {
-        let mut cnt = 0;
-        while self.accept(token_kind).is_some() {
-            cnt += 1;
+    // fn accept_many_and_count(&mut self, token_kind: &TokenKind) -> usize {
+    //     let mut cnt = 0;
+    //     while self.accept(token_kind).is_some() {
+    //         cnt += 1;
+    //     }
+    //     cnt
+    // }
+    fn accept_many(&mut self, token_kind: &TokenKind) -> Vec<Token> {
+        let mut tokens = Vec::new();
+        while let Some(token) = self.accept(token_kind) {
+            tokens.push(token);
         }
-        cnt
+        tokens
     }
     fn accept(&mut self, token_kind: &TokenKind) -> Option<Token> {
         if let Some(true) = self.peek_token().map(|t| &t.kind == (token_kind)) {
@@ -612,7 +688,10 @@ impl<L: Iterator<Item = Token>> Parser<L> {
         while self.lexer.peek().map(|t| &t.kind) == Some(&TokenKind::COMMENT) {
             self.lexer.next();
         }
-        self.lexer.next()
+        let tok = self.lexer.next();
+        tok.as_ref()
+            .map(|t| self.consumed_token_span = Span::new(t.from.clone(), t.to.clone()));
+        tok
     }
     fn peek_token(&mut self) -> Option<&Token> {
         while self.lexer.peek().map(|t| &t.kind) == Some(&TokenKind::COMMENT) {

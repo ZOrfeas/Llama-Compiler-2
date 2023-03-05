@@ -1,6 +1,11 @@
 use crate::lex::token::TokenKind;
 
-#[derive(Debug, Clone)]
+use strum::Display;
+use strum::EnumDiscriminants;
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, EnumDiscriminants)]
+#[strum_discriminants(derive(Display))]
+#[strum_discriminants(name(TypeKind))]
 pub enum Type {
     Unknown(u32),
     Unit,
@@ -15,13 +20,39 @@ pub enum Type {
     Custom { id: String },
 }
 impl Type {
+    pub fn unknown_id_to_name(mut u: u32) -> String {
+        let mut acc = Vec::new();
+        loop {
+            let c = (u % 26) as u8 + b'a';
+            acc.push(if acc.is_empty() { c } else { c - 1 });
+            if u < 26 {
+                break;
+            }
+            u = u / 26;
+        }
+        acc.into_iter().rev().map(|c| c as char).collect()
+    }
     /// If the vector contains only one element, return that element.
     /// Otherwise, return a tuple.
     pub fn maybe_tuple(types: Vec<Type>) -> Self {
         if types.len() == 1 {
-            types.into_iter().next().expect("Tuple with 1 element")
+            types
+                .into_iter()
+                .next()
+                .expect("maybe_tuple called with empty vector")
         } else {
             Self::Tuple(types)
+        }
+    }
+    pub fn is_fully_known(&self) -> bool {
+        match self {
+            Self::Unknown(_) => false,
+            Self::Unit | Self::Int | Self::Char | Self::Bool | Self::Float => true,
+            Self::Func { lhs, rhs } => lhs.is_fully_known() && rhs.is_fully_known(),
+            Self::Ref(inner) => inner.is_fully_known(),
+            Self::Array { inner, .. } => inner.is_fully_known(),
+            Self::Tuple(types) => types.iter().all(|t| t.is_fully_known()),
+            Self::Custom { .. } => true,
         }
     }
 }

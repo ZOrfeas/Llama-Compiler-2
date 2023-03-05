@@ -1,5 +1,7 @@
 use std::rc::Rc;
 
+use crate::parse::ast::Span;
+
 #[derive(Debug, Clone)]
 pub struct Token {
     pub kind: TokenKind,
@@ -33,31 +35,61 @@ impl Token {
             to,
         }
     }
-    pub fn extract_string_value(self) -> String {
-        match self.value {
-            TokenValue::String(s) => s,
-            _ => panic!("TokenValue is not a string"),
-        }
+
+    pub fn extract_value<T: TryFrom<TokenValue>>(self) -> T
+    where
+        <T as TryFrom<TokenValue>>::Error: std::fmt::Debug,
+    {
+        T::try_from(self.value).expect("TokenValue is not the correct type")
     }
-    pub fn extract_int_value(self) -> i32 {
-        match self.value {
-            TokenValue::Int(i) => i,
-            _ => panic!("TokenValue is not an int"),
-        }
+    pub fn into_span_and_value<T: TryFrom<TokenValue>>(self) -> (Span, T)
+    where
+        <T as TryFrom<TokenValue>>::Error: std::fmt::Debug,
+    {
+        let (from, to, value) = (self.from, self.to, self.value);
+        (
+            Span::new(from, to),
+            T::try_from(value).expect("TokenValue is not the correct type"),
+        )
     }
-    pub fn extract_float_value(self) -> f64 {
-        match self.value {
-            TokenValue::Float(f) => f,
-            _ => panic!("TokenValue is not a float"),
-        }
-    }
-    pub fn extract_char_value(self) -> u8 {
-        match self.value {
-            TokenValue::Char(c) => c,
-            _ => panic!("TokenValue is not a char"),
+}
+impl TryFrom<TokenValue> for String {
+    type Error = ();
+    fn try_from(value: TokenValue) -> Result<Self, Self::Error> {
+        match value {
+            TokenValue::String(s) => Ok(s),
+            _ => Err(()),
         }
     }
 }
+impl TryFrom<TokenValue> for i32 {
+    type Error = ();
+    fn try_from(value: TokenValue) -> Result<Self, Self::Error> {
+        match value {
+            TokenValue::Int(i) => Ok(i),
+            _ => Err(()),
+        }
+    }
+}
+impl TryFrom<TokenValue> for f64 {
+    type Error = ();
+    fn try_from(value: TokenValue) -> Result<Self, Self::Error> {
+        match value {
+            TokenValue::Float(f) => Ok(f),
+            _ => Err(()),
+        }
+    }
+}
+impl TryFrom<TokenValue> for u8 {
+    type Error = ();
+    fn try_from(value: TokenValue) -> Result<Self, Self::Error> {
+        match value {
+            TokenValue::Char(c) => Ok(c),
+            _ => Err(()),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum TokenValue {
     Int(i32),
@@ -128,7 +160,8 @@ pub enum TokenKind {
     StringLiteral,
 
     // Multi-char symbols
-    Arrow, PlusDot, MinusDot, StarDot, SlashDot,
+    Arrow, 
+    // PlusDot, MinusDot, StarDot, SlashDot,
     DblStar, DblAmpersand, DblBar, LtGt, LEq,
     GEq, DblEq, ExclamEq, ColonEq,
     
@@ -150,9 +183,11 @@ pub const KEYWORDS: [TokenKind; 34] = [
     TokenKind::While, TokenKind::With,
 ];
 #[rustfmt::skip]
-pub const MULTI_CHAR_SYMBOLS: [TokenKind; 14] = [
-    TokenKind::Arrow, TokenKind::PlusDot, TokenKind::MinusDot, 
-    TokenKind::StarDot, TokenKind::SlashDot, TokenKind::DblStar,
+pub const MULTI_CHAR_SYMBOLS: [TokenKind; 10] = [
+    TokenKind::Arrow, 
+    // TokenKind::PlusDot, TokenKind::MinusDot, 
+    // TokenKind::StarDot, TokenKind::SlashDot,
+    TokenKind::DblStar,
     TokenKind::DblAmpersand, TokenKind::DblBar, TokenKind::LtGt,
     TokenKind::LEq, TokenKind::GEq, TokenKind::DblEq, TokenKind::ExclamEq,
     TokenKind::ColonEq,
@@ -172,10 +207,10 @@ impl std::fmt::Display for TokenKind {
                 write!(f, "{}", format!("{:?}", self).to_ascii_lowercase())
             }
             Self::Arrow => write!(f, "->"),
-            Self::PlusDot => write!(f, "+."),
-            Self::MinusDot => write!(f, "-."),
-            Self::StarDot => write!(f, "*."),
-            Self::SlashDot => write!(f, "/."),
+            // Self::PlusDot => write!(f, "+."),
+            // Self::MinusDot => write!(f, "-."),
+            // Self::StarDot => write!(f, "*."),
+            // Self::SlashDot => write!(f, "/."),
             Self::DblStar => write!(f, "**"),
             Self::DblAmpersand => write!(f, "&&"),
             Self::DblBar => write!(f, "||"),
