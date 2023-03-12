@@ -37,8 +37,8 @@ auto handle_args(const lla::cli::Args &args) -> void {
 
 auto main(int argc, char **argv) -> int {
     auto args = lla::cli::Args(argc, argv, version);
-    if (args.result) {
-        return args.result;
+    if (auto res = args.result) {
+        return res;
     }
     handle_args(args);
 
