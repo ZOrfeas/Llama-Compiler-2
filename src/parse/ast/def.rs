@@ -1,4 +1,4 @@
-use super::{annotation::Type, expr::Expr, Span};
+use super::{annotation::TypeAnnotation, expr::Expr, Span};
 
 #[derive(Debug, Clone)]
 pub enum Definition {
@@ -21,14 +21,14 @@ pub enum DefKind {
 #[derive(Debug, Clone)]
 pub struct Def {
     pub id: String,
-    pub type_: Option<Type>,
+    pub type_: Option<TypeAnnotation>,
     pub kind: DefKind,
     pub span: Span,
 }
 #[derive(Debug, Clone)]
 pub struct Par {
     pub id: String,
-    pub type_: Option<Type>,
+    pub type_: Option<TypeAnnotation>,
     pub span: Span,
 }
 
@@ -46,6 +46,6 @@ pub struct TDef {
 #[derive(Debug, Clone)]
 pub struct Constr {
     pub id: String,
-    pub types: Vec<Type>,
+    pub types: Vec<TypeAnnotation>,
     pub span: Span,
 }

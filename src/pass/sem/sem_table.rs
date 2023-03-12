@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
-use crate::parse::ast::{self, annotation::Type, annotation::TypeKind, data_map::NodeRef, Program};
+use crate::parse::ast::{self, data_map::NodeRef, Program};
+
+use super::types::Type;
 
 type TypeMap<'a> = ast::data_map::DataMap<'a, Type>;
 type Scope<'a> = HashMap<&'a str, NodeRef<'a>>;
@@ -10,9 +12,7 @@ pub struct SemTable<'a> {
 
     // *NOTE: Type substitutions in TypeMap will be applied in bulk after inference.
     types: TypeMap<'a>,
-
-    // inference_constraints: Vec<Constraint>,
-    unknown_type_counter: u32,
+    next_unknown_id: u32,
 }
 
 impl<'a> SemTable<'a> {
@@ -20,8 +20,7 @@ impl<'a> SemTable<'a> {
         Self {
             scopes: vec![Scope::new()],
             types: TypeMap::new(ast),
-            // inference_constraints: Vec::new(),
-            unknown_type_counter: 0,
+            next_unknown_id: 0,
         }
     }
     pub fn push_scope(&mut self) {
@@ -46,7 +45,7 @@ impl<'a> SemTable<'a> {
     pub fn get_type(&self, node: NodeRef<'a>) -> Option<&Type> {
         self.types.get_node(&node)
     }
-    pub fn get_type_by_id(&self, id: &str) -> Option<&Type> {
+    pub fn get_type_by_id_lookup(&self, id: &str) -> Option<&Type> {
         self.lookup(id).and_then(|node| self.get_type(node))
     }
     // *Note: this may need a way to handle shadowing without deleting previous entry.
@@ -71,17 +70,17 @@ impl<'a> SemTable<'a> {
         None
     }
 
-    pub fn new_unknown(&mut self) -> Type {
-        let ty = Type::Unknown(self.unknown_type_counter);
-        self.unknown_type_counter += 1;
-        ty
-    }
-    pub fn new_many_unknowns(&mut self, count: usize) -> Vec<Type> {
-        (0..count).map(|_| self.new_unknown()).collect()
-    }
-    pub fn new_ref(&mut self) -> Type {
-        Type::Ref(Box::new(self.new_unknown()))
-    }
+    // pub fn new_unknown(&mut self) -> Type {
+    //     let unknown_id = self.next_unknown_id;
+    //     self.next_unknown_id += 1;
+    //     Type::Unknown(unknown_id)
+    // }
+    // pub fn new_many_unknowns(&mut self, count: usize) -> Vec<Type> {
+    //     (0..count).map(|_| self.new_unknown()).collect()
+    // }
+    // pub fn new_ref(&mut self) -> Type {
+    //     Type::Ref(Box::new(self.new_unknown()))
+    // }
 }
 // TODO: Write some tests
 

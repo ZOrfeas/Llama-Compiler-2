@@ -2,7 +2,7 @@ use strum::Display;
 
 use crate::lex::token::{Token, TokenKind};
 
-use super::{annotation::Type, def::Letdef, Span};
+use super::{annotation::TypeAnnotation, def::Letdef, Span};
 
 #[derive(Debug, Clone)]
 pub enum ExprKind {
@@ -19,7 +19,7 @@ pub enum ExprKind {
     ConstrCall(Call),
     ArrayAccess(ArrayAccess),
     Dim(Dim),
-    New(Type),
+    New(TypeAnnotation),
     LetIn(LetIn),
     If(If),
     While(While),

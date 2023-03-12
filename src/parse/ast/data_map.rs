@@ -3,7 +3,7 @@ use std::{collections::HashMap, fmt::Debug, hash::Hash};
 use enum_dispatch::enum_dispatch;
 
 use super::{
-    annotation::Type,
+    annotation::TypeAnnotation,
     def::{Constr, Def, Definition, Par, TDef},
     expr::{Clause, Expr, Pattern},
     Program,
@@ -20,67 +20,40 @@ pub enum NodeRef<'a> {
     Def(&'a Def),
     TDef(&'a TDef),
     Constr(&'a Constr),
-    Type(&'a Type),
+    Type(&'a TypeAnnotation),
     Par(&'a Par),
     Expr(&'a Expr),
     Clause(&'a Clause),
     Pattern(&'a Pattern),
 }
 #[enum_dispatch]
-trait NodeRefInner: Debug {
+trait NodeRefInner {
     // TODO: Think of a way to implement this function here only once.
     fn into_ptr(&self) -> *const ();
 }
-impl<'a> NodeRefInner for &'a Program {
-    fn into_ptr(&self) -> *const () {
-        *self as *const Program as *const ()
+macro_rules! impl_node_ref_inner {
+    ($($t:ty),*) => {
+        $(
+            impl<'a> NodeRefInner for &'a $t {
+                fn into_ptr(&self) -> *const () {
+                    *self as *const $t as *const ()
+                }
+            }
+        )*
     }
 }
-impl<'a> NodeRefInner for &'a Definition {
-    fn into_ptr(&self) -> *const () {
-        *self as *const Definition as *const ()
-    }
-}
-impl<'a> NodeRefInner for &'a Def {
-    fn into_ptr(&self) -> *const () {
-        *self as *const Def as *const ()
-    }
-}
-impl<'a> NodeRefInner for &'a TDef {
-    fn into_ptr(&self) -> *const () {
-        *self as *const TDef as *const ()
-    }
-}
-impl<'a> NodeRefInner for &'a Constr {
-    fn into_ptr(&self) -> *const () {
-        *self as *const Constr as *const ()
-    }
-}
-impl<'a> NodeRefInner for &'a Type {
-    fn into_ptr(&self) -> *const () {
-        *self as *const Type as *const ()
-    }
-}
-impl<'a> NodeRefInner for &'a Par {
-    fn into_ptr(&self) -> *const () {
-        *self as *const Par as *const ()
-    }
-}
-impl<'a> NodeRefInner for &'a Expr {
-    fn into_ptr(&self) -> *const () {
-        *self as *const Expr as *const ()
-    }
-}
-impl<'a> NodeRefInner for &'a Clause {
-    fn into_ptr(&self) -> *const () {
-        *self as *const Clause as *const ()
-    }
-}
-impl<'a> NodeRefInner for &'a Pattern {
-    fn into_ptr(&self) -> *const () {
-        *self as *const Pattern as *const ()
-    }
-}
+impl_node_ref_inner!(
+    Program,
+    Definition,
+    Def,
+    TDef,
+    Constr,
+    TypeAnnotation,
+    Par,
+    Expr,
+    Clause,
+    Pattern
+);
 
 impl<'a, T> DataMap<'a, T> {
     pub fn new(p: &'a Program) -> Self {

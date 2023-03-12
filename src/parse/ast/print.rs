@@ -12,24 +12,24 @@ impl Program {
     }
 }
 
-impl std::fmt::Display for Type {
+impl std::fmt::Display for TypeAnnotation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Type::Unknown(id) => write!(f, "'{}", Type::unknown_id_to_name(*id)),
-            Type::Unit => write!(f, "unit"),
-            Type::Int => write!(f, "int"),
-            Type::Char => write!(f, "char"),
-            Type::Bool => write!(f, "bool"),
-            Type::Float => write!(f, "float"),
-            Type::Func { lhs, rhs } => write!(f, "{} -> ({})", lhs, rhs),
-            Type::Ref(t) => write!(f, "({} ref)", t),
-            Type::Array { inner, dim_cnt } => write!(
+            // Type::Unknown(id) => write!(f, "'{}", Type::unknown_id_to_name(*id)),
+            TypeAnnotation::Unit => write!(f, "unit"),
+            TypeAnnotation::Int => write!(f, "int"),
+            TypeAnnotation::Char => write!(f, "char"),
+            TypeAnnotation::Bool => write!(f, "bool"),
+            TypeAnnotation::Float => write!(f, "float"),
+            TypeAnnotation::Func { lhs, rhs } => write!(f, "{} -> ({})", lhs, rhs),
+            TypeAnnotation::Ref(t) => write!(f, "({} ref)", t),
+            TypeAnnotation::Array { inner, dim_cnt } => write!(
                 f,
                 "{}[{}]",
                 inner,
                 (0..*dim_cnt).map(|_| "*").collect::<Vec<_>>().join(", ")
             ),
-            Type::Tuple(ts) => {
+            TypeAnnotation::Tuple(ts) => {
                 write!(
                     f,
                     "({})",
@@ -39,7 +39,7 @@ impl std::fmt::Display for Type {
                         .join(", ")
                 )
             }
-            Type::Custom { id } => write!(f, "{}", id),
+            TypeAnnotation::Custom { id } => write!(f, "{}", id),
         }
     }
 }
@@ -234,10 +234,12 @@ impl<'a> NodeRef<'a> {
             NodeRef::TDef(t) => Some(t.constrs.iter().map(NodeRef::Constr).collect()),
             NodeRef::Constr(c) => Some(c.types.iter().map(NodeRef::Type).collect()),
             NodeRef::Type(t) => match t {
-                Type::Func { lhs, rhs } => Some(vec![NodeRef::Type(lhs), NodeRef::Type(rhs)]),
-                Type::Ref(t) => Some(vec![NodeRef::Type(t)]),
-                Type::Array { inner, .. } => Some(vec![NodeRef::Type(inner)]),
-                Type::Tuple(ts) => Some(ts.iter().map(NodeRef::Type).collect()),
+                TypeAnnotation::Func { lhs, rhs } => {
+                    Some(vec![NodeRef::Type(lhs), NodeRef::Type(rhs)])
+                }
+                TypeAnnotation::Ref(t) => Some(vec![NodeRef::Type(t)]),
+                TypeAnnotation::Array { inner, .. } => Some(vec![NodeRef::Type(inner)]),
+                TypeAnnotation::Tuple(ts) => Some(ts.iter().map(NodeRef::Type).collect()),
                 _ => None,
             },
             NodeRef::Par(p) => p.type_.as_ref().map(|t| vec![NodeRef::Type(t)]),

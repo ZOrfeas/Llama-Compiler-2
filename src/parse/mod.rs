@@ -175,24 +175,24 @@ impl<L: Iterator<Item = Token>> Parser<L> {
         )
     }
 
-    fn r#type(&mut self) -> ParseResult<ast::annotation::Type> {
+    fn r#type(&mut self) -> ParseResult<ast::annotation::TypeAnnotation> {
         let t1 = self.type_precedence_helper()?;
         if self.accept(&TokenKind::Arrow).is_some() {
             let lhs = Box::new(t1);
             let rhs = Box::new(self.r#type()?);
-            Ok(ast::annotation::Type::Func { lhs, rhs })
+            Ok(ast::annotation::TypeAnnotation::Func { lhs, rhs })
         } else {
             Ok(t1)
         }
     }
-    fn type_precedence_helper(&mut self) -> ParseResult<ast::annotation::Type> {
+    fn type_precedence_helper(&mut self) -> ParseResult<ast::annotation::TypeAnnotation> {
         let mut t = expect_any_of!(self,
             TokenKind::Unit | TokenKind::Int | TokenKind::Char
             | TokenKind::Bool | TokenKind::Float  => |token: Token| Ok((&token.kind).into()),
             TokenKind::LParen => |_| {
                 let t = self
                     .match_at_least_one(Self::r#type, &TokenKind::Comma)
-                    .map(ast::annotation::Type::maybe_tuple)?;
+                    .map(ast::annotation::TypeAnnotation::maybe_tuple)?;
                 self.expect(TokenKind::RParen)?;
                 Ok(t)
             },
@@ -211,15 +211,15 @@ impl<L: Iterator<Item = Token>> Parser<L> {
                 };
                 self.expect(TokenKind::Of)?;
                 self.type_precedence_helper()
-                    .map(|t| ast::annotation::Type::Array{ inner: Box::new(t), dim_cnt })
+                    .map(|t| ast::annotation::TypeAnnotation::Array{ inner: Box::new(t), dim_cnt })
             },
             TokenKind::IdLower => |token: Token| {
-                Ok(ast::annotation::Type::Custom{ id: token.extract_value() })
+                Ok(ast::annotation::TypeAnnotation::Custom{ id: token.extract_value() })
             }
         )?;
         // below loop handles type_recursion_helper non-terminal
         while self.accept(&TokenKind::Ref).is_some() {
-            t = ast::annotation::Type::Ref(Box::new(t));
+            t = ast::annotation::TypeAnnotation::Ref(Box::new(t));
         }
         Ok(t)
     }

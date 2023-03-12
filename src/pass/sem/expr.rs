@@ -1,9 +1,9 @@
+use super::types::Type;
 use super::{sem_table::SemTable, SemResult};
-use crate::parse::ast::expr::{BinopKind, ExprKind};
-use crate::parse::ast::{
-    annotation::Type,
-    expr::{ArrayAccess, Binop, Call, Dim, Expr, For, If, LetIn, Match, Unop, UnopKind, While},
+use crate::parse::ast::expr::{
+    ArrayAccess, Binop, Call, Dim, Expr, For, If, LetIn, Match, Unop, UnopKind, While,
 };
+use crate::parse::ast::expr::{BinopKind, ExprKind};
 
 pub fn sem_expr<'a, 'b>(expr: &'a Expr, sem_table: &'b mut SemTable<'a>) -> SemResult<&'b Type> {
     let expr_type: Type = match &expr.kind {

@@ -57,7 +57,7 @@ fn run_compiler(args: &cli::Cli) -> CompilerResult<()> {
     args.print
         .get_ast_writer()?
         .map(|w| ast.print(w).expect("Failed to print AST"));
-    println!("{:#?}", ast);
+    // println!("{:#?}", ast);
     if args.stop_after == StopAfter::Parsing {
         return Err(CompilerError::EarlyExit(
             "Stopping... (--stop-after parsing)",
