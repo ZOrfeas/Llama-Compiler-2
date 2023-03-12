@@ -10,7 +10,7 @@ Args::Args(int argc, char **argv, std::string_view version)
               "llamac"),
       only_preprocess(nullptr), only_lex(nullptr), only_parse(nullptr),
       only_sem(nullptr), only_ir(nullptr), only_asm(nullptr), result(0) {
-    the_app.get_formatter()->column_width(60);
+    the_app.get_formatter()->column_width(90);
     the_app.set_help_all_flag("--help-all", "More detailed help");
 
     the_app.add_option("source", source_file, "The source file to compile")
