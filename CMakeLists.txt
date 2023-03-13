@@ -6,6 +6,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS True)
 project(LLAMAC VERSION 0.0.1)
 configure_file(config.hpp.in config.hpp)
 
+add_subdirectory(thirdparty/coro)
+add_subdirectory(thirdparty/expected)
 add_subdirectory(utils)
 add_subdirectory(cli)
 add_subdirectory(parser)
@@ -13,4 +15,5 @@ add_subdirectory(parser)
 add_executable(llamac main.cpp)
 target_include_directories(llamac PUBLIC ${LLAMAC_BINARY_DIR})
 
-target_link_libraries(llamac PUBLIC LLAMAC::CLI LLAMAC::PARSER)
+target_link_libraries(llamac PUBLIC 
+    external::expected external::coro LLAMAC::CLI LLAMAC::PARSER)

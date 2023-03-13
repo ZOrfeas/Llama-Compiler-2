@@ -10,7 +10,9 @@
             "name": "Debug",
             "program": "${workspaceFolder}/build/debug/llamac",
             "args": [
-                "${workspaceFolder}/tests/input.lla"
+                "${workspaceFolder}/tests/test_includes.lla",
+                "frontend",
+                "--print-preprocessed",
             ],
             "cwd": "${workspaceFolder}",
             "preLaunchTask": "Build debug version"

@@ -10,5 +10,5 @@ FetchContent_Declare(
     GIT_TAG c4ee726532178e556d923372f29163bd206d7732 # v9.0.0
 )
 FetchContent_MakeAvailable(fmt)
-target_link_libraries(lla-utils PRIVATE fmt::fmt)
+target_link_libraries(lla-utils PUBLIC external::coro external::expected fmt::fmt)
 
