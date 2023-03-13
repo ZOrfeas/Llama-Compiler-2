@@ -26,19 +26,25 @@ namespace lla::utils {
                                const std::optional<std::string> &destination,
                                Writer writer) -> unique_generator<Item> {
         if (!destination) {
-            for (auto i : gen) {
-                co_yield i;
-            }
+            return std::move(gen);
+            // for (auto i : gen) {
+            //     co_yield i;
+            // }
         } else {
             auto dest_file = lla::utils::make_file(*destination);
             if (!dest_file) {
                 fmt::print(stderr, "{}", dest_file.error());
                 std::exit(1);
             }
-            for (auto i : gen) {
-                writer((*dest_file).get(), i);
-                co_yield i;
-            }
+            return map_gen(std::move(gen), [f = std::move(*dest_file),
+                                            w = std::move(writer)](Item i) {
+                w(f.get(), i);
+                return i;
+            });
+            // for (auto i : gen) {
+            //     writer((*dest_file).get(), i);
+            //     co_yield i;
+            // }
         }
     }
 

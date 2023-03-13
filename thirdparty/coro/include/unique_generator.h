@@ -193,17 +193,21 @@ public:
         }
     }
 
-    // [[nodiscard]] auto map(auto mapper)
-    //     -> unique_generator<decltype(mapper(std::declval<Ref>()))> {
-    //     for (auto value : *this) {
-    //         co_yield mapper(std::move(value));
-    //     }
-    // }
-
 private:
     explicit unique_generator(handle_t coro) noexcept : coro_(coro) {}
 
     handle_t coro_;
 };
+template <typename Item>
+[[nodiscard]] static auto map_gen(unique_generator<Item> gen, auto mapper)
+    -> unique_generator<decltype(mapper(std::declval<Item>()))> {
+    for (auto value : gen) {
+        co_yield mapper(std::move(value));
+    }
+}
+auto unroll_gen(auto gen) -> void {
+    for (auto i : gen) {
+    }
+}
 
 #endif // INCLUDED_CORO_UNIQUE_GENERATOR_H

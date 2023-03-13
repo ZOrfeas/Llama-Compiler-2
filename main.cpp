@@ -17,11 +17,6 @@ static constexpr auto version =
     STR(LLAMAC_VERSION_MAJOR) "." STR(LLAMAC_VERSION_MINOR) "." STR(
         LLAMAC_VERSION_PATCH) "(" STR(LLAMAC_BUILD_TYPE) ")";
 
-auto unroll(auto gen) -> void {
-    for (auto i : gen) {
-    }
-}
-
 auto handle_args(const lla::cli::Args &args) -> void {
     using lla::utils::match;
 
@@ -35,10 +30,9 @@ auto handle_args(const lla::cli::Args &args) -> void {
                           [f](auto) {}};
         });
     if (*args.only_preprocess) {
-        unroll(std::move(lines));
+        unroll_gen(std::move(lines));
         return;
     }
-    // src.print_text(*args.preprocessed_outfile); if (*args.only_preprocess)
     // return; auto lexer = lla::parse::Lexer(src); lexer.lex(); if
     // (args.tokens_outfile) lexer.pretty_print_tokens(*args.tokens_outfile); if
     // (*args.only_lex) return;
