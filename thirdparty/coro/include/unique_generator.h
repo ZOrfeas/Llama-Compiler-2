@@ -199,7 +199,7 @@ private:
     handle_t coro_;
 };
 template <typename Item>
-[[nodiscard]] static auto map_gen(unique_generator<Item> gen, auto mapper)
+[[nodiscard]] auto map_gen(unique_generator<Item> gen, auto mapper)
     -> unique_generator<decltype(mapper(std::declval<Item>()))> {
     for (auto value : gen) {
         co_yield mapper(std::move(value));

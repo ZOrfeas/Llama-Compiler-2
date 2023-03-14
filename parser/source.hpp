@@ -4,6 +4,7 @@
 #include "common.hpp"
 #include "unique_generator.h"
 #include <string>
+#include <string_view>
 #include <variant>
 
 namespace lla::parse {

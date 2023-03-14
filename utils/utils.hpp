@@ -27,9 +27,6 @@ namespace lla::utils {
                                Writer writer) -> unique_generator<Item> {
         if (!destination) {
             return std::move(gen);
-            // for (auto i : gen) {
-            //     co_yield i;
-            // }
         } else {
             auto dest_file = lla::utils::make_file(*destination);
             if (!dest_file) {
@@ -41,10 +38,6 @@ namespace lla::utils {
                 w(f.get(), i);
                 return i;
             });
-            // for (auto i : gen) {
-            //     writer((*dest_file).get(), i);
-            //     co_yield i;
-            // }
         }
     }
 

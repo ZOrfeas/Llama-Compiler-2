@@ -4,9 +4,6 @@
 #include "fmt/core.h"
 #include "source.hpp"
 #include "utils/utils.hpp"
-// #include "parser/lexer.hpp"
-
-#include <__concepts/invocable.h>
 #include <cstdio>
 #include <iostream>
 
@@ -33,7 +30,7 @@ auto handle_args(const lla::cli::Args &args) -> void {
         unroll_gen(std::move(lines));
         return;
     }
-    // return; auto lexer = lla::parse::Lexer(src); lexer.lex(); if
+    // auto lexer = lla::parse::Lexer(src); lexer.lex(); if
     // (args.tokens_outfile) lexer.pretty_print_tokens(*args.tokens_outfile); if
     // (*args.only_lex) return;
     // // TODO: parsing
@@ -53,20 +50,6 @@ auto handle_args(const lla::cli::Args &args) -> void {
 }
 
 auto main(int argc, char **argv) -> int {
-    // using lla::utils::match;
-    // // // auto line_gen =
-    // // lla::parse::all_files_lines("./tests/test_includes.lla");
-    // for (auto event :
-    //      lla::parse::all_files_lines("./tests/test_includes.lla")) {
-    //     event | match{
-    //                 [](const lla::parse::FilenamePtr &filename) {
-    //                     fmt::print("File: {}\n", *filename);
-    //                 },
-    //                 [](const lla::parse::Line &line) {
-    //                     fmt::print("Line {}: {}\n", line.lineno, line.text);
-    //                 },
-    //             };
-    // }
     auto args = lla::cli::Args(argc, argv, version);
     if (auto res = args.result) {
         return res;
