@@ -43,11 +43,11 @@ func init() {
 type StopAfter string
 
 const (
-	Preproces StopAfter = "preprocess"
-	Lex       StopAfter = "lex"
-	Parse     StopAfter = "parse"
-	Sema      StopAfter = "sema"
-	IrGen     StopAfter = "irgen"
+	Preprocess StopAfter = "preprocess"
+	Lex        StopAfter = "lex"
+	Parse      StopAfter = "parse"
+	Sema       StopAfter = "sema"
+	IrGen      StopAfter = "irgen"
 )
 
 func (sa *StopAfter) String() string {

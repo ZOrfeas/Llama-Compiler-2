@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/ZOrfeas/Llama-Compiler-2/tree/orf/go/parse"
+	"github.com/ZOrfeas/Llama-Compiler-2/tree/orf/go/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -24,13 +25,24 @@ var rootCmd = &cobra.Command{
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// TODO: Default operation is to fully run the compiler
-		scanner := parse.NewFileScanner(args[0])
-		for line, exists := scanner.Next(); exists; line, exists = scanner.Next() {
-			text := line.SourceLine()
-			if text != "" {
-				fmt.Println(text)
-			}
+		var scanner utils.Generator[parse.ScanEvent] = parse.NewFileScanner(args[0])
+		if PrintSource != "" {
+			scanner = utils.GenMap(
+				scanner,
+				make_writer(PrintSource, func(event parse.ScanEvent) string {
+					return event.SourceLine()
+				}),
+			)
 		}
+		if StopAfterFlag == Preprocess {
+			utils.GenUnroll(scanner)
+		}
+		// for line, exists := scanner.Next(); exists; line, exists = scanner.Next() {
+		// 	text := line.SourceLine()
+		// 	if text != "" {
+		// 		fmt.Println(text)
+		// 	}
+		// }
 		return nil
 	},
 }
@@ -39,6 +51,27 @@ func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
+	}
+}
+
+func make_writer[Item any](path string, fn func(Item) string) func(Item) Item {
+	var file *os.File
+	if path == "stdout" {
+		file = os.Stdout
+	} else {
+		filetmp, err := os.Create(path)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		file = filetmp
+	}
+	return func(item Item) Item {
+		str := fn(item)
+		if str != "" {
+			fmt.Fprintln(file, str)
+		}
+		return item
 	}
 }
 

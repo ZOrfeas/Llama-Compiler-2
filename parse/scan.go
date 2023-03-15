@@ -7,9 +7,6 @@ import (
 	"strings"
 )
 
-type Scanner interface {
-	Next() (string, bool)
-}
 type fileHandle struct {
 	lineChan chan string
 	Filename string
@@ -110,6 +107,9 @@ func handleInclude(line string) (string, error) {
 func (s *FileScanner) Next() (ScanEvent, bool) {
 	event, ok := <-s.eventChan
 	return event, ok
+}
+func (s *FileScanner) Iter() <-chan ScanEvent {
+	return s.eventChan
 }
 
 type ScanEvent struct {
