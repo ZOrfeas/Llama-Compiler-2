@@ -1,7 +1,9 @@
 package main
 
-import "fmt"
+import (
+	"github.com/ZOrfeas/Llama-Compiler-2/tree/orf/go/cli"
+)
 
 func main() {
-	fmt.Println("Hello, World!")
+	cli.Execute()
 }
