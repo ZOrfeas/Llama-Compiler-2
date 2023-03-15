@@ -24,10 +24,7 @@ var rootCmd = &cobra.Command{
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// TODO: Default operation is to fully run the compiler
-		scanner, err := parse.NewFileScanner(args[0])
-		if err != nil {
-			return err
-		}
+		scanner := parse.NewFileScanner(args[0])
 		for line, exists := scanner.Next(); exists; line, exists = scanner.Next() {
 			text := line.SourceLine()
 			if text != "" {

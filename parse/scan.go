@@ -45,11 +45,12 @@ type FileScanner struct {
 	eventChan   chan ScanEvent
 }
 
-func NewFileScanner(path string) (*FileScanner, error) {
+func NewFileScanner(path string) *FileScanner {
 	var fileHandles []*fileHandle
 	firstFileHandle, err := NewFileHandle(path)
 	if err != nil {
-		return nil, err
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
 	fileHandles = append(fileHandles, firstFileHandle)
 	eventChan := make(chan ScanEvent)
@@ -85,11 +86,10 @@ func NewFileScanner(path string) (*FileScanner, error) {
 			}
 		}
 	}()
-	return &FileScanner{fileHandles, eventChan}, nil
+	return &FileScanner{fileHandles, eventChan}
 }
 
 func handleInclude(line string) (string, error) {
-	// !NOTE: empty string is returned if line is not an include
 	trimmedLine := strings.TrimSpace(line)
 	if len(trimmedLine) != 0 && trimmedLine[0] != '#' {
 		return "", nil
