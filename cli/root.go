@@ -29,7 +29,10 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 		for line, exists := scanner.Next(); exists; line, exists = scanner.Next() {
-			fmt.Println(line)
+			text := line.SourceLine()
+			if text != "" {
+				fmt.Println(text)
+			}
 		}
 		return nil
 	},

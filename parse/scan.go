@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"strings"
 )
 
 type Scanner interface {
@@ -60,6 +61,21 @@ func NewFileScanner(path string) (*FileScanner, error) {
 			line, ok := fileHandle.Next()
 			if ok {
 				// TODO: Handle includes here
+				includePath, err := handleInclude(line)
+				if err != nil {
+					fmt.Fprintln(os.Stderr, err)
+					os.Exit(1)
+				}
+				if includePath != "" {
+					includeFileHandle, err := NewFileHandle(includePath)
+					if err != nil {
+						fmt.Fprintln(os.Stderr, err)
+						os.Exit(1)
+					}
+					fileHandles = append(fileHandles, includeFileHandle)
+					eventChan <- NewFileEvent(includePath)
+					continue
+				}
 				eventChan <- NewLineEvent(line, fileHandle.Lineno)
 			} else {
 				fileHandles = fileHandles[:len(fileHandles)-1]
@@ -70,6 +86,25 @@ func NewFileScanner(path string) (*FileScanner, error) {
 		}
 	}()
 	return &FileScanner{fileHandles, eventChan}, nil
+}
+
+func handleInclude(line string) (string, error) {
+	// !NOTE: empty string is returned if line is not an include
+	trimmedLine := strings.TrimSpace(line)
+	if len(trimmedLine) != 0 && trimmedLine[0] != '#' {
+		return "", nil
+	}
+	if trimmedLine[0] == '#' && !strings.HasPrefix(trimmedLine, "#include") {
+		return "", fmt.Errorf("invalid preprocessor directive (reminder: must be #include)")
+	}
+	includePath := strings.TrimSpace(strings.TrimPrefix(trimmedLine, "#include"))
+	if includePath == "" {
+		return "", fmt.Errorf("empty include path")
+	}
+	if includePath[0] != '"' || includePath[len(includePath)-1] != '"' {
+		return "", fmt.Errorf("invalid include path (reminder: must be surrounded by double quotes)")
+	}
+	return includePath[1 : len(includePath)-1], nil
 }
 
 func (s *FileScanner) Next() (ScanEvent, bool) {
@@ -98,4 +133,10 @@ func (e ScanEvent) String() string {
 		prefix = "line " + fmt.Sprint(e.lineno) + ": "
 	}
 	return prefix + e.text
+}
+func (e ScanEvent) SourceLine() string {
+	if e.is_file_change {
+		return ""
+	}
+	return e.text
 }
