@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/ZOrfeas/Llama-Compiler-2/tree/orf/go/utils"
 )
 
 type fileHandle struct {
@@ -108,7 +110,7 @@ func (s *FileScanner) Next() (ScanEvent, bool) {
 	event, ok := <-s.eventChan
 	return event, ok
 }
-func (s *FileScanner) Iter() <-chan ScanEvent {
+func (s *FileScanner) Iter() utils.GenIterator[ScanEvent] {
 	return s.eventChan
 }
 

@@ -37,12 +37,6 @@ var rootCmd = &cobra.Command{
 		if StopAfterFlag == Preprocess {
 			utils.GenUnroll(scanner)
 		}
-		// for line, exists := scanner.Next(); exists; line, exists = scanner.Next() {
-		// 	text := line.SourceLine()
-		// 	if text != "" {
-		// 		fmt.Println(text)
-		// 	}
-		// }
 		return nil
 	},
 }
