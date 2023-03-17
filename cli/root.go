@@ -34,9 +34,7 @@ var rootCmd = &cobra.Command{
 				}),
 			)
 		}
-		if StopAfterFlag == Preprocess {
-			utils.GenUnroll(scanner)
-		}
+		StopIf(scanner, StopAfterFlag == Preprocess)
 		return nil
 	},
 }
@@ -45,6 +43,12 @@ func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
+	}
+}
+
+func StopIf[Item any](gen utils.Generator[Item], cond bool) {
+	if cond {
+		utils.GenUnroll(gen)
 	}
 }
 
