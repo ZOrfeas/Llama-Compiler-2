@@ -34,18 +34,6 @@ impl TypeAnnotation {
             Self::Tuple(types)
         }
     }
-    // pub fn unknown_id_to_name(mut u: u32) -> String {
-    //     let mut acc = Vec::new();
-    //     loop {
-    //         let c = (u % 26) as u8 + b'a';
-    //         acc.push(if acc.is_empty() { c } else { c - 1 });
-    //         if u < 26 {
-    //             break;
-    //         }
-    //         u = u / 26;
-    //     }
-    //     acc.into_iter().rev().map(|c| c as char).collect()
-    // }
 }
 
 impl From<&TokenKind> for TypeAnnotation {

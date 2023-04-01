@@ -7,7 +7,7 @@ mod types;
 use crate::parse::ast::{def::Definition, Program};
 use thiserror::Error;
 
-use self::{def::sem_def, sem_table::SemTable};
+use self::{def::SemDef, sem_table::SemTable};
 
 pub fn sem<'a>(ast: &'a Program) -> SemResult<SemTable<'a>> {
     let mut sem_table = SemTable::new(ast);
@@ -16,15 +16,18 @@ pub fn sem<'a>(ast: &'a Program) -> SemResult<SemTable<'a>> {
             Definition::Let(letdef) => {
                 if letdef.rec {
                     for def in &letdef.defs {
-                        sem_table.insert_binding(&def.id, def);
+                        // TODO: Insert an unknown type for each def as well I think
+                        sem_table.insert_scope_binding(&def.id, def);
+                        let def_type = sem_table.types.new_unknown(); // needed cause poor ol' borrowchecker's whinin'
+                        sem_table.types.insert(def, def_type);
                     }
                 }
                 for def in &letdef.defs {
-                    sem_def(def, &mut sem_table)?;
+                    sem_table.sem_def(def)?;
                 }
                 if !letdef.rec {
                     for def in &letdef.defs {
-                        sem_table.insert_binding(&def.id, def);
+                        sem_table.insert_scope_binding(&def.id, def);
                     }
                 }
             }
