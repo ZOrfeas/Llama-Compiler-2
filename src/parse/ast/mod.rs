@@ -30,12 +30,8 @@ impl Default for Span {
         }
     }
 }
-
-// impl Program {
-//     pub fn new(definitions: Vec<Definition>) -> Self {
-//         Self {
-//             definitions,
-//             // span: Span::new(from, to),
-//         }
-//     }
-// }
+impl std::fmt::Display for Span {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}-{}", self.start, self.end)
+    }
+}

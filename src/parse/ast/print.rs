@@ -165,6 +165,7 @@ impl<'a> TreeItem for NodeRef<'a> {
                         if clauses.len() == 1 { "" } else { "s" }
                     ),
                 },
+                NodeRef::For(_) => panic!("For should not be a TreeItem"),
                 NodeRef::Clause(_) => format!("Clause"),
                 NodeRef::Pattern(p) => match p {
                     Pattern::IntLiteral(i) => format!("Int Literal '{}'", i),
@@ -301,6 +302,7 @@ impl<'a> NodeRef<'a> {
                     Some(children)
                 }
             },
+            NodeRef::For(_) => None,
             NodeRef::Clause(c) => Some(vec![NodeRef::Pattern(&c.pattern), NodeRef::Expr(&c.expr)]),
             NodeRef::Pattern(p) => match p {
                 Pattern::IntLiteral(_)

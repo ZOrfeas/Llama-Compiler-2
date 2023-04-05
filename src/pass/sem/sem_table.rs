@@ -4,13 +4,17 @@ use log::info;
 
 use crate::parse::ast::{self, data_map::NodeRef, Program};
 
-use super::types::{Type, TypeMap};
+use super::types::inference::InferenceGroup;
+use super::types::type_map::TypeMap;
+use super::types::Type;
 
 // type TypeMap<'a> = ast::data_map::DataMap<'a, Type>;
 type Scope<'a> = HashMap<&'a str, NodeRef<'a>>;
 #[derive(Debug)]
 pub struct SemTable<'a> {
     scopes: Vec<Scope<'a>>,
+
+    // instantiations: DataMap<'a, >
 
     // *NOTE: Type substitutions in TypeMap will be applied in bulk after inference.
     pub types: TypeMap<'a>,
@@ -66,6 +70,10 @@ impl<'a> SemTable<'a> {
             }
         }
         None
+    }
+    #[inline(always)]
+    pub fn new_inference_group(&self) -> InferenceGroup<'a> {
+        InferenceGroup::new()
     }
 }
 // TODO: Write some tests

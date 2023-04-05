@@ -6,10 +6,7 @@ use crate::parse::ast::{
 };
 
 use super::{
-    expr::SemExpr,
-    sem_table::SemTable,
-    types::{InferenceGroup, Type},
-    SemResult,
+    expr::SemExpr, sem_table::SemTable, types::inference::InferenceGroup, types::Type, SemResult,
 };
 
 pub trait SemDef<'a> {
@@ -17,7 +14,7 @@ pub trait SemDef<'a> {
 }
 impl<'a> SemDef<'a> for SemTable<'a> {
     fn sem_def(&mut self, def: &'a Def) -> SemResult<()> {
-        let mut inf_group = InferenceGroup::new();
+        let mut inf_group = self.new_inference_group();
         let annotation_type: Option<Rc<Type>> = def.type_.as_ref().map(|t| t.into());
         let def_type: Option<Rc<Type>> = match &def.kind {
             DefKind::Array { dims } => {
@@ -32,7 +29,12 @@ impl<'a> SemDef<'a> for SemTable<'a> {
         };
         let node_type: Rc<Type> = match (annotation_type, def_type) {
             (Some(annotation_type), Some(def_type)) => {
-                inf_group.insert_unificiation(Rc::clone(&annotation_type), def_type);
+                inf_group.insert_unification(
+                    annotation_type.clone(),
+                    def_type,
+                    "def type and annotated type must match",
+                    &def.span,
+                );
                 annotation_type
             }
             (Some(t), None) | (None, Some(t)) => t,
@@ -40,7 +42,13 @@ impl<'a> SemDef<'a> for SemTable<'a> {
         };
         // *Note: lookup first. If it's already there, then instead of inserting, insert a unification.
         if let Some(ty) = self.types.get_type(def) {
-            inf_group.insert_unificiation(Rc::clone(&ty), node_type)
+            // TODO: Test that the 'ty' type is unknown (I think that's the only case where this is valid)
+            inf_group.insert_unification(
+                ty.clone(),
+                node_type,
+                "recursive definition's type",
+                &def.span,
+            );
         } else {
             self.types.insert(def, node_type);
         }
@@ -51,19 +59,24 @@ impl<'a> SemDef<'a> for SemTable<'a> {
 impl<'a> SemDefHelpers<'a> for SemTable<'a> {
     fn sem_array_def(
         &mut self,
-        inf_group: &mut InferenceGroup,
+        inf_group: &mut InferenceGroup<'a>,
         dims: &'a Vec<Expr>,
     ) -> SemResult<()> {
         for dim in dims {
             let expr_type = self.sem_expr(inf_group, dim)?;
-            inf_group.insert_unificiation(self.types.get_int(), expr_type);
+            inf_group.insert_unification(
+                self.types.get_int(),
+                expr_type,
+                "array definition dimensions must be integers",
+                &dim.span,
+            );
         }
         Ok(())
     }
 
     fn sem_func_def(
         &mut self,
-        inf_group: &mut InferenceGroup,
+        inf_group: &mut InferenceGroup<'a>,
         pars: &'a Vec<Par>,
         expr: &'a Expr,
     ) -> SemResult<Rc<Type>> {
@@ -77,7 +90,7 @@ impl<'a> SemDefHelpers<'a> for SemTable<'a> {
                 .map(|t| t.into())
                 .unwrap_or_else(|| self.types.new_unknown());
             self.insert_scope_binding(&par.id, par);
-            self.types.insert(par, Rc::clone(&par_type));
+            self.types.insert(par, par_type.clone());
             par_types.push(par_type);
         }
         let expr_type = self.sem_expr(inf_group, expr)?;
@@ -91,12 +104,12 @@ impl<'a> SemDefHelpers<'a> for SemTable<'a> {
 trait SemDefHelpers<'a> {
     fn sem_array_def(
         &mut self,
-        inf_group: &mut InferenceGroup,
+        inf_group: &mut InferenceGroup<'a>,
         dims: &'a Vec<Expr>,
     ) -> SemResult<()>;
     fn sem_func_def(
         &mut self,
-        inf_group: &mut InferenceGroup,
+        inf_group: &mut InferenceGroup<'a>,
         pars: &'a Vec<Par>,
         expr: &'a Expr,
     ) -> SemResult<Rc<Type>>;

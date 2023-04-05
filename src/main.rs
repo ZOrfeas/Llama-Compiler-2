@@ -65,6 +65,7 @@ fn run_compiler(args: &cli::Cli) -> CompilerResult<()> {
     }
     // TODO: Implement sem
     let _sem_results = sem(&ast)?;
+    // println!("{:?}", _sem_results.types);
     // TODO: Implement irgen
     // TODO: Implement codegen/binary-gen
     Ok(())

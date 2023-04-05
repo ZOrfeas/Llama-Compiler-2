@@ -5,7 +5,7 @@ use enum_dispatch::enum_dispatch;
 use super::{
     annotation::TypeAnnotation,
     def::{Constr, Def, Definition, Par, TDef},
-    expr::{Clause, Expr, Pattern},
+    expr::{Clause, Expr, For, Pattern},
     Program,
 };
 #[derive(Debug)]
@@ -23,12 +23,13 @@ pub enum NodeRef<'a> {
     Type(&'a TypeAnnotation),
     Par(&'a Par),
     Expr(&'a Expr),
+    For(&'a For), // Added to help with lookup table in semantic analysis.
     Clause(&'a Clause),
     Pattern(&'a Pattern),
 }
 #[enum_dispatch]
 trait NodeRefInner {
-    // TODO: Think of a way to implement this function here only once.
+    // *DONE: Think of a way to implement this function here only once.
     fn into_ptr(&self) -> *const ();
 }
 macro_rules! impl_node_ref_inner {
@@ -51,6 +52,7 @@ impl_node_ref_inner!(
     TypeAnnotation,
     Par,
     Expr,
+    For,
     Clause,
     Pattern
 );
