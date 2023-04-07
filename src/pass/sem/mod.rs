@@ -4,7 +4,10 @@ mod inference;
 mod sem_table;
 mod types;
 
-use crate::parse::ast::{def::Definition, Program, Span};
+use crate::parse::ast::{
+    def::{Definition, Letdef, Typedef},
+    Program, Span,
+};
 use thiserror::Error;
 
 use self::{def::SemDef, sem_table::SemTable};
@@ -13,29 +16,42 @@ pub fn sem<'a>(ast: &'a Program) -> SemResult<SemTable<'a>> {
     let mut sem_table = SemTable::new(ast);
     for def in &ast.definitions {
         match def {
-            Definition::Let(letdef) => {
-                if letdef.rec {
-                    for def in &letdef.defs {
-                        // *DONE: Insert an unknown type for each def as well I think
-                        sem_table.insert_scope_binding(&def.id, def);
-                        let def_type = sem_table.types.new_unknown(); // needed cause poor ol' borrowchecker's whinin'
-                        sem_table.types.insert(def, def_type);
-                    }
-                }
-                for def in &letdef.defs {
-                    sem_table.sem_def(def)?;
-                }
-                if !letdef.rec {
-                    for def in &letdef.defs {
-                        sem_table.insert_scope_binding(&def.id, def);
-                    }
-                }
-            }
-            Definition::Type(typedef) => todo!(),
+            Definition::Let(letdef) => sem_table.sem_letdef(letdef)?,
+            Definition::Type(typedef) => sem_table.sem_typedef(typedef)?,
         }
     }
     Ok(sem_table)
 }
+trait SemDefHelpers<'a> {
+    fn sem_letdef(&mut self, letdef: &'a Letdef) -> SemResult<()>;
+    fn sem_typedef(&mut self, typedef: &'a Typedef) -> SemResult<()>;
+}
+impl<'a> SemDefHelpers<'a> for SemTable<'a> {
+    fn sem_typedef(&mut self, typedef: &'a Typedef) -> SemResult<()> {
+        todo!()
+    }
+    fn sem_letdef(&mut self, letdef: &'a Letdef) -> SemResult<()> {
+        if letdef.rec {
+            todo!("Make sure inference_groups don't ruin shit here");
+            for def in &letdef.defs {
+                // *DONE: Insert an unknown type for each def as well I think
+                self.insert_scope_binding(&def.id, def);
+                let def_type = self.types.new_unknown(); // needed cause poor ol' borrowchecker's whinin'
+                self.types.insert(def, def_type);
+            }
+        }
+        for def in &letdef.defs {
+            self.sem_def(def)?;
+        }
+        if !letdef.rec {
+            for def in &letdef.defs {
+                self.insert_scope_binding(&def.id, def);
+            }
+        }
+        Ok(())
+    }
+}
+
 type SemResult<T> = Result<T, SemanticError>;
 
 #[derive(Error, Debug)]

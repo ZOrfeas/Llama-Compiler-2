@@ -16,7 +16,6 @@ pub struct SemTable<'a> {
 
     // *NOTE: Type substitutions in TypeMap will be applied in bulk after inference.
     pub types: TypeMap<'a>,
-    // next_unknown_id: u32,
 }
 
 impl<'a> SemTable<'a> {
@@ -24,7 +23,6 @@ impl<'a> SemTable<'a> {
         Self {
             scopes: vec![Scope::new()],
             types: TypeMap::new(ast),
-            // next_unknown_id: 0,
         }
     }
     pub fn push_scope(&mut self) {

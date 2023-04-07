@@ -1,5 +1,7 @@
 use std::{collections::HashMap, rc::Rc};
 
+use log::info;
+
 use crate::{
     parse::ast::{
         self,
@@ -59,7 +61,11 @@ impl<'a> TypeMap<'a> {
     }
     #[inline(always)]
     pub fn get_node_type(&self, node: &NodeRef<'a>) -> Option<Rc<Type>> {
-        self.node_type_map.get_node(node).cloned()
+        info!("Getting type for node: {}", node);
+        self.node_type_map.get_node(node).cloned().map(|t| {
+            info!("Got type: {}", t);
+            t
+        })
     }
     pub fn mark_generic(&mut self, node: impl Into<NodeRef<'a>>) {
         self.instantiations.insert(node.into(), Vec::new());

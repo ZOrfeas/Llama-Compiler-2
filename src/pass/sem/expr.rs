@@ -1,9 +1,11 @@
 use std::rc::Rc;
 
+use log::debug;
+
 use super::types::inference::InferenceGroup;
 use super::types::Type;
-use super::SemanticError;
 use super::{sem_table::SemTable, SemResult};
+use super::{SemDefHelpers, SemanticError};
 use crate::parse::ast::expr::{
     ArrayAccess, Binop, Call, Dim, Expr, ExprKind, For, If, LetIn, Match, Unop, While,
 };
@@ -335,15 +337,35 @@ impl<'a> SemExprHelpers<'a> for SemTable<'a> {
         dim: &'a Dim,
         expr: &'a Expr,
     ) -> SemResult<Rc<Type>> {
-        todo!()
+        let array_node = self
+            .lookup(&dim.id)
+            .ok_or_else(|| SemanticError::LookupError {
+                id: dim.id.clone(),
+                span: expr.span.clone(),
+            })?;
+        let called_array_type = self
+            .types
+            .get_node_type(&array_node)
+            .expect("array node should have a type associated with it");
+        inf_group.insert_unification(
+            called_array_type,
+            Type::new_bounded_array(self.types.new_unknown(), dim.dim as u32),
+            "dim call must be on an array that has at least as meany dimensions as the call",
+            &expr.span,
+        );
+        Ok(self.types.get_int())
     }
     fn sem_letin(
         &mut self,
         inf_group: &mut InferenceGroup<'a>,
-        new: &'a LetIn,
+        letin: &'a LetIn,
         expr: &'a Expr,
     ) -> SemResult<Rc<Type>> {
-        todo!()
+        self.push_scope();
+        self.sem_letdef(&letin.letdef)?;
+        let expr_type = self.sem_expr(inf_group, &letin.expr)?;
+        self.pop_scope();
+        Ok(expr_type)
     }
     fn sem_if(
         &mut self,
@@ -484,7 +506,7 @@ trait SemExprHelpers<'a> {
     fn sem_letin(
         &mut self,
         inf_group: &mut InferenceGroup<'a>,
-        new: &'a LetIn,
+        letin: &'a LetIn,
         expr: &'a Expr,
     ) -> SemResult<Rc<Type>>;
     fn sem_if(

@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use ptree::TreeItem;
+use ptree::{Style, TreeItem};
 
 use super::{annotation::*, data_map::NodeRef, def::*, expr::*, *};
 
@@ -317,5 +317,26 @@ impl<'a> NodeRef<'a> {
                 Pattern::Tuple(ps) => Some(ps.iter().map(NodeRef::Pattern).collect()),
             },
         }
+    }
+}
+impl<'a> std::fmt::Display for NodeRef<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.write_self(&mut DisplayWriter(f), &Default::default())
+            .map_err(|_| std::fmt::Error)
+    }
+}
+
+struct DisplayWriter<'a, 'b>(&'a mut std::fmt::Formatter<'b>);
+
+impl<'a, 'b> std::io::Write for DisplayWriter<'a, 'b> {
+    fn write(&mut self, bytes: &[u8]) -> std::result::Result<usize, std::io::Error> {
+        self.0
+            .write_str(&String::from_utf8_lossy(bytes))
+            .map_err(|err| std::io::Error::new(std::io::ErrorKind::Other, err))?;
+
+        Ok(bytes.len())
+    }
+    fn flush(&mut self) -> std::result::Result<(), std::io::Error> {
+        todo!()
     }
 }

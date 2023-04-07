@@ -59,6 +59,13 @@ impl Type {
         })
     }
     #[inline(always)]
+    pub fn new_bounded_array(inner: Rc<Type>, bound: u32) -> Rc<Type> {
+        Rc::new(Type::Array {
+            inner,
+            dim_cnt: ArrayDims::LowerBounded(bound),
+        })
+    }
+    #[inline(always)]
     pub fn new_func(lhs: Rc<Type>, rhs: Rc<Type>) -> Rc<Type> {
         Rc::new(Type::Func { lhs, rhs })
     }
