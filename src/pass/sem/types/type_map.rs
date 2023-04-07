@@ -1,8 +1,11 @@
 use std::{collections::HashMap, rc::Rc};
 
-use crate::parse::ast::{
-    self,
-    data_map::{DataMap, NodeRef},
+use crate::{
+    parse::ast::{
+        self,
+        data_map::{DataMap, NodeRef},
+    },
+    pass::sem::SemResult,
 };
 
 use super::{Constraint, Type};
@@ -11,6 +14,10 @@ use super::{Constraint, Type};
 pub struct TypeMap<'a> {
     /// Attaches a type to every node in the AST (that makes sense to have a type).
     node_type_map: DataMap<'a, Rc<Type>>,
+
+    /// Stores instantiations for each generic type.
+    /// The index of the instantiation can be stored at the call-site to help lookup during codegen.
+    instantiations: DataMap<'a, Vec<Rc<Type>>>,
     /// Stores the resolved type unifications after inference.
     unifications: HashMap<u32, Rc<Type>>,
 
@@ -28,7 +35,10 @@ impl<'a> TypeMap<'a> {
     pub fn new(p: &'a ast::Program) -> Self {
         Self {
             node_type_map: DataMap::new(p),
+
+            instantiations: DataMap::new(p),
             unifications: HashMap::new(),
+
             next_unknown_id: 0,
 
             int_type: Rc::new(Type::Int),
@@ -51,14 +61,52 @@ impl<'a> TypeMap<'a> {
     pub fn get_node_type(&self, node: &NodeRef<'a>) -> Option<Rc<Type>> {
         self.node_type_map.get_node(node).cloned()
     }
-    pub fn new_unknown_with_constraint(&mut self, constraints: Constraint) -> Rc<Type> {
+    pub fn mark_generic(&mut self, node: impl Into<NodeRef<'a>>) {
+        self.instantiations.insert(node.into(), Vec::new());
+    }
+    fn instantiate(&mut self, ty: &Rc<Type>) -> Rc<Type> {
+        use Type::*;
+        match &**ty {
+            Unknown(_, constraints) => Rc::new(Unknown(
+                self.get_and_advance_unknown_id(),
+                constraints.clone(),
+            )),
+            Func { lhs, rhs } => Type::new_func(self.instantiate(lhs), self.instantiate(rhs)),
+            Ref(inner) => Type::new_ref(self.instantiate(inner)),
+            Array { inner, dim_cnt } => Type::new_array(self.instantiate(inner), dim_cnt.clone()),
+            Tuple(types) => Type::new_tuple(types.iter().map(|t| self.instantiate(t)).collect()),
+            // Unit | Int | Char | Bool | Float | Custom { .. } => ty.clone(),
+            _ => ty.clone(),
+        }
+    }
+    pub fn get_node_type_or_instantiation(&mut self, node: &NodeRef<'a>) -> Rc<Type> {
+        let node_type = self
+            .get_node_type(node)
+            .expect("looked up node should have a type");
+        // TODO: Find a way to avoid two get_node_mut lookups. Currently not allowed cause get_node_mut returns a &mut ref which self.instantiate also wants.
+        if self.instantiations.get_node_mut(node).is_none() {
+            return node_type;
+        }
+        let instance = self.instantiate(&node_type);
+        self.instantiations
+            .get_node_mut(node)
+            .unwrap()
+            .push(instance.clone());
+        instance
+    }
+
+    #[inline(always)]
+    fn get_and_advance_unknown_id(&mut self) -> u32 {
         let id = self.next_unknown_id;
         self.next_unknown_id += 1;
+        id
+    }
+    pub fn new_unknown_with_constraint(&mut self, constraints: Constraint) -> Rc<Type> {
+        let id = self.get_and_advance_unknown_id();
         Rc::new(Type::Unknown(id, Some(constraints)))
     }
     pub fn new_unknown(&mut self) -> Rc<Type> {
-        let id = self.next_unknown_id;
-        self.next_unknown_id += 1;
+        let id = self.get_and_advance_unknown_id();
         Rc::new(Type::Unknown(id, None))
     }
     pub fn new_unknown_ref(&mut self) -> Rc<Type> {

@@ -95,9 +95,7 @@ impl<'a> SemDefHelpers<'a> for SemTable<'a> {
         }
         let expr_type = self.sem_expr(inf_group, expr)?;
         self.pop_scope();
-        let func_type = par_types
-            .into_iter()
-            .rfold(expr_type, |acc, par_type| Type::new_func(par_type, acc));
+        let func_type = Type::new_multi_arg_func(par_types, expr_type);
         Ok(func_type)
     }
 }

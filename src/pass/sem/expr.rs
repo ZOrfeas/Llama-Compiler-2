@@ -7,7 +7,7 @@ use super::{sem_table::SemTable, SemResult};
 use crate::parse::ast::expr::{
     ArrayAccess, Binop, Call, Dim, Expr, ExprKind, For, If, LetIn, Match, Unop, While,
 };
-use crate::pass::sem::types::Constraint;
+use crate::pass::sem::types::inference::Constraint;
 
 pub trait SemExpr<'a> {
     fn sem_expr(
@@ -231,13 +231,14 @@ impl<'a> SemExprHelpers<'a> for SemTable<'a> {
         call: &'a Call,
         expr: &'a Expr,
     ) -> SemResult<Rc<Type>> {
-        let called_type =
-            self.get_type_by_id_lookup(&call.id)
-                .ok_or_else(|| SemanticError::LookupError {
-                    id: call.id.clone(),
-                    span: expr.span.clone(),
-                })?;
-        todo!()
+        let called_node = self
+            .lookup(&call.id)
+            .ok_or_else(|| SemanticError::LookupError {
+                id: call.id.clone(),
+                span: expr.span.clone(),
+            })?;
+        let called_type = self.types.get_node_type_or_instantiation(&called_node);
+        Ok(called_type)
     }
     fn sem_func_call(
         &mut self,
@@ -245,7 +246,27 @@ impl<'a> SemExprHelpers<'a> for SemTable<'a> {
         call: &'a Call,
         expr: &'a Expr,
     ) -> SemResult<Rc<Type>> {
-        todo!()
+        let called_node = self
+            .lookup(&call.id)
+            .ok_or_else(|| SemanticError::LookupError {
+                id: call.id.clone(),
+                span: expr.span.clone(),
+            })?;
+        let called_type = self.types.get_node_type_or_instantiation(&called_node);
+        let arg_types = call
+            .args
+            .iter()
+            .map(|arg| self.sem_expr(inf_group, arg))
+            .collect::<SemResult<Vec<_>>>()?;
+        // TODO: Think about trying to apply the argument_types to the called_type, for performance perhaps.
+        let expr_type = self.types.new_unknown();
+        inf_group.insert_unification(
+            called_type,
+            Type::new_multi_arg_func(arg_types, expr_type.clone()),
+            "function call must match function signature",
+            &expr.span,
+        );
+        Ok(expr_type)
     }
     fn sem_constructor_call(
         &mut self,
@@ -253,7 +274,30 @@ impl<'a> SemExprHelpers<'a> for SemTable<'a> {
         call: &'a Call,
         expr: &'a Expr,
     ) -> SemResult<Rc<Type>> {
-        todo!()
+        let called_node = self
+            .lookup(&call.id)
+            .ok_or_else(|| SemanticError::LookupError {
+                id: call.id.clone(),
+                span: expr.span.clone(),
+            })?;
+        let constructor_type = self
+            .types
+            .get_node_type(&called_node)
+            .expect("constructor node should have a type associated with it");
+        let arg_types = call
+            .args
+            .iter()
+            .map(|arg| self.sem_expr(inf_group, arg))
+            .collect::<SemResult<Vec<_>>>()?;
+        let expr_type = self.types.new_unknown();
+        // *Note: partial constructor call is allowed.
+        inf_group.insert_unification(
+            constructor_type,
+            Type::new_multi_arg_func(arg_types, expr_type.clone()),
+            "constructor call must match constructor signature",
+            &expr.span,
+        );
+        Ok(expr_type)
     }
     fn sem_array_access(
         &mut self,
@@ -261,7 +305,29 @@ impl<'a> SemExprHelpers<'a> for SemTable<'a> {
         array_access: &'a ArrayAccess,
         expr: &'a Expr,
     ) -> SemResult<Rc<Type>> {
-        todo!()
+        let array_node =
+            self.lookup(&array_access.id)
+                .ok_or_else(|| SemanticError::LookupError {
+                    id: array_access.id.clone(),
+                    span: expr.span.clone(),
+                })?;
+        let called_array_type = self
+            .types
+            .get_node_type(&array_node)
+            .expect("array node should have a type associated with it");
+        let index_types = array_access
+            .indexes
+            .iter()
+            .map(|index| self.sem_expr(inf_group, index))
+            .collect::<SemResult<Vec<_>>>()?;
+        let contained_type = self.types.new_unknown();
+        inf_group.insert_unification(
+            called_array_type,
+            Type::new_known_array(contained_type.clone(), index_types.len() as u32),
+            "array access must match array signature",
+            &expr.span,
+        );
+        Ok(contained_type)
     }
     fn sem_dim(
         &mut self,

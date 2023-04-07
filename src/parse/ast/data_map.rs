@@ -75,6 +75,9 @@ impl<'a, T> DataMap<'a, T> {
     pub fn get_node(&self, key: &NodeRef<'a>) -> Option<&T> {
         self.map.get(key)
     }
+    pub fn get_node_mut(&mut self, key: &NodeRef<'a>) -> Option<&mut T> {
+        self.map.get_mut(key)
+    }
     // pub fn iter(&self) -> std::collections::hash_map::Iter<NodeRef<'a>, T> {
     //     self.map.iter()
     // }

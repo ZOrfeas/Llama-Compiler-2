@@ -14,7 +14,7 @@ pub enum TypeAnnotation {
     Ref(Box<TypeAnnotation>),
     Array {
         inner: Box<TypeAnnotation>,
-        dim_cnt: i32,
+        dim_cnt: u32,
     },
     Tuple(Vec<TypeAnnotation>),
     Custom {

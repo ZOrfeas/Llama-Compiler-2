@@ -14,8 +14,6 @@ type Scope<'a> = HashMap<&'a str, NodeRef<'a>>;
 pub struct SemTable<'a> {
     scopes: Vec<Scope<'a>>,
 
-    // instantiations: DataMap<'a, >
-
     // *NOTE: Type substitutions in TypeMap will be applied in bulk after inference.
     pub types: TypeMap<'a>,
     // next_unknown_id: u32,

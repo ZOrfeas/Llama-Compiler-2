@@ -5,35 +5,13 @@ use crate::parse::ast::annotation::TypeAnnotation;
 use std::rc::Rc;
 use strum::EnumDiscriminants;
 
+use self::inference::{ArrayDims, Constraint};
+
 // ! Implementation notes:
 // !   Solve inference groups on every definition seperately.
 // !   Types left unknown after solving a group are generic.
 // !     On lookup of a generic definition:
 // !       - Create an instantiation. An instantiation is an
-
-#[derive(Debug)]
-pub enum Constraint {
-    Allow(Vec<TypeKind>),
-    Disallow(Vec<TypeKind>),
-}
-impl Constraint {
-    pub fn allow_numeric() -> Self {
-        Self::Allow(vec![TypeKind::Int, TypeKind::Float])
-    }
-    pub fn allow_comparables() -> Self {
-        Self::Allow(vec![TypeKind::Int, TypeKind::Float, TypeKind::Char])
-    }
-    // fn allow_
-    pub fn disallow_array_and_func() -> Self {
-        Self::Disallow(vec![TypeKind::Array, TypeKind::Func])
-    }
-}
-
-#[derive(Debug)]
-pub enum ArrayDims {
-    Known(i32),
-    LowerBounded(i32),
-}
 
 #[derive(Debug, EnumDiscriminants)]
 #[strum_discriminants(name(TypeKind))]
@@ -70,7 +48,11 @@ impl Type {
         Rc::new(Type::Ref(inner))
     }
     #[inline(always)]
-    pub fn new_known_array(inner: Rc<Type>, dim_cnt: i32) -> Rc<Type> {
+    pub fn new_array(inner: Rc<Type>, dim_cnt: ArrayDims) -> Rc<Type> {
+        Rc::new(Type::Array { inner, dim_cnt })
+    }
+    #[inline(always)]
+    pub fn new_known_array(inner: Rc<Type>, dim_cnt: u32) -> Rc<Type> {
         Rc::new(Type::Array {
             inner,
             dim_cnt: ArrayDims::Known(dim_cnt),
@@ -81,9 +63,20 @@ impl Type {
         Rc::new(Type::Func { lhs, rhs })
     }
     #[inline(always)]
+    pub fn new_multi_arg_func(args: Vec<Rc<Type>>, ret: Rc<Type>) -> Rc<Type> {
+        args.into_iter()
+            .rfold(ret, |acc, arg| Type::new_func(arg, acc))
+    }
+    #[inline(always)]
     pub fn new_tuple(types: Vec<Rc<Type>>) -> Rc<Type> {
         Rc::new(Type::Tuple(types))
     }
+    // pub fn get_return_type(ty: &Rc<Type>) -> Rc<Type> {
+    //     match &**ty {
+    //         Type::Func { rhs, .. } => Self::get_return_type(rhs),
+    //         _ => ty.clone(),
+    //     }
+    // }
 }
 
 impl From<&TypeAnnotation> for Rc<Type> {
@@ -149,30 +142,5 @@ impl std::fmt::Display for Type {
             Type::Custom { id } => format!("{}", id),
         };
         write!(f, "{}", type_str)
-    }
-}
-impl std::fmt::Display for Constraint {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Constraint::Allow(types) | Constraint::Disallow(types) => {
-                let types = types
-                    .iter()
-                    .map(|t| format!("{:?}", t).to_lowercase())
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                match self {
-                    Constraint::Allow(_) => write!(f, "allow({})", types),
-                    Constraint::Disallow(_) => write!(f, "disallow({})", types),
-                }
-            }
-        }
-    }
-}
-impl std::fmt::Display for ArrayDims {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ArrayDims::Known(n) => write!(f, "{}", n),
-            ArrayDims::LowerBounded(n) => write!(f, ">={}", n),
-        }
     }
 }
