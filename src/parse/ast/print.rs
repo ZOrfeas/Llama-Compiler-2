@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use ptree::{Style, TreeItem};
+use ptree::TreeItem;
 
 use super::{annotation::*, data_map::NodeRef, def::*, expr::*, *};
 

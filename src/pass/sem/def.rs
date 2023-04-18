@@ -6,7 +6,11 @@ use crate::parse::ast::{
 };
 
 use super::{
-    expr::SemExpr, sem_table::SemTable, types::inference::InferenceGroup, types::Type, SemResult,
+    expr::SemExpr,
+    sem_table::SemTable,
+    types::inference::{InferenceGroup, Inferer},
+    types::Type,
+    SemResult,
 };
 
 pub trait SemDef<'a> {
@@ -52,7 +56,8 @@ impl<'a> SemDef<'a> for SemTable<'a> {
         } else {
             self.types.insert(def, node_type);
         }
-        // TODO: Unify all types in the inference group
+        // TODO: Think if you mark generics here, or at the end of the sem_letdef.
+        self.types.solve_group(inf_group)?;
         Ok(())
     }
 }

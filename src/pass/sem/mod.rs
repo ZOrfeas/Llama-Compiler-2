@@ -1,8 +1,9 @@
 mod def;
 mod expr;
-mod inference;
 mod sem_table;
 mod types;
+
+use std::rc::Rc;
 
 use crate::parse::ast::{
     def::{Definition, Letdef, Typedef},
@@ -10,7 +11,7 @@ use crate::parse::ast::{
 };
 use thiserror::Error;
 
-use self::{def::SemDef, sem_table::SemTable};
+use self::{def::SemDef, sem_table::SemTable, types::Type};
 
 pub fn sem<'a>(ast: &'a Program) -> SemResult<SemTable<'a>> {
     let mut sem_table = SemTable::new(ast);
@@ -58,12 +59,33 @@ type SemResult<T> = Result<T, SemanticError>;
 pub enum SemanticError {
     #[error("Identifier {} not found (at {})", id, span)]
     LookupError { id: String, span: Span },
-    // #[error("Type mismatch: expected {}, got {} ({})", expected, given, msg)]
-    // TypeMismatch {
-    //     expected: Type,
-    //     given: Type,
-    //     msg: &'static str,
-    // },
-    // #[error("Invalid type given: {} ({})", given, msg)]
-    // InvalidType { given: Type, msg: &'static str },
+    #[error(
+        "{}: {} = {} ({} {} at {})",
+        msg,
+        lhs_resolved,
+        rhs_resolved,
+        if lhs != lhs_resolved || rhs != rhs_resolved {
+            format!("orignally {} = {}", lhs, rhs)
+        } else {
+            "".to_string()
+        },
+        unification_reason,
+        span,
+    )]
+    InferenceError {
+        msg: String,
+        lhs: Rc<Type>,
+        rhs: Rc<Type>,
+        lhs_resolved: Rc<Type>,
+        rhs_resolved: Rc<Type>,
+        span: Span,
+        unification_reason: String,
+    }, // #[error("Type mismatch: expected {}, got {} ({})", expected, given, msg)]
+       // TypeMismatch {
+       //     expected: Type,
+       //     given: Type,
+       //     msg: &'static str,
+       // },
+       // #[error("Invalid type given: {} ({})", given, msg)]
+       // InvalidType { given: Type, msg: &'static str },
 }

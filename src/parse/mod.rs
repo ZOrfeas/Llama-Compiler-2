@@ -3,7 +3,7 @@ pub mod ast;
 use thiserror::Error;
 
 use crate::{
-    lex::token::{Position, Token, TokenKind},
+    lex::token::{Token, TokenKind},
     long_peekable::{LongPeek, LongPeekableIterator},
 };
 

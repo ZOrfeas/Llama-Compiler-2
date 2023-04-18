@@ -2,10 +2,10 @@ pub mod inference;
 pub mod type_map;
 
 use crate::parse::ast::annotation::TypeAnnotation;
-use std::rc::Rc;
+use std::{cell::RefCell, rc::Rc};
 use strum::EnumDiscriminants;
 
-use self::inference::{ArrayDims, Constraint};
+use self::inference::{ArrayDims, Constraints};
 
 // ! Implementation notes:
 // !   Solve inference groups on every definition seperately.
@@ -15,20 +15,29 @@ use self::inference::{ArrayDims, Constraint};
 
 #[derive(Debug, EnumDiscriminants)]
 #[strum_discriminants(name(TypeKind))]
+#[strum_discriminants(derive(Hash))]
 pub enum Type {
     // *Note: Unknown types can carry their own constraints.
-    Unknown(u32, Option<Constraint>),
+    Unknown(u32, RefCell<Constraints>),
     Unit,
     Int,
     Char,
     Bool,
     Float,
-    Func { lhs: Rc<Type>, rhs: Rc<Type> },
+    Func {
+        lhs: Rc<Type>,
+        rhs: Rc<Type>,
+    },
     Ref(Rc<Type>),
     // *Note: Store a possible lower bound for dim_cnt. Possibly with an enum.
-    Array { inner: Rc<Type>, dim_cnt: ArrayDims },
+    Array {
+        inner: Rc<Type>,
+        dim_cnt: RefCell<Rc<RefCell<ArrayDims>>>,
+    },
     Tuple(Vec<Rc<Type>>),
-    Custom { id: String },
+    Custom {
+        id: String,
+    },
 }
 impl Type {
     pub fn unknown_id_to_name(mut u: u32) -> String {
@@ -49,21 +58,18 @@ impl Type {
     }
     #[inline(always)]
     pub fn new_array(inner: Rc<Type>, dim_cnt: ArrayDims) -> Rc<Type> {
-        Rc::new(Type::Array { inner, dim_cnt })
+        Rc::new(Type::Array {
+            inner,
+            dim_cnt: RefCell::new(Rc::new(RefCell::new(dim_cnt))),
+        })
     }
     #[inline(always)]
     pub fn new_known_array(inner: Rc<Type>, dim_cnt: u32) -> Rc<Type> {
-        Rc::new(Type::Array {
-            inner,
-            dim_cnt: ArrayDims::Known(dim_cnt),
-        })
+        Self::new_array(inner, ArrayDims::Known(dim_cnt))
     }
     #[inline(always)]
     pub fn new_bounded_array(inner: Rc<Type>, bound: u32) -> Rc<Type> {
-        Rc::new(Type::Array {
-            inner,
-            dim_cnt: ArrayDims::LowerBounded(bound),
-        })
+        Self::new_array(inner, ArrayDims::LowerBounded(bound))
     }
     #[inline(always)]
     pub fn new_func(lhs: Rc<Type>, rhs: Rc<Type>) -> Rc<Type> {
@@ -78,12 +84,48 @@ impl Type {
     pub fn new_tuple(types: Vec<Rc<Type>>) -> Rc<Type> {
         Rc::new(Type::Tuple(types))
     }
+    // #[inline(always)]
     // pub fn get_return_type(ty: &Rc<Type>) -> Rc<Type> {
     //     match &**ty {
     //         Type::Func { rhs, .. } => Self::get_return_type(rhs),
     //         _ => ty.clone(),
     //     }
     // }
+}
+impl PartialEq for Type {
+    fn eq(&self, other: &Self) -> bool {
+        use Type::*;
+        if std::mem::discriminant(self) != std::mem::discriminant(other) {
+            return false;
+        }
+        match (self, other) {
+            (Unknown(id1, _), Unknown(id2, _)) => id1 == id2,
+            (
+                Func {
+                    lhs: lhs1,
+                    rhs: rhs1,
+                },
+                Func {
+                    lhs: lhs2,
+                    rhs: rhs2,
+                },
+            ) => lhs1 == lhs2 && rhs1 == rhs2,
+            (Ref(inner1), Ref(inner2)) => inner1 == inner2,
+            (
+                Array {
+                    inner: i1,
+                    dim_cnt: d1,
+                },
+                Array {
+                    inner: i2,
+                    dim_cnt: d2,
+                },
+            ) => i1 == i2 && d1 == d2,
+            (Tuple(types1), Tuple(types2)) => types2 == types1,
+            (Custom { id: id1 }, Custom { id: id2 }) => id1 == id2,
+            _ => true,
+        }
+    }
 }
 
 impl From<&TypeAnnotation> for Rc<Type> {
@@ -100,10 +142,7 @@ impl From<&TypeAnnotation> for Rc<Type> {
                 rhs: (&**rhs).into(),
             }),
             Ref(inner) => Rc::new(Type::Ref((&**inner).into())),
-            Array { inner, dim_cnt } => Rc::new(Type::Array {
-                inner: (&**inner).into(),
-                dim_cnt: ArrayDims::Known(*dim_cnt),
-            }),
+            Array { inner, dim_cnt } => Type::new_known_array((&**inner).into(), *dim_cnt),
             Tuple(types) => Rc::new(Type::Tuple(types.iter().map(|t| (t).into()).collect())),
             Custom { id } => Rc::new(Type::Custom { id: id.clone() }),
         }
@@ -113,14 +152,7 @@ impl std::fmt::Display for Type {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let type_str = match self {
             Type::Unknown(id, constraints) => {
-                format!(
-                    "'{}{}",
-                    Type::unknown_id_to_name(*id),
-                    constraints
-                        .as_ref()
-                        .map(|c| format!("({})", c))
-                        .unwrap_or("".to_string())
-                )
+                format!("'{}{}", Type::unknown_id_to_name(*id), constraints.borrow())
             }
             Type::Unit => "unit".to_string(),
             Type::Int => "int".to_string(),
@@ -129,13 +161,7 @@ impl std::fmt::Display for Type {
             Type::Float => "float".to_string(),
             Type::Func { lhs, rhs } => format!("{} -> ({})", lhs, rhs),
             Type::Ref(inner) => format!("({} ref)", inner),
-            Type::Array { inner, dim_cnt } => {
-                let dim_cnt = match dim_cnt {
-                    ArrayDims::Known(dim_cnt) => dim_cnt.to_string(),
-                    ArrayDims::LowerBounded(dim_cnt) => format!(">={}", dim_cnt),
-                };
-                format!("{}[{}]", inner, dim_cnt)
-            }
+            Type::Array { inner, dim_cnt } => format!("{}[{}]", inner, dim_cnt.borrow().borrow()),
             Type::Tuple(types) => {
                 format!(
                     "({})",

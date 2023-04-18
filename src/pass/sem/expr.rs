@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use log::debug;
+// use log::debug;
 
 use super::types::inference::InferenceGroup;
 use super::types::Type;
@@ -9,7 +9,7 @@ use super::{SemDefHelpers, SemanticError};
 use crate::parse::ast::expr::{
     ArrayAccess, Binop, Call, Dim, Expr, ExprKind, For, If, LetIn, Match, Unop, While,
 };
-use crate::pass::sem::types::inference::Constraint;
+use crate::pass::sem::types::inference::Constraints;
 
 pub trait SemExpr<'a> {
     fn sem_expr(
@@ -70,7 +70,7 @@ impl<'a> SemExprHelpers<'a> for SemTable<'a> {
             Plus | Minus => {
                 let unknown_numeric = self
                     .types
-                    .new_unknown_with_constraint(Constraint::allow_numeric());
+                    .new_unknown_with_constraint(Constraints::allow_numeric());
                 inf_group.insert_unification(
                     op_type.clone(),
                     unknown_numeric,
@@ -123,7 +123,7 @@ impl<'a> SemExprHelpers<'a> for SemTable<'a> {
             Add | Sub | Mul | Div | Pow => {
                 let unknown_numeric = self
                     .types
-                    .new_unknown_with_constraint(Constraint::allow_numeric());
+                    .new_unknown_with_constraint(Constraints::allow_numeric());
                 inf_group.insert_unification(
                     lhs_type.clone(),
                     unknown_numeric.clone(),
@@ -159,7 +159,7 @@ impl<'a> SemExprHelpers<'a> for SemTable<'a> {
             NatEq | NatNotEq | StrEq | StrNotEq => {
                 let unknown_non_array_non_func = self
                     .types
-                    .new_unknown_with_constraint(Constraint::disallow_array_and_func());
+                    .new_unknown_with_constraint(Constraints::disallow_array_and_func());
                 inf_group.insert_unification(
                     lhs_type.clone(),
                     unknown_non_array_non_func.clone(),
@@ -177,7 +177,7 @@ impl<'a> SemExprHelpers<'a> for SemTable<'a> {
             Lt | Gt | LEq | GEq => {
                 let unknown_comparable = self
                     .types
-                    .new_unknown_with_constraint(Constraint::allow_comparables());
+                    .new_unknown_with_constraint(Constraints::allow_comparables());
                 inf_group.insert_unification(
                     lhs_type.clone(),
                     unknown_comparable.clone(),

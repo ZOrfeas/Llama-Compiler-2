@@ -1,16 +1,13 @@
-use std::{collections::HashMap, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use log::info;
 
-use crate::{
-    parse::ast::{
-        self,
-        data_map::{DataMap, NodeRef},
-    },
-    pass::sem::SemResult,
+use crate::parse::ast::{
+    self,
+    data_map::{DataMap, NodeRef},
 };
 
-use super::{Constraint, Type};
+use super::{inference::Constraints, Type};
 
 #[derive(Debug)]
 pub struct TypeMap<'a> {
@@ -18,10 +15,10 @@ pub struct TypeMap<'a> {
     node_type_map: DataMap<'a, Rc<Type>>,
 
     /// Stores instantiations for each generic type.
-    /// The index of the instantiation can be stored at the call-site to help lookup during codegen.
+    /// TODO: The index of the instantiation can be stored at the call-site to help lookup during codegen.
     instantiations: DataMap<'a, Vec<Rc<Type>>>,
     /// Stores the resolved type unifications after inference.
-    unifications: HashMap<u32, Rc<Type>>,
+    pub unifications: HashMap<u32, Rc<Type>>,
 
     /// The id of the next unknown type to be created.
     next_unknown_id: u32,
@@ -79,7 +76,9 @@ impl<'a> TypeMap<'a> {
             )),
             Func { lhs, rhs } => Type::new_func(self.instantiate(lhs), self.instantiate(rhs)),
             Ref(inner) => Type::new_ref(self.instantiate(inner)),
-            Array { inner, dim_cnt } => Type::new_array(self.instantiate(inner), dim_cnt.clone()),
+            Array { inner, dim_cnt } => {
+                Type::new_array(self.instantiate(inner), dim_cnt.borrow().borrow().clone())
+            }
             Tuple(types) => Type::new_tuple(types.iter().map(|t| self.instantiate(t)).collect()),
             // Unit | Int | Char | Bool | Float | Custom { .. } => ty.clone(),
             _ => ty.clone(),
@@ -107,14 +106,15 @@ impl<'a> TypeMap<'a> {
         self.next_unknown_id += 1;
         id
     }
-    pub fn new_unknown_with_constraint(&mut self, constraints: Constraint) -> Rc<Type> {
+    pub fn new_unknown_with_constraint(&mut self, constraints: Constraints) -> Rc<Type> {
         let id = self.get_and_advance_unknown_id();
-        Rc::new(Type::Unknown(id, Some(constraints)))
+        Rc::new(Type::Unknown(id, RefCell::new(constraints)))
     }
     pub fn new_unknown(&mut self) -> Rc<Type> {
         let id = self.get_and_advance_unknown_id();
-        Rc::new(Type::Unknown(id, None))
+        Rc::new(Type::Unknown(id, RefCell::new(Constraints::new())))
     }
+    #[inline(always)]
     pub fn new_unknown_ref(&mut self) -> Rc<Type> {
         Rc::new(Type::Ref(self.new_unknown()))
     }

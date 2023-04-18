@@ -59,7 +59,7 @@ impl<'a> SemTable<'a> {
         self.current_scope().get(name).cloned()
     }
     pub fn lookup(&self, name: &str) -> Option<NodeRef<'a>> {
-        info!("Looking up name {}", name);
+        info!("Looking up name: {}", name);
         for scope in self.scopes.iter().rev() {
             if let Some(node) = scope.get(name) {
                 return Some(node.clone());

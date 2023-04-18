@@ -58,7 +58,7 @@ impl_node_ref_inner!(
 );
 
 impl<'a, T> DataMap<'a, T> {
-    pub fn new(p: &'a Program) -> Self {
+    pub fn new(_: &'a Program) -> Self {
         Self {
             map: HashMap::new(),
         }
