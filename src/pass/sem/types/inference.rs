@@ -1,7 +1,7 @@
 use std::{cell::RefCell, collections::HashSet, rc::Rc};
 
 use colored::Colorize;
-use log::{debug, info};
+use log::info;
 
 use crate::{
     parse::ast::Span,
@@ -35,7 +35,7 @@ impl<'a> InfererHelpers<'a> for TypeMap<'a> {
         let lhs = self.deep_resolve_type(unification.lhs.clone());
         let rhs = self.deep_resolve_type(unification.rhs.clone());
         info!(
-            "Which becomes:        {} {} {}",
+            "Unifying: {} {} {}",
             lhs.to_string().blue(),
             "=".red(),
             rhs.to_string().blue(),

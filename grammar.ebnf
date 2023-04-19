@@ -83,7 +83,7 @@ expr(9) ::= expr(10) ["**" expr(9)];
 expr(10) ::= {"+" | "-" | "not" | "delete"} expr(11); # possibly not in the spirit of the language if it supports polymorphism
 # | "+." | "-." 
 expr(11) ::= (id | Id) {expr(11)}
-    | {"!"} id "[" expr {"," expr} "]"
+    | {"!"} id ["[" expr {"," expr} "]"]
     | {"!"} expr_primary
 ;
 expr_primary ::= int_const | float_const | char_const | string_literal | "true" | "false"

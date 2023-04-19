@@ -492,7 +492,21 @@ impl<L: Iterator<Item = Token>> Parser<L> {
         let deref_tokens = self.accept_many(&TokenKind::Exclam);
         if deref_tokens.len() > 0 {
             let inner_expr = if let Some(token) = self.accept(&TokenKind::IdLower) {
-                match_array_access(self, token)?
+                // TODO: FIX. This does not allow for `!a` expressions
+                // TODO:   I think this is wrong in gerenal ?
+                // *Note: Possibly fixed
+                if self.accept(&TokenKind::LBracket).is_some() {
+                    match_array_access(self, token)?
+                } else {
+                    let span = Span::new(token.from.clone(), token.to.clone());
+                    ast::expr::Expr {
+                        kind: ast::expr::ExprKind::Call(ast::expr::Call {
+                            id: token.extract_value(),
+                            args: Vec::new(),
+                        }),
+                        span,
+                    }
+                }
             } else {
                 self.expr_primary()?
             };
