@@ -11,7 +11,11 @@ use crate::parse::ast::{
 };
 use thiserror::Error;
 
-use self::{def::SemDef, sem_table::SemTable, types::Type};
+use self::{
+    def::SemDef,
+    sem_table::SemTable,
+    types::{inference::InfererHelpers, Type},
+};
 
 pub fn sem<'a>(ast: &'a Program) -> SemResult<SemTable<'a>> {
     let mut sem_table = SemTable::new(ast);

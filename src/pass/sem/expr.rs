@@ -40,13 +40,13 @@ impl<'a> SemExpr<'a> for SemTable<'a> {
             ),
             Unop(unop) => self.sem_unop(inf_group, unop, expr)?,
             Binop(binop) => self.sem_binop(inf_group, binop, expr)?,
-            Call(call) if call.args.len() == 0 => self.sem_constant_call(inf_group, call, expr)?,
+            Call(call) if call.args.len() == 0 => self.sem_constant_call(call, expr)?,
             Call(call) => self.sem_func_call(inf_group, call, expr)?,
             ConstrCall(call) => self.sem_constructor_call(inf_group, call, expr)?,
             ArrayAccess(array_access) => self.sem_array_access(inf_group, array_access, expr)?,
             Dim(dim) => self.sem_dim(inf_group, dim, expr)?,
             New(annotation) => Type::new_ref(annotation.into()),
-            LetIn(let_in) => self.sem_letin(inf_group, let_in, expr)?,
+            LetIn(let_in) => self.sem_letin(inf_group, let_in)?,
             If(if_expr) => self.sem_if(inf_group, if_expr, expr)?,
             While(while_expr) => self.sem_while(inf_group, while_expr, expr)?,
             For(for_expr) => self.sem_for(inf_group, for_expr, expr)?,
@@ -227,12 +227,7 @@ impl<'a> SemExprHelpers<'a> for SemTable<'a> {
             }
         }
     }
-    fn sem_constant_call(
-        &mut self,
-        inf_group: &mut InferenceGroup<'a>,
-        call: &'a Call,
-        expr: &'a Expr,
-    ) -> SemResult<Rc<Type>> {
+    fn sem_constant_call(&mut self, call: &'a Call, expr: &'a Expr) -> SemResult<Rc<Type>> {
         let called_node = self
             .lookup(&call.id)
             .ok_or_else(|| SemanticError::LookupError {
@@ -359,7 +354,6 @@ impl<'a> SemExprHelpers<'a> for SemTable<'a> {
         &mut self,
         inf_group: &mut InferenceGroup<'a>,
         letin: &'a LetIn,
-        expr: &'a Expr,
     ) -> SemResult<Rc<Type>> {
         self.push_scope();
         self.sem_letdef(&letin.letdef)?;
@@ -473,12 +467,7 @@ trait SemExprHelpers<'a> {
         binop: &'a Binop,
         expr: &'a Expr,
     ) -> SemResult<Rc<Type>>;
-    fn sem_constant_call(
-        &mut self,
-        inf_group: &mut InferenceGroup<'a>,
-        call: &'a Call,
-        expr: &'a Expr,
-    ) -> SemResult<Rc<Type>>;
+    fn sem_constant_call(&mut self, call: &'a Call, expr: &'a Expr) -> SemResult<Rc<Type>>;
     fn sem_func_call(
         &mut self,
         inf_group: &mut InferenceGroup<'a>,
@@ -507,7 +496,6 @@ trait SemExprHelpers<'a> {
         &mut self,
         inf_group: &mut InferenceGroup<'a>,
         letin: &'a LetIn,
-        expr: &'a Expr,
     ) -> SemResult<Rc<Type>>;
     fn sem_if(
         &mut self,

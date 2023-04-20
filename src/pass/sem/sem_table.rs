@@ -1,12 +1,11 @@
-use std::{collections::HashMap, rc::Rc};
+use std::collections::HashMap;
 
-use log::{debug, info, trace};
+use log::trace;
 
-use crate::parse::ast::{self, data_map::NodeRef, Program};
+use crate::parse::ast::{data_map::NodeRef, Program};
 
 use super::types::inference::InferenceGroup;
 use super::types::type_map::TypeMap;
-use super::types::Type;
 
 // type TypeMap<'a> = ast::data_map::DataMap<'a, Type>;
 type Scope<'a> = HashMap<&'a str, NodeRef<'a>>;
