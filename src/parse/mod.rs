@@ -459,8 +459,6 @@ impl<L: Iterator<Item = Token>> Parser<L> {
                         args: params
                     })
                 })
-                // todo!("peek, if idlower, one further to check for '[' token, if so call self.expr12 (possibly even 13 directly)");
-                // todo!(" if idlower but not '[' then consume as an arg, if not idlower then call self?")
             }
             _ => self.expr12(),
         }
