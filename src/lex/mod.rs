@@ -517,7 +517,7 @@ impl<S: Iterator<Item = scan::Line>> Iterator for Lexer<S> {
                     error!("{}", err);
                     std::process::exit(1);
                 } else {
-                    todo!("handle error (possibly by calling match_unmatched");
+                    todo!("handle error (possibly by calling match_unmatched)");
                 }
             }
         }
