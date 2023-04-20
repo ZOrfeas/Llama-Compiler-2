@@ -37,7 +37,6 @@ impl<'a> SemDefHelpers<'a> for SemTable<'a> {
     }
     fn sem_letdef(&mut self, letdef: &'a Letdef) -> SemResult<()> {
         if letdef.rec {
-            // todo!("Make sure inference_groups don't ruin shit here");
             for def in &letdef.defs {
                 // *DONE: Insert an unknown type for each def as well I think
                 self.insert_scope_binding(&def.id, def);
