@@ -59,11 +59,15 @@ impl<'a> SemDefHelpers<'a> for SemTable<'a> {
             if let Some(def) = letdef.defs.iter().find(|def| {
                 self.types
                     .get_type(*def)
-                    .map(|t| !t.is_fully_known())
+                    .map(|t| !self.types.deep_resolve_type(t).is_fully_known())
                     .unwrap_or(false)
             }) {
                 return Err(SemanticError::GeneralError {
-                    msg: "Recursive generic definitions are not (yet) allower".to_string(),
+                    msg: format!(
+                        "Recursive generic def is not (yet) supported (of type {})",
+                        self.types.get_type(def).unwrap()
+                    ),
+                    // msg: "Recursive generic definitions are not (yet) allowed".to_string(),
                     span: def.span.clone(),
                 });
             }
