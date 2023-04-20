@@ -1,6 +1,6 @@
 use std::{collections::HashMap, rc::Rc};
 
-use log::info;
+use log::{debug, info, trace};
 
 use crate::parse::ast::{self, data_map::NodeRef, Program};
 
@@ -26,11 +26,11 @@ impl<'a> SemTable<'a> {
         }
     }
     pub fn push_scope(&mut self) {
-        info!("Pushing scope.");
+        trace!("Pushing scope.");
         self.scopes.push(Scope::new());
     }
     pub fn pop_scope(&mut self) {
-        info!("Popping scope.");
+        trace!("Popping scope.");
         self.scopes.pop().expect("pop scope called on root scope");
     }
     fn current_scope(&self) -> &Scope<'a> {
@@ -59,7 +59,7 @@ impl<'a> SemTable<'a> {
         self.current_scope().get(name).cloned()
     }
     pub fn lookup(&self, name: &str) -> Option<NodeRef<'a>> {
-        info!("Looking up name: {}", name);
+        trace!("Looking up name: {}", name);
         for scope in self.scopes.iter().rev() {
             if let Some(node) = scope.get(name) {
                 return Some(node.clone());
@@ -72,8 +72,6 @@ impl<'a> SemTable<'a> {
         InferenceGroup::new()
     }
 }
-// TODO: Write some tests
-
 #[cfg(test)]
 mod test {
     use super::*;

@@ -1,7 +1,7 @@
 use std::{cell::RefCell, collections::HashSet, rc::Rc};
 
 use colored::Colorize;
-use log::info;
+use log::{debug, info, trace};
 
 use crate::{
     parse::ast::Span,
@@ -17,31 +17,31 @@ pub trait Inferer<'a> {
 
 impl<'a> Inferer<'a> for TypeMap<'a> {
     fn solve_group(&mut self, group: InferenceGroup<'a>) -> SemResult<()> {
-        info!("{}", "↓↓↓  Solving inference group   ↓↓↓".underline());
+        trace!("{}", "↓↓↓  Solving inference group   ↓↓↓".underline());
         for unification in group.0 {
             self.unify(unification)?;
         }
-        info!("{}", "↑↑↑Done solving inference group↑↑↑".underline());
+        trace!("{}", "↑↑↑Done solving inference group↑↑↑".underline());
         Ok(())
     }
 }
 
 impl<'a> InfererHelpers<'a> for TypeMap<'a> {
     fn unify(&mut self, unification: Unification<'a>) -> SemResult<()> {
-        // info!(
+        // trace!(
         //     "Applying unification: {}",
         //     format!("{} = {}", unification.lhs, unification.rhs).green()
         // );
         let lhs = self.deep_resolve_type(unification.lhs.clone());
         let rhs = self.deep_resolve_type(unification.rhs.clone());
-        info!(
+        trace!(
             "Unifying: {} {} {}",
             lhs.to_string().blue(),
             "=".red(),
             rhs.to_string().blue(),
         );
         if lhs == rhs {
-            info!("Unifying equal types is a no-op");
+            trace!("Unifying equal types is a no-op");
             return Ok(());
         }
         use Type::*;
@@ -114,8 +114,8 @@ impl<'a> InfererHelpers<'a> for TypeMap<'a> {
                     span: unification.span,
                     msg: unification.msg,
                 })?;
-
-                todo!("choose the dim_cnt that is more specific")
+                ArrayDims::consolidate(&lhs_dims, &rhs_dims);
+                Ok(())
             }
             (Tuple(lhs_types), Tuple(rhs_types)) => {
                 if lhs_types.len() != rhs_types.len() {
@@ -136,7 +136,7 @@ impl<'a> InfererHelpers<'a> for TypeMap<'a> {
             _ => return Err(self.unification_into_error(unification, "Couldn't unify")),
         }
     }
-    fn deep_resolve_type(&mut self, ty: Rc<Type>) -> Rc<Type> {
+    fn deep_resolve_type(&self, ty: Rc<Type>) -> Rc<Type> {
         let ty = self.resolve_type(ty);
         use Type::*;
         match &*ty {
@@ -146,7 +146,7 @@ impl<'a> InfererHelpers<'a> for TypeMap<'a> {
                 Type::new_func(lhs, rhs)
             }
             Ref(inner) => Type::new_ref(self.deep_resolve_type(inner.clone())),
-            // TODO: Think if this is a problem, if we need to refcell `inner` for Array and Ref
+            // *Note: Think if this is a problem, if we need to refcell `inner` for Array and Ref
             Array { inner, dim_cnt } => Rc::new(Type::Array {
                 inner: self.deep_resolve_type(inner.clone()),
                 dim_cnt: RefCell::new(dim_cnt.borrow().clone()),
@@ -160,22 +160,23 @@ impl<'a> InfererHelpers<'a> for TypeMap<'a> {
             _ => ty,
         }
     }
-    fn resolve_type(&mut self, ty: Rc<Type>) -> Rc<Type> {
-        let mut type_ids = Vec::new();
+    fn resolve_type(&self, ty: Rc<Type>) -> Rc<Type> {
+        // TODO: Make another one that shortens the chain
+        // let mut type_ids = Vec::new();
         let mut retval = ty.clone();
         while let Type::Unknown(id, _) = &*retval {
-            type_ids.push(*id);
+            // type_ids.push(*id);
             if let Some(resolved) = self.unifications.get(id) {
                 retval = resolved.clone();
             } else {
                 break;
             }
         }
-        if type_ids.len() > 1 {
-            for id in &type_ids[1..type_ids.len() - 1] {
-                self.unifications.insert(*id, retval.clone());
-            }
-        }
+        // if type_ids.len() > 1 {
+        //     for id in &type_ids[1..type_ids.len() - 1] {
+        //         self.unifications.insert(*id, retval.clone());
+        //     }
+        // }
         retval
     }
     fn try_add_resolution(&mut self, unknown: Rc<Type>, resolved: Rc<Type>) -> Result<(), String> {
@@ -186,12 +187,11 @@ impl<'a> InfererHelpers<'a> for TypeMap<'a> {
         if !Self::fulfills_constraints(&unknown, &resolved) {
             return Err(format!("Constraints violated"));
         }
-        // TODO: Re-enable this check once implemented.
-        // if self.occurs(unknown_id, &resolved) {
-        //     return Err(format!(
-        //         "Occurs check failed, recursive unknown type implied"
-        //     ));
-        // }
+        if self.occurs(unknown_id, &resolved) {
+            return Err(format!(
+                "Occurs check failed, recursive unknown type implied"
+            ));
+        }
         match &*resolved {
             Type::Unknown(_, constraint_refcell) => {
                 let mut resolved_constraints = constraint_refcell.borrow_mut();
@@ -209,8 +209,26 @@ impl<'a> InfererHelpers<'a> for TypeMap<'a> {
             _ => unreachable!("fulfills_constraints called on non-unknown type"),
         }
     }
-    fn occurs(&self, id: u32, ty: &Rc<Type>) -> bool {
-        todo!()
+    fn occurs(&mut self, id: u32, ty: &Rc<Type>) -> bool {
+        use Type::*;
+        match &**ty {
+            Array { inner, .. } | Ref(inner) => {
+                let resolved_inner = self.resolve_type(inner.clone());
+                self.is_or_occurs(id, &resolved_inner)
+            }
+            Func { lhs, rhs } => {
+                let resolved_lhs = self.resolve_type(lhs.clone());
+                let resolved_rhs = self.resolve_type(rhs.clone());
+                self.is_or_occurs(id, &resolved_lhs) || self.is_or_occurs(id, &resolved_rhs)
+            }
+            Tuple(types) => types.iter().any(|ty| self.is_or_occurs(id, ty)),
+            _ => false,
+        }
+    }
+    #[inline(always)]
+    fn is_or_occurs(&mut self, id: u32, ty: &Rc<Type>) -> bool {
+        use Type::*;
+        matches!(&**ty, Unknown(id2, _) if id == *id2) || self.occurs(id, ty)
     }
     fn unification_into_error(&mut self, unification: Unification<'a>, msg: &str) -> SemanticError {
         let lhs_resolved = self.deep_resolve_type(unification.lhs.clone());
@@ -226,14 +244,15 @@ impl<'a> InfererHelpers<'a> for TypeMap<'a> {
         }
     }
 }
-trait InfererHelpers<'a> {
+pub trait InfererHelpers<'a> {
     fn unify(&mut self, unification: Unification<'a>) -> SemResult<()>;
     /// resolves the type and then resolves all the types inside of it.
-    fn deep_resolve_type(&mut self, ty: Rc<Type>) -> Rc<Type>;
+    fn deep_resolve_type(&self, ty: Rc<Type>) -> Rc<Type>;
     /// follows the chain of unifications until it finds a type that is not an unknown type.
-    fn resolve_type(&mut self, ty: Rc<Type>) -> Rc<Type>;
+    fn resolve_type(&self, ty: Rc<Type>) -> Rc<Type>;
     /// checks if type `ty` contains an unknown type with id `id`, to prevent recursive unknown types.
-    fn occurs(&self, id: u32, ty: &Rc<Type>) -> bool;
+    fn occurs(&mut self, id: u32, ty: &Rc<Type>) -> bool;
+    fn is_or_occurs(&mut self, id: u32, ty: &Rc<Type>) -> bool;
     ///
     fn try_add_resolution(&mut self, unknown: Rc<Type>, resolved: Rc<Type>) -> Result<(), String>;
     /// checks if `unknown` can resolve to `resolved`.
@@ -242,7 +261,7 @@ trait InfererHelpers<'a> {
     fn unification_into_error(&mut self, unification: Unification<'a>, msg: &str) -> SemanticError;
 }
 #[derive(Debug)]
-struct Unification<'a> {
+pub struct Unification<'a> {
     lhs: Rc<Type>,
     rhs: Rc<Type>,
     span: &'a Span,
@@ -261,7 +280,7 @@ impl<'a> InferenceGroup<'a> {
         msg: &'static str,
         span: &'a Span,
     ) {
-        info!("Inserting unification pair: {} = {} ({})", lhs, rhs, msg);
+        trace!("Inserting unification pair: {} = {} ({})", lhs, rhs, msg);
         self.0.push(Unification {
             lhs,
             rhs,
@@ -285,6 +304,31 @@ impl ArrayDims {
             (LowerBounded(_), LowerBounded(_)) => true,
             _ => false,
         }
+    }
+    pub fn consolidate(lhs: &RefCell<Rc<RefCell<Self>>>, rhs: &RefCell<Rc<RefCell<Self>>>) {
+        use ArrayDims::*;
+        let cloned_ref: Option<_> = match (&*lhs.borrow().borrow(), &*rhs.borrow().borrow()) {
+            (Known(a), Known(b)) if a == b => return,
+            (Known(_), Known(_)) => unreachable!("Should have been called after `are_compatible`"),
+            (LowerBounded(a), LowerBounded(b)) => {
+                if a >= b {
+                    Some(lhs.borrow().clone())
+                } else {
+                    Some(rhs.borrow().clone())
+                }
+            }
+            _ => None,
+        };
+        if let Some(cloned_ref) = cloned_ref {
+            *lhs.borrow_mut() = cloned_ref;
+            return;
+        }
+        let (to_change, new_val) = match (&*lhs.borrow().borrow(), &*rhs.borrow().borrow()) {
+            (Known(a), LowerBounded(b)) if a >= b => (rhs.borrow().clone(), *a),
+            (LowerBounded(b), Known(a)) if a >= b => (lhs.borrow().clone(), *a),
+            _ => unreachable!("Should have been called after `are_compatible`"),
+        };
+        *to_change.borrow_mut() = Known(new_val);
     }
 }
 #[derive(Debug, Clone)]

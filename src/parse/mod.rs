@@ -97,7 +97,7 @@ impl<L: Iterator<Item = Token>> Parser<L> {
                     Vec::new()
                 };
                 let type_ = if self.accept(&TokenKind::Colon).is_some() {
-                    Some(self.r#type()?)
+                    Some(ast::annotation::TypeAnnotation::Ref(Box::new(self.r#type()?)))
                 } else {
                     None
                 };
@@ -288,8 +288,7 @@ impl<L: Iterator<Item = Token>> Parser<L> {
             self.expr3()
         }
     }
-    // TODO: Improve printing where possible.
-    // TODO: Think about error messages.
+    // TODO: Improve printing where possible. Think about error messages.
     fn expr3(&mut self) -> ParseResult<ast::expr::Expr> {
         let lhs = self.expr4()?;
         if let Some(token) = self.accept(&TokenKind::ColonEq) {
@@ -492,8 +491,8 @@ impl<L: Iterator<Item = Token>> Parser<L> {
         let deref_tokens = self.accept_many(&TokenKind::Exclam);
         if deref_tokens.len() > 0 {
             let inner_expr = if let Some(token) = self.accept(&TokenKind::IdLower) {
-                // TODO: FIX. This does not allow for `!a` expressions
-                // TODO:   I think this is wrong in gerenal ?
+                // FIX. This does not allow for `!a` expressions
+                // I think this is wrong in gerenal ?
                 // *Note: Possibly fixed
                 if self.accept(&TokenKind::LBracket).is_some() {
                     match_array_access(self, token)?

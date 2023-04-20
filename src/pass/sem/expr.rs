@@ -136,9 +136,9 @@ impl<'a> SemExprHelpers<'a> for SemTable<'a> {
                     "binary '+-*/ **' right operand must be numeric",
                     &expr.span,
                 );
-                // TODO: Consider whether this one should be inserted or not.
+                // *Note: Consider whether this one should be inserted or not.
                 // inf_group.insert_unification(lhs_type.clone(), rhs_type.clone());
-                // TODO: Consider deciding what to return based on what is less unknown.
+                // *Note: Consider deciding what to return based on what is less unknown.
                 Ok(rhs_type)
             }
             Mod => {
@@ -292,7 +292,7 @@ impl<'a> SemExprHelpers<'a> for SemTable<'a> {
             .map(|arg| self.sem_expr(inf_group, arg))
             .collect::<SemResult<Vec<_>>>()?;
         let expr_type = self.types.new_unknown();
-        // *Note: partial constructor call is allowed.
+        // *Note: partial constructor call is allowed. That's why we don't unify with the custom type directly.
         inf_group.insert_unification(
             constructor_type,
             Type::new_multi_arg_func(arg_types, expr_type.clone()),

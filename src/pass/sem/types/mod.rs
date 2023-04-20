@@ -84,6 +84,19 @@ impl Type {
     pub fn new_tuple(types: Vec<Rc<Type>>) -> Rc<Type> {
         Rc::new(Type::Tuple(types))
     }
+    pub fn is_fully_known(&self) -> bool {
+        use Type::*;
+        match self {
+            Unknown(_, _) => false,
+            Func { lhs, rhs } => lhs.is_fully_known() && rhs.is_fully_known(),
+            Ref(inner) => inner.is_fully_known(),
+            Array { inner, dim_cnt } => {
+                inner.is_fully_known() && matches!(*dim_cnt.borrow().borrow(), ArrayDims::Known(_))
+            }
+            Tuple(types) => types.iter().all(|t| t.is_fully_known()),
+            _ => true,
+        }
+    }
     // #[inline(always)]
     // pub fn get_return_type(ty: &Rc<Type>) -> Rc<Type> {
     //     match &**ty {

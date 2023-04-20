@@ -1,10 +1,13 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-use log::info;
+use log::{debug, info, trace};
 
-use crate::parse::ast::{
-    self,
-    data_map::{DataMap, NodeRef},
+use crate::{
+    parse::ast::{
+        self,
+        data_map::{DataMap, NodeRef},
+    },
+    pass::sem::types::inference::InfererHelpers,
 };
 
 use super::{inference::Constraints, Type};
@@ -58,9 +61,9 @@ impl<'a> TypeMap<'a> {
     }
     #[inline(always)]
     pub fn get_node_type(&self, node: &NodeRef<'a>) -> Option<Rc<Type>> {
-        info!("Getting type for node: {}", node);
+        trace!("Getting type for node: {}", node);
         self.node_type_map.get_node(node).cloned().map(|t| {
-            info!("Got type: {}", t);
+            trace!("Got type: {}", t);
             t
         })
     }
@@ -68,20 +71,63 @@ impl<'a> TypeMap<'a> {
         self.instantiations.insert(node.into(), Vec::new());
     }
     fn instantiate(&mut self, ty: &Rc<Type>) -> Rc<Type> {
+        // TODO: Fully traverse, instantiate each unknown type, and then create one using those mappings.
+        use Type::*;
+        let mut mappings = HashMap::new();
+        self.traverse_and_instantiate(ty, &mut mappings);
+        self.instantiate_with_mappings(ty, &mut mappings)
+    }
+    fn instantiate_with_mappings(
+        &self,
+        ty: &Rc<Type>,
+        mappings: &mut HashMap<u32, Rc<Type>>,
+    ) -> Rc<Type> {
         use Type::*;
         match &**ty {
-            Unknown(_, constraints) => Rc::new(Unknown(
-                self.get_and_advance_unknown_id(),
-                constraints.clone(),
-            )),
-            Func { lhs, rhs } => Type::new_func(self.instantiate(lhs), self.instantiate(rhs)),
-            Ref(inner) => Type::new_ref(self.instantiate(inner)),
-            Array { inner, dim_cnt } => {
-                Type::new_array(self.instantiate(inner), dim_cnt.borrow().borrow().clone())
-            }
-            Tuple(types) => Type::new_tuple(types.iter().map(|t| self.instantiate(t)).collect()),
+            Unknown(id, _) => mappings
+                .get(&id)
+                .expect("instantiation should have been created")
+                .clone(),
+            Func { lhs, rhs } => Type::new_func(
+                self.instantiate_with_mappings(lhs, mappings),
+                self.instantiate_with_mappings(rhs, mappings),
+            ),
+            Ref(inner) => Type::new_ref(self.instantiate_with_mappings(inner, mappings)),
+            Array { inner, dim_cnt } => Type::new_array(
+                self.instantiate_with_mappings(inner, mappings),
+                dim_cnt.borrow().borrow().clone(),
+            ),
+            Tuple(types) => Type::new_tuple(
+                types
+                    .iter()
+                    .map(|t| self.instantiate_with_mappings(t, mappings))
+                    .collect(),
+            ),
             // Unit | Int | Char | Bool | Float | Custom { .. } => ty.clone(),
             _ => ty.clone(),
+        }
+    }
+    fn traverse_and_instantiate(&mut self, ty: &Rc<Type>, mappings: &mut HashMap<u32, Rc<Type>>) {
+        use Type::*;
+        match &**ty {
+            Unknown(id, constraints) if !mappings.contains_key(id) => {
+                let new_ty = self.new_unknown_with_constraint(constraints.borrow().clone());
+                mappings.insert(*id, new_ty.clone());
+            }
+            Func { lhs, rhs } => {
+                self.traverse_and_instantiate(lhs, mappings);
+                self.traverse_and_instantiate(rhs, mappings);
+            }
+            Ref(inner) => self.traverse_and_instantiate(inner, mappings),
+            Array { inner, dim_cnt } => {
+                self.traverse_and_instantiate(inner, mappings);
+            }
+            Tuple(types) => {
+                for ty in types {
+                    self.traverse_and_instantiate(ty, mappings);
+                }
+            }
+            _ => {}
         }
     }
     pub fn get_node_type_or_instantiation(&mut self, node: &NodeRef<'a>) -> Rc<Type> {
@@ -92,12 +138,26 @@ impl<'a> TypeMap<'a> {
         if self.instantiations.get_node_mut(node).is_none() {
             return node_type;
         }
+        let node_type = self.deep_resolve_type(node_type);
         let instance = self.instantiate(&node_type);
+        trace!("Instantiating generic {} to {}", node_type, instance);
         self.instantiations
             .get_node_mut(node)
             .unwrap()
             .push(instance.clone());
         instance
+    }
+
+    pub fn print_node_types(&mut self, mut w: impl std::io::Write) -> std::io::Result<()> {
+        for (node, ty) in self.node_type_map.iter() {
+            writeln!(
+                w,
+                "{:<40}: {}",
+                node.to_string(),
+                self.deep_resolve_type(ty.clone())
+            )?;
+        }
+        Ok(())
     }
 
     #[inline(always)]

@@ -21,8 +21,6 @@ pub struct Lexer<S: Iterator<Item = scan::Line>> {
 
     is_done: bool,
 }
-// TODO: Consider a State-struct to hold the lexer's state grouped together.
-// TODO:     cur_line, cursor, pos, comment_nesting, etc.
 impl<S: Iterator<Item = scan::Line>> Lexer<S> {
     pub fn new(scanner: S) -> Self {
         Lexer {

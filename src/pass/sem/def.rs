@@ -1,5 +1,7 @@
 use std::rc::Rc;
 
+use log::warn;
+
 use crate::parse::ast::{
     def::{Def, DefKind, Par},
     expr::Expr,
@@ -20,29 +22,49 @@ impl<'a> SemDef<'a> for SemTable<'a> {
     fn sem_def(&mut self, def: &'a Def) -> SemResult<()> {
         let mut inf_group = self.new_inference_group();
         let annotation_type: Option<Rc<Type>> = def.type_.as_ref().map(|t| t.into());
-        let def_type: Option<Rc<Type>> = match &def.kind {
+        let node_type: Rc<Type> = match &def.kind {
             DefKind::Array { dims } => {
                 self.sem_array_def(&mut inf_group, dims)?;
-                None
+                match annotation_type {
+                    Some(t) => t,
+                    None => self.types.new_unknown(),
+                }
             }
-            DefKind::Const { expr } => Some(self.sem_expr(&mut inf_group, expr)?),
+            DefKind::Const { expr } => {
+                let expr_type = self.sem_expr(&mut inf_group, expr)?;
+                match annotation_type {
+                    Some(t) => {
+                        inf_group.insert_unification(
+                            t.clone(),
+                            expr_type,
+                            "expression type and annotation must match",
+                            &def.span,
+                        );
+                        t
+                    }
+                    None => expr_type,
+                }
+            }
             DefKind::Function { pars, expr } => {
-                Some(self.sem_func_def(&mut inf_group, pars, expr)?)
+                let func_type = self.sem_func_def(&mut inf_group, pars, expr)?;
+                match annotation_type {
+                    Some(t) => inf_group.insert_unification(
+                        t,
+                        self.types
+                            .get_type(expr)
+                            .expect("function expression should have just had a time"),
+                        "function expression type and annotation must match",
+                        &def.span,
+                    ),
+                    None => (),
+                };
+                func_type
+                // Some(self.sem_func_def(&mut inf_group, pars, expr)?)
             }
-            DefKind::Variable => None,
-        };
-        let node_type: Rc<Type> = match (annotation_type, def_type) {
-            (Some(annotation_type), Some(def_type)) => {
-                inf_group.insert_unification(
-                    annotation_type.clone(),
-                    def_type,
-                    "def type and annotated type must match",
-                    &def.span,
-                );
-                annotation_type
-            }
-            (Some(t), None) | (None, Some(t)) => t,
-            _ => self.types.new_unknown(),
+            DefKind::Variable => match annotation_type {
+                Some(t) => t,
+                None => self.types.new_unknown(),
+            },
         };
         // *Note: lookup first. If it's already there, then instead of inserting, insert a unification.
         if let Some(ty) = self.types.get_type(def) {

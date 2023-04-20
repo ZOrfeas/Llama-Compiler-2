@@ -64,7 +64,17 @@ fn run_compiler(args: &cli::Cli) -> CompilerResult<()> {
         ));
     }
     // TODO: Implement sem
-    let _sem_results = sem(&ast)?;
+    let mut _sem_results = sem(&ast)?;
+    args.print.get_types_writer()?.map(|w| {
+        _sem_results
+            .types
+            .print_node_types(w)
+            .expect("Failed to print types")
+    });
+    if args.stop_after == StopAfter::Sem {
+        return Err(CompilerError::EarlyExit("Stopping... (--stop-after sem)"));
+    }
+    // _sem_results.types.print_node_types();
     // println!("{:?}", _sem_results.types);
     // TODO: Implement irgen
     // TODO: Implement codegen/binary-gen
