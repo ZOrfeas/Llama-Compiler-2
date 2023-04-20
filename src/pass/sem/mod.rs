@@ -90,7 +90,7 @@ pub enum SemanticError {
         lhs_resolved,
         rhs_resolved,
         if lhs != lhs_resolved || rhs != rhs_resolved {
-            format!("orignally {} = {}", lhs, rhs)
+            format!("originally {} = {}", lhs, rhs)
         } else {
             "".to_string()
         },

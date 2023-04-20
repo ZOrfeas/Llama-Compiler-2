@@ -6,7 +6,7 @@ use super::{
     annotation::TypeAnnotation,
     def::{Constr, Def, Definition, Par, TDef},
     expr::{Clause, Expr, For, Pattern},
-    Program,
+    Program, Span,
 };
 #[derive(Debug)]
 pub struct DataMap<'a, T> {
@@ -28,34 +28,42 @@ pub enum NodeRef<'a> {
     Pattern(&'a Pattern),
 }
 #[enum_dispatch]
-trait NodeRefInner {
+pub trait NodeRefInner {
     // *DONE: Think of a way to implement this function here only once.
     fn into_ptr(&self) -> *const ();
+    fn get_span(&self) -> Span;
 }
-macro_rules! impl_node_ref_inner {
+macro_rules! impl_node_ref_inner_with_span {
     ($($t:ty),*) => {
         $(
             impl<'a> NodeRefInner for &'a $t {
                 fn into_ptr(&self) -> *const () {
                     *self as *const $t as *const ()
                 }
+                fn get_span(&self) -> Span {
+                    self.span.clone()
+                }
             }
         )*
     }
 }
-impl_node_ref_inner!(
-    Program,
-    Definition,
-    Def,
-    TDef,
-    Constr,
-    TypeAnnotation,
-    Par,
-    Expr,
-    For,
-    Clause,
-    Pattern
-);
+macro_rules! impl_node_ref_inner_without_span {
+    ($($t:ty),*) => {
+        $(
+            impl<'a> NodeRefInner for &'a $t {
+                fn into_ptr(&self) -> *const () {
+                    *self as *const $t as *const ()
+                }
+                fn get_span(&self) -> Span {
+                    todo!("Check why the heck this was called.")
+                }
+            }
+        )*
+    }
+}
+
+impl_node_ref_inner_with_span!(Def, TDef, Constr, Par, Expr);
+impl_node_ref_inner_without_span!(Program, Definition, TypeAnnotation, For, Clause, Pattern);
 
 impl<'a, T> DataMap<'a, T> {
     pub fn new(_: &'a Program) -> Self {

@@ -1,11 +1,12 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-use log::{debug, info, trace};
+use colored::Colorize;
+use log::trace;
 
 use crate::{
     parse::ast::{
         self,
-        data_map::{DataMap, NodeRef},
+        data_map::{DataMap, NodeRef, NodeRefInner},
     },
     pass::sem::types::inference::InfererHelpers,
 };
@@ -71,16 +72,15 @@ impl<'a> TypeMap<'a> {
         self.instantiations.insert(node.into(), Vec::new());
     }
     fn instantiate(&mut self, ty: &Rc<Type>) -> Rc<Type> {
-        // TODO: Fully traverse, instantiate each unknown type, and then create one using those mappings.
-        use Type::*;
+        // *Done: Fully traverse, instantiate each unknown type, and then create one using those mappings.
         let mut mappings = HashMap::new();
         self.traverse_and_instantiate(ty, &mut mappings);
-        self.instantiate_with_mappings(ty, &mut mappings)
+        self.instantiate_with_mappings(ty, &mappings)
     }
     fn instantiate_with_mappings(
         &self,
         ty: &Rc<Type>,
-        mappings: &mut HashMap<u32, Rc<Type>>,
+        mappings: &HashMap<u32, Rc<Type>>,
     ) -> Rc<Type> {
         use Type::*;
         match &**ty {
@@ -119,7 +119,7 @@ impl<'a> TypeMap<'a> {
                 self.traverse_and_instantiate(rhs, mappings);
             }
             Ref(inner) => self.traverse_and_instantiate(inner, mappings),
-            Array { inner, dim_cnt } => {
+            Array { inner, .. } => {
                 self.traverse_and_instantiate(inner, mappings);
             }
             Tuple(types) => {
@@ -149,12 +149,19 @@ impl<'a> TypeMap<'a> {
     }
 
     pub fn print_node_types(&mut self, mut w: impl std::io::Write) -> std::io::Result<()> {
+        writeln!(
+            w,
+            "{}",
+            format!("{:^50}│{:^50}│{:^50}", "Node", "Type", "Location")
+        )?;
+        writeln!(w, "{}", format!("{:─^50}┼{:─^50}┼{:─^50}", "", "", ""))?;
         for (node, ty) in self.node_type_map.iter() {
             writeln!(
                 w,
-                "{:<40}: {}",
+                "{:^50}│{:^50}│{:^50}",
                 node.to_string(),
-                self.deep_resolve_type(ty.clone())
+                self.deep_resolve_type(ty.clone()).to_string(),
+                node.get_span().start.to_string()
             )?;
         }
         Ok(())

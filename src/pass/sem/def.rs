@@ -1,7 +1,5 @@
 use std::rc::Rc;
 
-use log::warn;
-
 use crate::parse::ast::{
     def::{Def, DefKind, Par},
     expr::Expr,
@@ -69,6 +67,7 @@ impl<'a> SemDef<'a> for SemTable<'a> {
         // *Note: lookup first. If it's already there, then instead of inserting, insert a unification.
         if let Some(ty) = self.types.get_type(def) {
             // TODO: Test that the 'ty' type is unknown (I think that's the only case where this is valid)
+            // debug!("Recursive def type {} and sem'ed type {}", ty, node_type);
             inf_group.insert_unification(
                 ty.clone(),
                 node_type,

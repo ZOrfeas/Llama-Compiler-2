@@ -33,18 +33,18 @@ impl<'a> SemTable<'a> {
         trace!("Popping scope.");
         self.scopes.pop().expect("pop scope called on root scope");
     }
-    fn current_scope(&self) -> &Scope<'a> {
-        self.scopes.last().expect("there should always be a scope")
-    }
+    // fn current_scope(&self) -> &Scope<'a> {
+    //     self.scopes.last().expect("there should always be a scope")
+    // }
     fn current_scope_mut(&mut self) -> &mut Scope<'a> {
         self.scopes
             .last_mut()
             .expect("there should always be a scope")
     }
-    pub fn get_type_by_id_lookup(&self, id: &str) -> Option<Rc<Type>> {
-        self.lookup(id)
-            .and_then(|node| self.types.get_node_type(&node))
-    }
+    // pub fn get_type_by_id_lookup(&self, id: &str) -> Option<Rc<Type>> {
+    //     self.lookup(id)
+    //         .and_then(|node| self.types.get_node_type(&node))
+    // }
     // *Note: this may need a way to handle shadowing without deleting previous entry.
     /// Returns none if there was no previous binding.
     /// Returns the previous binding if there was one.
@@ -55,9 +55,9 @@ impl<'a> SemTable<'a> {
     ) -> Option<NodeRef<'a>> {
         self.current_scope_mut().insert(name, node.into())
     }
-    pub fn lookup_strict(&self, name: &str) -> Option<NodeRef<'a>> {
-        self.current_scope().get(name).cloned()
-    }
+    // pub fn lookup_strict(&self, name: &str) -> Option<NodeRef<'a>> {
+    //     self.current_scope().get(name).cloned()
+    // }
     pub fn lookup(&self, name: &str) -> Option<NodeRef<'a>> {
         trace!("Looking up name: {}", name);
         for scope in self.scopes.iter().rev() {
@@ -75,6 +75,7 @@ impl<'a> SemTable<'a> {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::parse::ast::{self};
 
     fn new_empty_program() -> ast::Program {
         ast::Program {
@@ -105,14 +106,14 @@ mod test {
         let foo_node = new_const_def("foo");
         assert_eq!(table.insert_scope_binding("foo", &foo_node), None);
         assert!(matches!(table.lookup("foo"), Some(_)));
-        assert!(matches!(table.lookup_strict("foo"), Some(_)));
+        // assert!(matches!(table.lookup_strict("foo"), Some(_)));
         table.push_scope();
         let bar_node = new_const_def("bar");
         assert_eq!(table.insert_scope_binding("bar", &bar_node), None);
         assert!(matches!(table.lookup("bar"), Some(_)));
-        assert!(matches!(table.lookup_strict("bar"), Some(_)));
+        // assert!(matches!(table.lookup_strict("bar"), Some(_)));
         assert!(matches!(table.lookup("foo"), Some(_)));
-        assert!(matches!(table.lookup_strict("foo"), None));
+        // assert!(matches!(table.lookup_strict("foo"), None));
         table.pop_scope();
         assert!(matches!(table.lookup("bar"), None));
     }

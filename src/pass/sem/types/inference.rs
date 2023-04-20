@@ -1,7 +1,7 @@
 use std::{cell::RefCell, collections::HashSet, rc::Rc};
 
 use colored::Colorize;
-use log::{debug, info, trace};
+use log::trace;
 
 use crate::{
     parse::ast::Span,

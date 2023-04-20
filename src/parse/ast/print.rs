@@ -86,7 +86,7 @@ impl<'a> TreeItem for NodeRef<'a> {
                         d.id,
                         d.type_
                             .as_ref()
-                            .map_or("".to_string(), |t| format!(" of type {}", t))
+                            .map_or("".to_string(), |t| format!(" annotated '{}'", t))
                     )
                 }
                 NodeRef::TDef(t) => format!("Type {}", t.id),
@@ -96,7 +96,7 @@ impl<'a> TreeItem for NodeRef<'a> {
                     "Parameter {}{}",
                     p.id,
                     if let Some(t) = &p.type_ {
-                        format!(" of type {}", t)
+                        format!(" annotated '{}'", t)
                     } else {
                         "".to_string()
                     }
