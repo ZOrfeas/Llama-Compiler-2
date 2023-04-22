@@ -6,7 +6,6 @@ mod types;
 use std::rc::Rc;
 
 use crate::parse::ast::{
-    data_map::NodeRefInner,
     def::{Definition, Letdef, Typedef},
     Program, Span,
 };
