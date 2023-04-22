@@ -152,13 +152,13 @@ impl<'a> TypeMap<'a> {
         writeln!(
             w,
             "{}",
-            format!("{:^50}│{:^50}│{:^50}", "Node", "Type", "Location")
+            format!("{:^50}│{:^60}│{:^50}", "Node", "Type", "Location")
         )?;
-        writeln!(w, "{}", format!("{:─^50}┼{:─^50}┼{:─^50}", "", "", ""))?;
+        writeln!(w, "{}", format!("{:─^50}┼{:─^60}┼{:─^50}", "", "", ""))?;
         for (node, ty) in self.node_type_map.iter() {
             writeln!(
                 w,
-                "{:^50}│{:^50}│{:^50}",
+                "{:^50}│{:^60}│{:^50}",
                 node.to_string(),
                 self.deep_resolve_type(ty.clone()).to_string(),
                 node.get_span().start.to_string()

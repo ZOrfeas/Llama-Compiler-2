@@ -64,7 +64,8 @@ impl<'a> SemDefHelpers<'a> for SemTable<'a> {
                 return Err(SemanticError::GeneralError {
                     msg: format!(
                         "Recursive generic def is not (yet) supported (of type {})",
-                        self.types.get_type(def).unwrap()
+                        self.types
+                            .deep_resolve_type(self.types.get_type(def).unwrap())
                     ),
                     // msg: "Recursive generic definitions are not (yet) allowed".to_string(),
                     span: def.span.clone(),
