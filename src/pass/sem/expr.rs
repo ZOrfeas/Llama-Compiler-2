@@ -449,10 +449,139 @@ impl<'a> SemExprHelpers<'a> for SemTable<'a> {
     fn sem_match(
         &mut self,
         inf_group: &mut InferenceGroup<'a>,
-        if_expr: &'a Match,
+        match_expr: &'a Match,
         expr: &'a Expr,
     ) -> SemResult<Rc<Type>> {
-        todo!()
+        let to_match_type = self.sem_expr(inf_group, &match_expr.to_match)?;
+        let return_type = self.types.new_unknown();
+        for clause in &match_expr.clauses {
+            self.push_scope();
+            self.sem_pattern(inf_group, &clause.pattern, to_match_type.clone())?;
+            let clause_type = self.sem_expr(inf_group, &clause.expr)?;
+            inf_group.insert_unification(
+                clause_type,
+                return_type.clone(),
+                "match expression clauses must all have the same type",
+                &expr.span,
+            );
+            self.pop_scope();
+        }
+        Ok(return_type)
+    }
+    fn sem_pattern(
+        &mut self,
+        inf_group: &mut InferenceGroup<'a>,
+        pattern: &'a Pattern,
+        to_match_type: Rc<Type>,
+    ) -> SemResult<()> {
+        use PatternKind::*;
+        match &pattern.kind {
+            IntLiteral(_) | FloatLiteral(_) | BoolLiteral(_) | CharLiteral(_)
+            | StringLiteral(_) => {
+                let (literal_type, msg) = match &pattern.kind {
+                    IntLiteral(_) => (
+                        self.types.get_int(),
+                        "integer literal pattern must match an integer",
+                    ),
+                    FloatLiteral(_) => (
+                        self.types.get_float(),
+                        "float literal pattern must match a float",
+                    ),
+                    BoolLiteral(_) => (
+                        self.types.get_bool(),
+                        "boolean literal pattern must match a boolean",
+                    ),
+                    CharLiteral(_) => (
+                        self.types.get_char(),
+                        "char literal pattern must match a char",
+                    ),
+                    StringLiteral(_) => (
+                        Type::new_known_array(self.types.get_char(), 1),
+                        "string literal pattern must match a string",
+                    ),
+                    _ => unreachable!(),
+                };
+                inf_group.insert_unification(to_match_type, literal_type, msg, &pattern.span);
+            }
+            IdLower(id) => {
+                self.insert_scope_binding(id, pattern);
+                self.types.insert(pattern, to_match_type);
+            }
+            IdUpper { id, args } => {
+                let constructor_node =
+                    self.lookup(id).ok_or_else(|| SemanticError::LookupError {
+                        id: id.clone(),
+                        span: pattern.span.clone(),
+                    })?;
+                let constructor_type = self
+                    .types
+                    .get_node_type(&constructor_node)
+                    .expect("constructor node should have a type associated with it");
+                if let Type::Func { lhs, rhs } = &*constructor_type {
+                    let mut constr_param_types = vec![lhs.clone()];
+                    let constr_ret_type = loop {
+                        if let Type::Func { lhs, rhs } = &**rhs {
+                            constr_param_types.push(lhs.clone());
+                            if matches!(&**rhs, Type::Func { .. }) {
+                                break rhs.clone();
+                            }
+                        }
+                    };
+                    if constr_param_types.len() != args.len() {
+                        return Err(SemanticError::GeneralError {
+                            msg: format!("partial application of constructor {} in match patterns is not allowed", id),
+                            span: pattern.span.clone(),
+                        });
+                    }
+                    for (arg, param_type) in args.iter().zip(constr_param_types) {
+                        self.sem_pattern(inf_group, arg, param_type)?;
+                    }
+                    inf_group.insert_unification(
+                        to_match_type,
+                        constr_ret_type,
+                        "constructor pattern must match the type of the matched expression",
+                        &pattern.span,
+                    );
+                } else if matches!(&*constructor_type, Type::Custom { .. }) {
+                    if !args.is_empty() {
+                        return Err(SemanticError::GeneralError { 
+                            msg: format!("constructor {} invoked with arguments in match pattern, but takes none", id),
+                            span: pattern.span.clone(),
+                        })
+                    }
+                    inf_group.insert_unification(
+                        to_match_type,
+                        constructor_type,
+                        "constructor pattern must match the type of the matched expression",
+                        &pattern.span,
+                    )
+                } else {    
+                    return Err(SemanticError::GeneralError {
+                        msg: format!(
+                            "{} type signature is not a function (constructors are functions)",
+                            id
+                        ),
+                        span: pattern.span.clone(),
+                    });
+                }
+            }
+            Tuple(elems) => {
+                let mut elem_types = Vec::new();
+                for elem in elems {
+                    let elem_type = self.types.new_unknown();
+                    self.sem_pattern(inf_group, elem, elem_type.clone())?;
+                    elem_types.push(elem_type);
+                }
+                let tuple_type = Type::new_tuple(elem_types);
+                inf_group.insert_unification(
+                    to_match_type,
+                    tuple_type,
+                    "tuple pattern must match the type of the matched expression",
+                    &pattern.span,
+                );
+            }
+        }
+        Ok(())
     }
 }
 
@@ -520,7 +649,13 @@ trait SemExprHelpers<'a> {
     fn sem_match(
         &mut self,
         inf_group: &mut InferenceGroup<'a>,
-        if_expr: &'a Match,
+        match_expr: &'a Match,
         expr: &'a Expr,
     ) -> SemResult<Rc<Type>>;
+    fn sem_pattern(
+        &mut self,
+        inf_group: &mut InferenceGroup<'a>,
+        pattern: &'a Pattern,
+        to_match_type: Rc<Type>,
+    ) -> SemResult<()>;
 }

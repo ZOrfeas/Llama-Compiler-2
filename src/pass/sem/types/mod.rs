@@ -84,6 +84,10 @@ impl Type {
     pub fn new_tuple(types: Vec<Rc<Type>>) -> Rc<Type> {
         Rc::new(Type::Tuple(types))
     }
+    #[inline(always)]
+    pub fn new_custom(id: String) -> Rc<Type> {
+        Rc::new(Type::Custom { id })
+    }
     pub fn is_fully_known(&self) -> bool {
         use Type::*;
         match self {

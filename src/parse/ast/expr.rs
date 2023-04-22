@@ -162,14 +162,6 @@ impl Expr {
                 .next()
                 .expect("Vector should not be empty")
         } else {
-            // let span = Span::new(
-            //     exprs
-            //         .first()
-            //         .expect("Vector should not be empty")
-            //         .span
-            //         .start,
-            //     exprs.last().expect("Vector should not be empty").span.end,
-            // );
             Self {
                 kind: ExprKind::Tuple(exprs),
                 span: Default::default(), // caller should set span

@@ -161,7 +161,7 @@ impl<'a> InfererHelpers<'a> for TypeMap<'a> {
         }
     }
     fn resolve_type(&self, ty: Rc<Type>) -> Rc<Type> {
-        // TODO: Make another one that shortens the chain
+        // TODO: Make another one that shortens the chain by applying the resolution to all the intermediate types
         // let mut type_ids = Vec::new();
         let mut retval = ty.clone();
         while let Type::Unknown(id, _) = &*retval {

@@ -6,6 +6,7 @@ mod types;
 use std::rc::Rc;
 
 use crate::parse::ast::{
+    data_map::NodeRefInner,
     def::{Definition, Letdef, Typedef},
     Program, Span,
 };
@@ -33,7 +34,52 @@ trait SemDefHelpers<'a> {
 }
 impl<'a> SemDefHelpers<'a> for SemTable<'a> {
     fn sem_typedef(&mut self, typedef: &'a Typedef) -> SemResult<()> {
-        todo!()
+        for tdef in &typedef.tdefs {
+            self.insert_scope_binding(&tdef.id, tdef);
+            // if let Some(previous_node) = self.insert_scope_binding(&tdef.id, tdef) {
+            //     return Err(SemanticError::GeneralError {
+            //         msg: format!(
+            //             "Type {} already defined at {}",
+            //             tdef.id,
+            //             previous_node.get_span().start
+            //         ),
+            //         span: tdef.span.clone(),
+            //     });
+            // }
+            self.types.insert(tdef, Type::new_custom(tdef.id.clone()));
+        }
+        for tdef in &typedef.tdefs {
+            for constr in &tdef.constrs {
+                // *Done(?): Fix this to work with constructors that take no arguments
+                self.insert_scope_binding(&constr.id, constr);
+                let tdef_type = self
+                    .types
+                    .get_type(tdef)
+                    .expect("type should have just been inserted");
+                // if let Some(previous_node) = self.insert_scope_binding(&constr.id, constr) {
+                //     return Err(SemanticError::GeneralError {
+                //         msg: format!(
+                //             "Constructor {} already defined at {}",
+                //             constr.id,
+                //             previous_node.get_span().start
+                //         ),
+                //         span: constr.span.clone(),
+                //     });
+                // }
+                if constr.types.len() > 0 {
+                    self.types.insert(
+                        constr,
+                        Type::new_multi_arg_func(
+                            constr.types.iter().map(|t| t.into()).collect(),
+                            tdef_type,
+                        ),
+                    )
+                } else {
+                    self.types.insert(constr, tdef_type)
+                }
+            }
+        }
+        Ok(())
     }
     fn sem_letdef(&mut self, letdef: &'a Letdef) -> SemResult<()> {
         if letdef.rec {
