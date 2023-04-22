@@ -703,49 +703,82 @@ impl<L: Iterator<Item = Token>> Parser<L> {
     fn pattern(&mut self) -> ParseResult<ast::expr::Pattern> {
         expect_any_of!(self,
             TokenKind::Plus | TokenKind::Minus => |token: Token| {
-                let mut integer = self.expect(TokenKind::IntLiteral)?.extract_value::<i32>();
+                let (span, mut integer) = self.expect(TokenKind::IntLiteral)?.into_span_and_value::<i32>();
                 if token.kind == TokenKind::Minus {
                     integer = -integer;
                 }
-                Ok(ast::expr::Pattern::IntLiteral(integer))
+                Ok(ast::expr::Pattern{
+                    kind: ast::expr::PatternKind::IntLiteral(integer),
+                    span
+                })
             },
             TokenKind::CharLiteral => |token: Token| {
-                let char = token.extract_value();
-                Ok(ast::expr::Pattern::CharLiteral(char))
+                let (span, char) = token.into_span_and_value();
+                Ok(ast::expr::Pattern{
+                    kind: ast::expr::PatternKind::CharLiteral(char),
+                    span
+                })
             },
             TokenKind::StringLiteral => |token: Token| {
-                let string = token.extract_value();
-                Ok(ast::expr::Pattern::StringLiteral(string))
+                let (span, string) = token.into_span_and_value();
+                Ok(ast::expr::Pattern{
+                    kind: ast::expr::PatternKind::StringLiteral(string),
+                    span
+                })
             },
             TokenKind::IntLiteral => |token: Token| {
-                let integer = token.extract_value();
-                Ok(ast::expr::Pattern::IntLiteral(integer))
+                let (span, integer) = token.into_span_and_value();
+                Ok(ast::expr::Pattern{
+                    kind: ast::expr::PatternKind::IntLiteral(integer),
+                    span
+                })
             },
             TokenKind::FloatLiteral => |token: Token| {
-                let float = token.extract_value();
-                Ok(ast::expr::Pattern::FloatLiteral(float))
+                let (span, float) = token.into_span_and_value();
+                Ok(ast::expr::Pattern{
+                    kind: ast::expr::PatternKind::FloatLiteral(float),
+                    span
+                })
             },
-            TokenKind::False => |_| {Ok(ast::expr::Pattern::BoolLiteral(false))},
-            TokenKind::True => |_| {Ok(ast::expr::Pattern::BoolLiteral(true))},
+            TokenKind::False => |token: Token| {
+                Ok(ast::expr::Pattern{
+                    kind: ast::expr::PatternKind::BoolLiteral(false),
+                    span: Span::new(token.from.clone(), token.to)
+                })
+            },
+            TokenKind::True => |token: Token| {
+                Ok(ast::expr::Pattern{
+                    kind: ast::expr::PatternKind::BoolLiteral(true),
+                    span: Span::new(token.from.clone(), token.to)
+                })
+            },
             TokenKind::IdLower => |token: Token| {
-                Ok(ast::expr::Pattern::IdLower(token.extract_value()))
+                let (span, id) = token.into_span_and_value();
+                Ok(ast::expr::Pattern{
+                    kind: ast::expr::PatternKind::IdLower(id),
+                    span
+                })
             },
-            TokenKind::LParen => |_| {
-                let patterns = self
+            TokenKind::LParen => |token: Token| {
+                let mut patterns = self
                     .match_at_least_one(Self::pattern, &TokenKind::Comma)
                     .map(ast::expr::Pattern::maybe_tuple)?;
-                self.expect(TokenKind::RParen)?;
+                let to = self.expect(TokenKind::RParen)?.to;
+                patterns.span = Span::new(token.from, to);
                 Ok(patterns)
             },
             TokenKind::IdUpper => |token: Token| {
-                let id = token.extract_value();
+                let (span, id) = token.into_span_and_value();
                 let args = self.match_zero_or_more_multiple(Self::pattern, &[
                     TokenKind::Plus, TokenKind::Minus,
                     TokenKind::CharLiteral, TokenKind::StringLiteral, TokenKind::IntLiteral,
                     TokenKind::FloatLiteral, TokenKind::False, TokenKind::True, TokenKind::IdLower,
                     TokenKind::LParen, TokenKind::IdUpper
                 ])?;
-                Ok(ast::expr::Pattern::IdUpper{id, args})
+                Ok(ast::expr::Pattern{
+                    span: Span::new(span.start, args.last().map(|arg| arg.span.end.clone()).unwrap_or(span.end)),
+                    kind: ast::expr::PatternKind::IdUpper{id, args}
+                })
             }
         )
     }

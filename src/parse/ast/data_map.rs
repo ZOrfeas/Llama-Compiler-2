@@ -56,14 +56,15 @@ macro_rules! impl_node_ref_inner_without_span {
                 }
                 fn get_span(&self) -> Span {
                     todo!("Check why the heck this was called.")
+                    // Span::default()
                 }
             }
         )*
     }
 }
 
-impl_node_ref_inner_with_span!(Def, TDef, Constr, Par, Expr);
-impl_node_ref_inner_without_span!(Program, Definition, TypeAnnotation, For, Clause, Pattern);
+impl_node_ref_inner_with_span!(Def, TDef, Constr, Par, Expr, Pattern);
+impl_node_ref_inner_without_span!(Program, Definition, TypeAnnotation, For, Clause);
 
 impl<'a, T> DataMap<'a, T> {
     pub fn new(_: &'a Program) -> Self {

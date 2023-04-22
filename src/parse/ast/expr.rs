@@ -127,7 +127,12 @@ pub struct Clause {
     pub expr: Expr,
 }
 #[derive(Debug, Clone)]
-pub enum Pattern {
+pub struct Pattern {
+    pub kind: PatternKind,
+    pub span: Span,
+}
+#[derive(Debug, Clone)]
+pub enum PatternKind {
     IntLiteral(i32),
     FloatLiteral(f64),
     CharLiteral(u8),
@@ -142,7 +147,10 @@ impl Pattern {
         if patterns.len() == 1 {
             patterns.into_iter().next().expect("Tuple with 1 element")
         } else {
-            Self::Tuple(patterns)
+            Self {
+                span: Span::default(),
+                kind: PatternKind::Tuple(patterns),
+            }
         }
     }
 }

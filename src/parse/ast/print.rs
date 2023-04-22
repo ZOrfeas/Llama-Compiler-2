@@ -167,20 +167,20 @@ impl<'a> TreeItem for NodeRef<'a> {
                 },
                 NodeRef::For(_) => panic!("For should not be a TreeItem"),
                 NodeRef::Clause(_) => format!("Clause"),
-                NodeRef::Pattern(p) => match p {
-                    Pattern::IntLiteral(i) => format!("Int Literal '{}'", i),
-                    Pattern::FloatLiteral(f) => format!("Float Literal '{}'", f),
-                    Pattern::CharLiteral(c) => format!("Char Literal '{}'", c),
-                    Pattern::StringLiteral(s) => format!("String Literal '{}'", s),
-                    Pattern::BoolLiteral(b) => format!("Bool Literal '{}'", b),
-                    Pattern::IdLower(id) => format!("Name binding on '{}'", id),
-                    Pattern::IdUpper { id, args } => format!(
+                NodeRef::Pattern(p) => match &p.kind {
+                    PatternKind::IntLiteral(i) => format!("Int Literal '{}'", i),
+                    PatternKind::FloatLiteral(f) => format!("Float Literal '{}'", f),
+                    PatternKind::CharLiteral(c) => format!("Char Literal '{}'", c),
+                    PatternKind::StringLiteral(s) => format!("String Literal '{}'", s),
+                    PatternKind::BoolLiteral(b) => format!("Bool Literal '{}'", b),
+                    PatternKind::IdLower(id) => format!("Name binding on '{}'", id),
+                    PatternKind::IdUpper { id, args } => format!(
                         "Pattern matching on constructor '{}' with {} argument{}",
                         id,
                         args.len(),
                         if args.len() == 1 { "" } else { "s" }
                     ),
-                    Pattern::Tuple(ps) => format!(
+                    PatternKind::Tuple(ps) => format!(
                         "Tuple with {} element{}",
                         ps.len(),
                         if ps.len() == 1 { "" } else { "s" }
@@ -304,17 +304,17 @@ impl<'a> NodeRef<'a> {
             },
             NodeRef::For(_) => None,
             NodeRef::Clause(c) => Some(vec![NodeRef::Pattern(&c.pattern), NodeRef::Expr(&c.expr)]),
-            NodeRef::Pattern(p) => match p {
-                Pattern::IntLiteral(_)
-                | Pattern::FloatLiteral(_)
-                | Pattern::CharLiteral(_)
-                | Pattern::StringLiteral(_)
-                | Pattern::BoolLiteral(_)
-                | Pattern::IdLower(_) => None,
-                Pattern::IdUpper { id: _, args } => {
+            NodeRef::Pattern(p) => match &p.kind {
+                PatternKind::IntLiteral(_)
+                | PatternKind::FloatLiteral(_)
+                | PatternKind::CharLiteral(_)
+                | PatternKind::StringLiteral(_)
+                | PatternKind::BoolLiteral(_)
+                | PatternKind::IdLower(_) => None,
+                PatternKind::IdUpper { id: _, args } => {
                     Some(args.iter().map(NodeRef::Pattern).collect())
                 }
-                Pattern::Tuple(ps) => Some(ps.iter().map(NodeRef::Pattern).collect()),
+                PatternKind::Tuple(ps) => Some(ps.iter().map(NodeRef::Pattern).collect()),
             },
         }
     }

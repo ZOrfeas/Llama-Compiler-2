@@ -6,8 +6,10 @@ use super::types::inference::InferenceGroup;
 use super::types::Type;
 use super::{sem_table::SemTable, SemResult};
 use super::{SemDefHelpers, SemanticError};
+use crate::parse::ast::data_map::NodeRefInner;
 use crate::parse::ast::expr::{
-    ArrayAccess, Binop, Call, Dim, Expr, ExprKind, For, If, LetIn, Match, Unop, While,
+    ArrayAccess, Binop, Call, Dim, Expr, ExprKind, For, If, LetIn, Match, Pattern, PatternKind,
+    Unop, While,
 };
 use crate::pass::sem::types::inference::Constraints;
 
