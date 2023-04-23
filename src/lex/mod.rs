@@ -61,7 +61,8 @@ impl<S: Iterator<Item = scan::Line>> Lexer<S> {
         ];
         self.eat_whitespace();
         for matcher in matchers.iter() {
-            if let Some(token) = matcher(self)? {
+            if let Some(mut token) = matcher(self)? {
+                token.make_compatible();
                 match &token.kind {
                     TokenKind::EOF => self.is_done = true,
                     _ => {}

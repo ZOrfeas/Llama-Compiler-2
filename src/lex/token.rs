@@ -161,7 +161,7 @@ pub enum TokenKind {
 
     // Multi-char symbols
     Arrow, 
-    // PlusDot, MinusDot, StarDot, SlashDot,
+    PlusDot, MinusDot, StarDot, SlashDot,
     DblStar, DblAmpersand, DblBar, LtGt, LEq,
     GEq, DblEq, ExclamEq, ColonEq,
     
@@ -183,10 +183,10 @@ pub const KEYWORDS: [TokenKind; 34] = [
     TokenKind::While, TokenKind::With,
 ];
 #[rustfmt::skip]
-pub const MULTI_CHAR_SYMBOLS: [TokenKind; 10] = [
+pub const MULTI_CHAR_SYMBOLS: [TokenKind; 14] = [
     TokenKind::Arrow, 
-    // TokenKind::PlusDot, TokenKind::MinusDot, 
-    // TokenKind::StarDot, TokenKind::SlashDot,
+    TokenKind::PlusDot, TokenKind::MinusDot, 
+    TokenKind::StarDot, TokenKind::SlashDot,
     TokenKind::DblStar,
     TokenKind::DblAmpersand, TokenKind::DblBar, TokenKind::LtGt,
     TokenKind::LEq, TokenKind::GEq, TokenKind::DblEq, TokenKind::ExclamEq,
@@ -199,6 +199,18 @@ pub const SINGLE_CHAR_SYMBOLS: [TokenKind; 16]= [
     TokenKind::Colon, TokenKind::Comma, TokenKind::LBracket, TokenKind::RBracket,
     TokenKind::LParen, TokenKind::RParen, TokenKind::Bar, TokenKind::Exclam,
 ];
+impl Token {
+    pub fn make_compatible(&mut self) {
+        match self.kind {
+            TokenKind::PlusDot => self.kind = TokenKind::Plus,
+            TokenKind::MinusDot => self.kind = TokenKind::Minus,
+            TokenKind::StarDot => self.kind = TokenKind::Star,
+            TokenKind::SlashDot => self.kind = TokenKind::Slash,
+            TokenKind::DblStar => self.kind = TokenKind::Star,
+            _ => (),
+        }
+    }
+}
 
 impl std::fmt::Display for TokenKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -207,10 +219,12 @@ impl std::fmt::Display for TokenKind {
                 write!(f, "{}", format!("{:?}", self).to_ascii_lowercase())
             }
             Self::Arrow => write!(f, "->"),
-            // Self::PlusDot => write!(f, "+."),
-            // Self::MinusDot => write!(f, "-."),
-            // Self::StarDot => write!(f, "*."),
-            // Self::SlashDot => write!(f, "/."),
+            // *Note: Compatibility with previous version
+            Self::PlusDot => write!(f, "+."),
+            Self::MinusDot => write!(f, "-."),
+            Self::StarDot => write!(f, "*."),
+            Self::SlashDot => write!(f, "/."),
+            // *Note: Compatibility with previous version
             Self::DblStar => write!(f, "**"),
             Self::DblAmpersand => write!(f, "&&"),
             Self::DblBar => write!(f, "||"),
