@@ -1,6 +1,5 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-use colored::Colorize;
 use log::trace;
 
 use crate::{

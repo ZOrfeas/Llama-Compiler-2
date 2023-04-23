@@ -444,6 +444,9 @@ impl<L: Iterator<Item = Token>> Parser<L> {
         ];
         match self.peek_token().map(|t| &t.kind) {
             Some(&TokenKind::IdLower) | Some(&TokenKind::IdUpper) => {
+                if self.peek_token_nth(1).map(|t| &t.kind) == Some(&TokenKind::LBracket) {
+                    return self.expr12();
+                }
                 let id = self.consume_token().expect("id should be present");
                 let from = id.from.clone();
                 let expr_maker = if id.kind == TokenKind::IdLower {
@@ -513,99 +516,6 @@ impl<L: Iterator<Item = Token>> Parser<L> {
             self.expr_primary()
         }
     }
-    // fn expr11(&mut self) -> ParseResult<ast::expr::Expr> {
-    //     let match_array_access = |s: &mut Self, id: Token| {
-    //         let from = id.from.clone();
-    //         let indexes = s.match_at_least_one(Self::expr, &TokenKind::Comma)?;
-    //         let to = s.expect(TokenKind::RBracket)?.to;
-    //         Ok(ast::expr::Expr {
-    //             span: Span::new(from, to),
-    //             kind: ast::expr::ExprKind::ArrayAccess(ast::expr::ArrayAccess {
-    //                 id: id.extract_value(),
-    //                 indexes,
-    //             }),
-    //         })
-    //     };
-    //     let match_call =
-    //         |s: &mut Self, id: Token, make: fn(ast::expr::Call) -> ast::expr::ExprKind| {
-    //             let from = id.from.clone();
-    //             let args = s.match_zero_or_more_multiple(
-    //                 Self::expr11,
-    //                 &[
-    //                     TokenKind::IdLower,
-    //                     TokenKind::IdUpper,
-    //                     TokenKind::Exclam,
-    //                     TokenKind::IntLiteral,
-    //                     TokenKind::FloatLiteral,
-    //                     TokenKind::CharLiteral,
-    //                     TokenKind::StringLiteral,
-    //                     TokenKind::True,
-    //                     TokenKind::False,
-    //                     TokenKind::LParen,
-    //                     TokenKind::Dim,
-    //                     TokenKind::New,
-    //                     TokenKind::Begin,
-    //                     TokenKind::While,
-    //                     TokenKind::For,
-    //                     TokenKind::Match,
-    //                 ],
-    //             )?;
-    //             let to = s.consumed_token_span.end.clone();
-    //             Ok(ast::expr::Expr {
-    //                 kind: make(ast::expr::Call {
-    //                     id: id.extract_value(),
-    //                     args,
-    //                 }),
-    //                 span: Span::new(from, to),
-    //             })
-    //         };
-    //     let match_array_access_or_fn_call = |s: &mut Self, id| {
-    //         if s.accept(&TokenKind::LBracket).is_some() {
-    //             match_array_access(s, id)
-    //         } else {
-    //             match_call(s, id, ast::expr::ExprKind::Call)
-    //         }
-    //     };
-    //     let deref_tokens = self.accept_many(&TokenKind::Exclam);
-    //     if deref_tokens.len() > 0 {
-    //         let inner_expr = if let Some(token) = self.accept(&TokenKind::IdLower) {
-    //             // FIX. This does not allow for `!a` expressions
-    //             // I think this is wrong in gerenal ?
-    //             // *Note: Possibly fixed
-    //             if self.accept(&TokenKind::LBracket).is_some() {
-    //                 match_array_access(self, token)?
-    //             } else {
-    //                 let span = Span::new(token.from.clone(), token.to.clone());
-    //                 ast::expr::Expr {
-    //                     kind: ast::expr::ExprKind::Call(ast::expr::Call {
-    //                         id: token.extract_value(),
-    //                         args: Vec::new(),
-    //                     }),
-    //                     span,
-    //                 }
-    //             }
-    //         } else {
-    //             self.expr_primary()?
-    //         };
-    //         Ok(deref_tokens
-    //             .into_iter()
-    //             .rfold(inner_expr, |expr, deref_tok| ast::expr::Expr {
-    //                 span: Span::new(deref_tok.from.clone(), expr.span.end.clone()),
-    //                 kind: ast::expr::ExprKind::Unop(ast::expr::Unop {
-    //                     op: (&TokenKind::Exclam).into(),
-    //                     operand: Box::new(expr),
-    //                 }),
-    //             }))
-    //     } else {
-    //         if let Some(token) = self.accept(&TokenKind::IdLower) {
-    //             match_array_access_or_fn_call(self, token)
-    //         } else if let Some(token) = self.accept(&TokenKind::IdUpper) {
-    //             match_call(self, token, ast::expr::ExprKind::ConstrCall)
-    //         } else {
-    //             self.expr_primary()
-    //         }
-    //     }
-    // }
     fn expr_primary(&mut self) -> ParseResult<ast::expr::Expr> {
         expect_any_of!(self,
             TokenKind::IntLiteral | TokenKind::FloatLiteral | TokenKind::CharLiteral
@@ -702,15 +612,29 @@ impl<L: Iterator<Item = Token>> Parser<L> {
     }
     fn pattern(&mut self) -> ParseResult<ast::expr::Pattern> {
         expect_any_of!(self,
-            TokenKind::Plus | TokenKind::Minus => |token: Token| {
-                let (span, mut integer) = self.expect(TokenKind::IntLiteral)?.into_span_and_value::<i32>();
-                if token.kind == TokenKind::Minus {
-                    integer = -integer;
-                }
-                Ok(ast::expr::Pattern{
-                    kind: ast::expr::PatternKind::IntLiteral(integer),
-                    span
-                })
+            TokenKind::Plus | TokenKind::Minus => |op: Token| {
+                expect_any_of!(self,
+                    TokenKind::IntLiteral => |literal: Token| {
+                        let (span, mut integer) = literal.into_span_and_value::<i32>();
+                        if op.kind == TokenKind::Minus {
+                            integer = -integer;
+                        }
+                        Ok(ast::expr::Pattern{
+                            kind: ast::expr::PatternKind::IntLiteral(integer),
+                            span: Span::new(op.from, span.end)
+                        })
+                    },
+                    TokenKind::FloatLiteral => |literal: Token| {
+                        let (span, mut float) = literal.into_span_and_value::<f64>();
+                        if op.kind == TokenKind::Minus {
+                            float = -float;
+                        }
+                        Ok(ast::expr::Pattern{
+                            kind: ast::expr::PatternKind::FloatLiteral(float),
+                            span: Span::new(op.from, span.end)
+                        })
+                    }
+                )
             },
             TokenKind::CharLiteral => |token: Token| {
                 let (span, char) = token.into_span_and_value();
@@ -823,17 +747,17 @@ impl<L: Iterator<Item = Token>> Parser<L> {
         }
         self.lexer.peek()
     }
-    // fn peek_token_nth(&mut self, mut n: usize) -> Option<&Token> {
-    //     for i in 0.. {
-    //         match self.lexer.peek_nth(i).map(|t| &t.kind) {
-    //             Some(TokenKind::COMMENT) => (),
-    //             Some(_) if n == 0 => return self.lexer.peek_nth(i),
-    //             Some(_) => n -= 1,
-    //             None => return None,
-    //         }
-    //     }
-    //     unreachable!()
-    // }
+    fn peek_token_nth(&mut self, mut n: usize) -> Option<&Token> {
+        for i in 0.. {
+            match self.lexer.peek_nth(i).map(|t| &t.kind) {
+                Some(TokenKind::COMMENT) => (),
+                Some(_) if n == 0 => return self.lexer.peek_nth(i),
+                Some(_) => n -= 1,
+                None => return None,
+            }
+        }
+        unreachable!()
+    }
     fn match_zero_or_more<T>(
         &mut self,
         matcher: fn(&mut Self) -> ParseResult<T>,
