@@ -665,7 +665,7 @@ impl<L: Iterator<Item = Token>> Parser<L> {
                 span: Span::new(from, span.end),
             })
         }
-        fn make_other_pattern<N: TryFrom<TokenValue>>(
+        fn make_pattern<N: TryFrom<TokenValue>>(
             token: Token,
             pattern_maker: impl Fn(N) -> ast::expr::PatternKind,
         ) -> ParseResult<ast::expr::Pattern>
@@ -690,16 +690,16 @@ impl<L: Iterator<Item = Token>> Parser<L> {
                 )
             },
             TokenKind::CharLiteral => |literal: Token| {
-                make_other_pattern(literal, ast::expr::PatternKind::CharLiteral)
+                make_pattern(literal, ast::expr::PatternKind::CharLiteral)
             },
             TokenKind::StringLiteral => |literal: Token| {
-                make_other_pattern(literal, ast::expr::PatternKind::StringLiteral)
+                make_pattern(literal, ast::expr::PatternKind::StringLiteral)
             },
             TokenKind::IntLiteral => |literal: Token| {
-                make_other_pattern(literal, ast::expr::PatternKind::IntLiteral)
+                make_pattern(literal, ast::expr::PatternKind::IntLiteral)
             },
             TokenKind::FloatLiteral => |literal: Token| {
-                make_other_pattern(literal, ast::expr::PatternKind::FloatLiteral)
+                make_pattern(literal, ast::expr::PatternKind::FloatLiteral)
             },
             TokenKind::False => |f: Token| {
                 Ok(ast::expr::Pattern {
@@ -714,10 +714,10 @@ impl<L: Iterator<Item = Token>> Parser<L> {
                 })
             },
             TokenKind::IdLower => |id: Token| {
-                make_other_pattern(id, ast::expr::PatternKind::IdLower)
+                make_pattern(id, ast::expr::PatternKind::IdLower)
             },
             TokenKind::IdUpper => |id: Token| {
-                make_other_pattern(id, |id: String|{
+                make_pattern(id, |id: String|{
                     ast::expr::PatternKind::IdUpper{id, args: Vec::new()}
                 })
             },
