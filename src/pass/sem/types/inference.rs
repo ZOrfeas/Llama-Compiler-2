@@ -12,7 +12,6 @@ use super::{type_map::TypeMap, Type, TypeKind};
 
 pub trait Inferer<'a> {
     fn solve_group(&mut self, group: InferenceGroup<'a>) -> SemResult<()>;
-    // fn unify(&mut self, unification: Unification<'a>) -> SemResult<()>;
 }
 
 impl<'a> Inferer<'a> for TypeMap<'a> {

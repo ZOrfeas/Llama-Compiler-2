@@ -150,7 +150,8 @@ struct Buffer {
 }
 impl Buffer {
     fn new(filename: Rc<String>) -> ScanResult<Self> {
-        let file = File::open(filename.as_ref())?;
+        let file = File::open(filename.as_ref())
+            .map_err(|e| ScanErr::FileOpen(e, Rc::clone(&filename)))?;
         Ok(Self {
             inner: BufReader::new(file),
             filename,
@@ -208,6 +209,8 @@ type ScanResult<T> = Result<T, ScanErr>;
 pub enum ScanErr {
     #[error("IO error: {0}")]
     IO(#[from] std::io::Error),
+    #[error("IO error: {0} filename: {1}")]
+    FileOpen(std::io::Error, Rc<String>),
     #[error("Unknown directive: {0}")]
     UnknownDirective(String),
 

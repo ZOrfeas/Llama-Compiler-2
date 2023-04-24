@@ -6,7 +6,7 @@ mod types;
 use std::rc::Rc;
 
 use crate::parse::ast::{
-    def::{Definition, Letdef, Typedef},
+    def::{DefKind, Definition, Letdef, Typedef},
     Program, Span,
 };
 use thiserror::Error;
@@ -118,11 +118,13 @@ impl<'a> SemDefHelpers<'a> for SemTable<'a> {
             }
         }
         for def in &letdef.defs {
-            if !self
+            let def_type = self
                 .types
                 .get_type(def)
-                .expect("should have a type after sem")
-                .is_fully_known()
+                .expect("should have a type after sem");
+            let def_type = self.types.deep_resolve_type(def_type);
+            if !def_type.is_fully_known()
+                && !matches!(def.kind, DefKind::Variable | DefKind::Array { .. })
             {
                 self.types.mark_generic(def);
             }

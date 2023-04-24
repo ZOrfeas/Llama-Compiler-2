@@ -52,6 +52,10 @@ impl Token {
             T::try_from(value).expect("TokenValue is not the correct type"),
         )
     }
+    pub fn into_span(self) -> Span {
+        let (from, to) = (self.from, self.to);
+        Span::new(from, to)
+    }
 }
 impl TryFrom<TokenValue> for String {
     type Error = ();

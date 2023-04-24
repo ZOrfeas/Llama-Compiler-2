@@ -67,8 +67,11 @@ impl<'a> TypeMap<'a> {
             t
         })
     }
+    #[inline(always)]
     pub fn mark_generic(&mut self, node: impl Into<NodeRef<'a>>) {
-        self.instantiations.insert(node.into(), Vec::new());
+        let node = node.into();
+        trace!("Marking node '{}' as generic", node);
+        self.instantiations.insert(node, Vec::new());
     }
     fn instantiate(&mut self, ty: &Rc<Type>) -> Rc<Type> {
         // *Done: Fully traverse, instantiate each unknown type, and then create one using those mappings.
@@ -134,7 +137,7 @@ impl<'a> TypeMap<'a> {
             .get_node_type(node)
             .expect("looked up node should have a type");
         // TODO: Find a way to avoid two get_node_mut lookups. Currently not allowed cause get_node_mut returns a &mut ref which self.instantiate also wants.
-        if self.instantiations.get_node_mut(node).is_none() {
+        if self.instantiations.get_node(node).is_none() {
             return node_type;
         }
         let node_type = self.deep_resolve_type(node_type);

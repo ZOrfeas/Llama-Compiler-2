@@ -7,7 +7,7 @@ use thiserror::Error;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
-pub(crate) struct Cli {
+pub struct Cli {
     /// Path to source file
     pub filename: String,
 

@@ -325,7 +325,7 @@ impl<'a> SemExprHelpers<'a> for SemTable<'a> {
             "array access must match array signature",
             &expr.span,
         );
-        Ok(contained_type)
+        Ok(Type::new_ref(contained_type))
     }
     fn sem_dim(
         &mut self,
@@ -521,9 +521,11 @@ impl<'a> SemExprHelpers<'a> for SemTable<'a> {
                     let constr_ret_type = loop {
                         if let Type::Func { lhs, rhs } = &**rhs {
                             constr_param_types.push(lhs.clone());
-                            if matches!(&**rhs, Type::Func { .. }) {
+                            if !matches!(&**rhs, Type::Func { .. }) {
                                 break rhs.clone();
                             }
+                        } else {
+                            break rhs.clone();
                         }
                     };
                     if constr_param_types.len() != args.len() {
