@@ -337,6 +337,6 @@ impl<'a, 'b> std::io::Write for DisplayWriter<'a, 'b> {
         Ok(bytes.len())
     }
     fn flush(&mut self) -> std::result::Result<(), std::io::Error> {
-        todo!()
+        panic!()
     }
 }

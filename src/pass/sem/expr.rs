@@ -256,7 +256,7 @@ impl<'a> SemExprHelpers<'a> for SemTable<'a> {
             .iter()
             .map(|arg| self.sem_expr(inf_group, arg))
             .collect::<SemResult<Vec<_>>>()?;
-        // TODO: Think about trying to apply the argument_types to the called_type, for performance perhaps.
+        // *NOTE: Think about trying to apply the argument_types to the called_type, for performance perhaps.
         let expr_type = self.types.new_unknown();
         inf_group.insert_unification(
             called_type,

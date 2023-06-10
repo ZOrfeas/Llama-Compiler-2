@@ -55,7 +55,7 @@ macro_rules! impl_node_ref_inner_without_span {
                     *self as *const $t as *const ()
                 }
                 fn get_span(&self) -> Span {
-                    todo!("Check why the heck this was called.")
+                    panic!("Check why the heck this was called.")
                     // Span::default()
                 }
             }

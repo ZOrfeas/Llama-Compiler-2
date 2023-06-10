@@ -57,7 +57,6 @@ impl<'a> SemDef<'a> for SemTable<'a> {
                     None => (),
                 };
                 func_type
-                // Some(self.sem_func_def(&mut inf_group, pars, expr)?)
             }
             DefKind::Variable => match annotation_type {
                 Some(t) => t,
@@ -77,7 +76,6 @@ impl<'a> SemDef<'a> for SemTable<'a> {
         } else {
             self.types.insert(def, node_type);
         }
-        // TODO: Think if you mark generics here, or at the end of the sem_letdef.
         self.types.solve_group(inf_group)?;
         Ok(())
     }

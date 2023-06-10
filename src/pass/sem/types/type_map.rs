@@ -145,7 +145,7 @@ impl<'a> TypeMap<'a> {
         trace!("Instantiating generic {} to {}", node_type, instance);
         self.instantiations
             .get_node_mut(node)
-            .unwrap()
+            .expect("looked up node should have instantiation here")
             .push(instance.clone());
         instance
     }
