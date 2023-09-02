@@ -23,8 +23,8 @@
                 }
             },
             "args": [
-                "./tests/input.lla",
-                "-s", "parsing", "print", "--ast",
+                "./testfiles/end-to-end/match_many_patterns.lla",
+                "-s", "sem",
             ],
             "cwd": "${workspaceFolder}"
         },
