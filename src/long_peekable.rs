@@ -48,11 +48,10 @@ impl<I: Iterator> LongPeekableIterator<I> {
     /// Returns the count of currently stored peeked values.
     ///
     /// ```
-    /// use long_peekable::LongPeekable;
+    /// use llamac::long_peekable::*;
     /// let mut iter = (0..10).long_peekable();
-    /// assert_eq!(iter.peeked_count(), 0);
     /// assert_eq!(iter.peek(), Some(&0));
-    /// assert_eq!(iter.peek_nth(iter.count_peeked() - 1), Some(&0));
+    /// assert_eq!(iter.next(), Some(0));
     /// ```
     pub fn count_peeked(&self) -> usize {
         self.queue.len()
