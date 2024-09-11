@@ -45,7 +45,7 @@ pub fn run_compiler(args: &cli::Cli) -> CompilerResult<()> {
             "Stopping... (--stop-after parsing)",
         ));
     }
-    // TODO: Implement sem
+    // *Done(?): Implement sem
     let mut sem_results = sem(&ast)?;
     args.print.get_types_writer()?.map(|w| {
         sem_results
